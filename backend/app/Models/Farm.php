@@ -17,6 +17,7 @@ class Farm extends Model
         'size',
         'soil_type',
         'region_id',
+        'district',
     ];
 
     protected function casts(): array

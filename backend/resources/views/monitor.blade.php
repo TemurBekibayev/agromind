@@ -484,7 +484,7 @@
                         <div class="flex justify-between items-center">
                             <div>
                                 <h3 class="font-bold text-xs text-slate-850 font-display">${farm.name}</h3>
-                                <p class="text-[9px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">${farm.owner ? farm.owner.region?.name || 'Qoraqalpog\'iston' : 'Qoraqalpog\'iston'}</p>
+                                <p class="text-[9px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">${farm.owner && farm.owner.region ? farm.owner.region.name : 'Qoraqalpog\'iston Respublikasi'}, ${farm.district || 'Amudaryo tumani'}</p>
                             </div>
                             <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
                                 ${farm.size || '35'} GA

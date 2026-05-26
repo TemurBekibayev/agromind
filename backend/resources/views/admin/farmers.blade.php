@@ -18,6 +18,12 @@
             <span class="inline-flex items-center rounded-full bg-forest-50 px-3 py-1.5 text-xs font-semibold text-forest-700 border border-forest-200 shrink-0">
                 Jami: {{ $farmers->count() }} ta fermer
             </span>
+            <button onclick="openAddFarmerModal()" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition shrink-0">
+                <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Yangi Dehqon Qo'shish
+            </button>
             <button onclick="openAddFarmModal()" class="inline-flex items-center gap-2 rounded-lg bg-forest-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-forest-600 transition shrink-0">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -74,9 +80,14 @@
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 font-medium">{{ $farmer->phone }}</td>
                             <td class="whitespace-nowrap px-6 py-4">
-                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                                    {{ $farmer->region ? $farmer->region->name : 'Noma\'lum' }}
-                                </span>
+                                <div class="flex flex-col gap-1">
+                                    <span class="inline-flex items-center self-start rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                                        {{ $farmer->region ? $farmer->region->name : 'Noma\'lum' }}
+                                    </span>
+                                    @if($farmer->district)
+                                        <p class="text-xs text-gray-500 font-semibold">{{ $farmer->district }}</p>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-6 py-4">
                                 @if($farmer->farms->count() > 0)
@@ -152,24 +163,30 @@
                         <select name="region_id" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
                             <option value="">Viloyat...</option>
                             @foreach($regions as $region)
-                                <option value="{{ $region->id }}">{{ $region->name }}</option>
+                                <option value="{{ $region->id }}" {{ str_contains($region->name, 'Qoraqalpog') ? 'selected' : '' }}>{{ $region->name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Maydoni (Gektar)</label>
-                        <input type="number" step="0.1" name="size" required placeholder="Masalan: 45" class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tuman nomi</label>
+                        <input type="text" name="district" required value="Amudaryo tumani" placeholder="Masalan: Amudaryo tumani" class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tuproq Turi</label>
-                    <select name="soil_type" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
-                        <option value="Loyli tuproq">Loyli tuproq</option>
-                        <option value="Serozyom (Bo'z tuproq)">Serozyom (Bo'z tuproq)</option>
-                        <option value="Sho'rlangan tuproq">Sho'rlangan tuproq</option>
-                        <option value="Qumloq tuproq">Qumloq tuproq</option>
-                    </select>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Maydoni (Gektar)</label>
+                        <input type="number" step="0.1" name="size" required placeholder="Masalan: 45" class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tuproq Turi</label>
+                        <select name="soil_type" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                            <option value="Loyli tuproq">Loyli tuproq</option>
+                            <option value="Serozyom (Bo'z tuproq)">Serozyom (Bo'z tuproq)</option>
+                            <option value="Sho'rlangan tuproq">Sho'rlangan tuproq</option>
+                            <option value="Qumloq tuproq">Qumloq tuproq</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Hidden inputs for coordinates array -->
@@ -193,6 +210,60 @@
                 <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-sm border border-slate-250 rounded-lg px-3 py-2 text-[10px] text-slate-700 z-[1000] shadow-md max-w-xs font-medium">
                     💡 <strong>Yer chegarasini chizish:</strong> Xaritadagi yer maydonlari ustiga ketma-ket click qilib nuqtalar chizing. Kamida 3 ta nuqta bosilsa, yopiq poligon chegarasi chiziladi.
                 </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Yangi Dehqon (Fermer) Modal Overlay -->
+<div id="addFarmerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-250 flex justify-between items-center shrink-0">
+            <div>
+                <h3 class="font-bold text-gray-900 text-base">Yangi Dehqon (Fermer) Qo'shish</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Tizimga yangi dehqon yoki fermer yetakchisini qo'shish</p>
+            </div>
+            <button onclick="closeAddFarmerModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Modal Form -->
+        <form action="/admin/farmers/store" method="POST" class="p-6 space-y-4">
+            @csrf
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fermer F.I.Sh.</label>
+                <input type="text" name="name" required placeholder="Masalan: Sobir Rahimov" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Telefon Raqami</label>
+                <input type="text" name="phone" required value="998" placeholder="Masalan: 998901234567" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Hudud / Viloyat</label>
+                    <select name="region_id" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                        <option value="">Viloyat...</option>
+                        @foreach($regions as $region)
+                            <option value="{{ $region->id }}" {{ str_contains($region->name, 'Qoraqalpog') ? 'selected' : '' }}>{{ $region->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tuman nomi</label>
+                    <input type="text" name="district" required value="Amudaryo tumani" placeholder="Masalan: Amudaryo tumani" class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 shrink-0">
+                <button type="button" onclick="closeAddFarmerModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Bekor qilish</button>
+                <button type="submit" class="px-5 py-2 bg-forest-700 text-white rounded-lg text-xs font-semibold hover:bg-forest-600 transition">Saqlash</button>
             </div>
         </form>
     </div>
@@ -288,6 +359,17 @@
         const warn = document.getElementById('drawWarning');
         warn.className = "p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700";
         warn.innerHTML = "⚠️ <strong>Chegara chizilmagan:</strong> Xaritada fermer xo'jaligining yer chegarasini belgilang (kamida 3 ta nuqtaga click qiling).";
+    }
+    function openAddFarmerModal() {
+        const modal = document.getElementById('addFarmerModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeAddFarmerModal() {
+        const modal = document.getElementById('addFarmerModal');
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
     }
 </script>
 @endsection

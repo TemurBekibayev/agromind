@@ -24,6 +24,7 @@ class User extends Authenticatable
         'phone',
         'role',
         'region_id',
+        'district',
         'password',
     ];
 

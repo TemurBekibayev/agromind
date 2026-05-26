@@ -31,12 +31,34 @@ Route::get('/admin/farmers', function () {
     return view('admin.farmers', compact('farmers', 'regions'));
 });
 
+// Yangi Dehqon (Fermer) saqlash
+Route::post('/admin/farmers/store', function (Request $request) {
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'phone' => 'required|string|max:20|unique:users,phone',
+        'region_id' => 'required|exists:regions,id',
+        'district' => 'nullable|string|max:255',
+    ]);
+
+    User::create([
+        'name' => $request->name,
+        'phone' => $request->phone,
+        'region_id' => $request->region_id,
+        'district' => $request->district ?? 'Amudaryo tumani',
+        'role' => 'farmer',
+        'password' => Hash::make('secret123'), // Default password
+    ]);
+
+    return back()->with('success', 'Yangi dehqon (fermer) muvaffaqiyatli ro\'yxatga olindi!');
+});
+
 // Yangi Farm va uning xarita geofence chegarasini saqlash
 Route::post('/admin/farms/store', function (Request $request) {
     $request->validate([
         'name' => 'required|string|max:255',
         'user_id' => 'required|exists:users,id',
         'region_id' => 'required|exists:regions,id',
+        'district' => 'nullable|string|max:255',
         'size' => 'required|numeric|min:0.1',
         'soil_type' => 'required|string',
         'coordinates' => 'required|string', // JSON string array of coords
@@ -54,6 +76,7 @@ Route::post('/admin/farms/store', function (Request $request) {
         'name' => $request->name,
         'user_id' => $request->user_id,
         'region_id' => $request->region_id,
+        'district' => $request->district ?? 'Amudaryo tumani',
         'size' => $request->size,
         'soil_type' => $request->soil_type,
         'latitude' => $firstVertex[0],
