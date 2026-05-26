@@ -4,6 +4,26 @@
 
 @section('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+    .custom-div-icon {
+        background: transparent !important;
+        border: none !important;
+    }
+    .custom-dot-icon {
+        width: 14px;
+        height: 14px;
+        background-color: #1a3c2a;
+        border: 2.5px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+        cursor: move;
+        transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+    .custom-dot-icon:hover {
+        transform: scale(1.3);
+        background-color: #10B981;
+    }
+</style>
 @endsection
 
 @section('content')
@@ -121,8 +141,8 @@
 </div>
 
 <!-- Yangi Xo'jalik va GIS Geofence Modal Overlay -->
-<div id="addFarmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl border border-slate-200 w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+<div id="addFarmModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-md z-[100] hidden">
+    <div class="bg-white w-screen h-screen shadow-2xl overflow-hidden flex flex-col">
         <!-- Modal Header -->
         <div class="px-6 py-4 bg-slate-50 border-b border-slate-250 flex justify-between items-center shrink-0">
             <div>
@@ -197,9 +217,28 @@
                     ⚠️ <strong>Chegara chizilmagan:</strong> Xaritada fermer xo'jaligining yer chegarasini belgilang (kamida 3 ta nuqtaga click qiling).
                 </div>
                 
-                <div class="flex gap-3 pt-4 border-t border-slate-100 shrink-0">
-                    <button type="button" onclick="clearDrawing()" class="w-1/2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Tozalash</button>
-                    <button type="submit" class="w-1/2 px-4 py-2 bg-forest-700 text-white rounded-lg text-xs font-semibold hover:bg-forest-600 transition">Saqlash</button>
+                <div class="flex flex-col gap-2.5 pt-4 border-t border-slate-100 shrink-0">
+                    <div class="flex gap-2">
+                        <button type="button" onclick="undoLastPoint()" class="w-1/2 px-3 py-2 border border-slate-250 rounded-lg text-xs font-semibold text-slate-705 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
+                            <svg class="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                            </svg>
+                            Ortga qaytarish
+                        </button>
+                        <button type="button" onclick="clearDrawing()" class="w-1/2 px-3 py-2 border border-slate-250 rounded-lg text-xs font-semibold text-slate-705 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
+                            <svg class="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Tozalash
+                        </button>
+                    </div>
+                    <button type="submit" class="w-full px-4 py-2.5 bg-forest-700 text-white rounded-lg text-sm font-bold shadow-md hover:bg-forest-600 transition flex items-center justify-center gap-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Yer chegarasini saqlash
+                    </button>
                 </div>
             </div>
 
@@ -278,6 +317,13 @@
     let drawPolygon = null;
     let pointMarkers = [];
 
+    const customDotIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div class="custom-dot-icon"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+    });
+
     function openAddFarmModal() {
         const modal = document.getElementById('addFarmModal');
         modal.classList.remove('hidden');
@@ -286,7 +332,7 @@
         // Initialize Map inside modal (wait for layout animation)
         if (!drawMap) {
             setTimeout(() => {
-                drawMap = L.map('drawMap').setView([42.11005, 60.07327], 10); // Center on Karakalpakstan/Amudaryo
+                drawMap = L.map('drawMap').setView([42.11005, 60.07327], 14); // Zomed in for easier field drawing
 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -295,45 +341,84 @@
 
                 // Handle click to draw polygon vertices
                 drawMap.on('click', function(e) {
+                    // Ignore clicks on markers themselves to prevent duplicate points
+                    if (e.originalEvent.target.closest('.custom-dot-icon')) {
+                        return;
+                    }
+
                     const lat = parseFloat(e.latlng.lat);
                     const lng = parseFloat(e.latlng.lng);
                     
                     polyPoints.push([lat, lng]);
 
                     // Add vertex marker to map
-                    const marker = L.circleMarker([lat, lng], {
-                        radius: 6,
-                        color: '#1a3c2a',
-                        fillColor: '#ffffff',
-                        fillOpacity: 1,
-                        weight: 2
+                    const marker = L.marker([lat, lng], {
+                        icon: customDotIcon,
+                        draggable: true
                     }).addTo(drawMap);
+
+                    // Handle drag behavior
+                    marker.on('drag', function(evt) {
+                        const newLatlng = evt.target.getLatLng();
+                        const idx = pointMarkers.indexOf(marker);
+                        if (idx !== -1) {
+                            polyPoints[idx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
+                            updatePolygon();
+                        }
+                    });
+
+                    marker.on('dragend', function() {
+                        updatePolygon();
+                    });
                     
                     pointMarkers.push(marker);
-
-                    // Redraw polygon
-                    if (polyPoints.length >= 3) {
-                        if (drawPolygon) {
-                            drawMap.removeLayer(drawPolygon);
-                        }
-                        
-                        drawPolygon = L.polygon(polyPoints, {
-                            color: '#1a3c2a',
-                            fillColor: '#10B981',
-                            fillOpacity: 0.25,
-                            weight: 2.5
-                        }).addTo(drawMap);
-
-                        // Update serial input
-                        document.getElementById('coordinatesInput').value = JSON.stringify(polyPoints);
-
-                        // Success notice
-                        const warn = document.getElementById('drawWarning');
-                        warn.className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
-                        warn.innerHTML = "✅ <strong>Yer maydoni aniqlandi:</strong> " + polyPoints.length + " ta koordinata chizildi.";
-                    }
+                    updatePolygon();
                 });
             }, 100);
+        } else {
+            setTimeout(() => {
+                drawMap.invalidateSize();
+            }, 100);
+        }
+    }
+
+    function updatePolygon() {
+        if (drawPolygon && drawMap) {
+            drawMap.removeLayer(drawPolygon);
+            drawPolygon = null;
+        }
+
+        if (polyPoints.length >= 3) {
+            drawPolygon = L.polygon(polyPoints, {
+                color: '#1a3c2a',
+                fillColor: '#10B981',
+                fillOpacity: 0.25,
+                weight: 2.5
+            }).addTo(drawMap);
+
+            // Update serial input
+            document.getElementById('coordinatesInput').value = JSON.stringify(polyPoints);
+
+            // Success notice
+            const warn = document.getElementById('drawWarning');
+            warn.className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
+            warn.innerHTML = "✅ <strong>Yer maydoni aniqlandi:</strong> " + polyPoints.length + " ta koordinata chizildi.";
+        } else {
+            document.getElementById('coordinatesInput').value = "";
+            const warn = document.getElementById('drawWarning');
+            warn.className = "p-3 bg-amber-50 border border-amber-250 rounded-xl text-xs text-amber-700";
+            warn.innerHTML = "⚠️ <strong>Chegara chizilmagan:</strong> Xaritada fermer xo'jaligining yer chegarasini belgilang (kamida 3 ta nuqtaga click qiling).";
+        }
+    }
+
+    function undoLastPoint() {
+        if (polyPoints.length > 0) {
+            polyPoints.pop();
+            const marker = pointMarkers.pop();
+            if (marker && drawMap) {
+                drawMap.removeLayer(marker);
+            }
+            updatePolygon();
         }
     }
 
@@ -354,12 +439,9 @@
             pointMarkers.forEach(m => drawMap.removeLayer(m));
         }
         pointMarkers = [];
-        document.getElementById('coordinatesInput').value = "";
-        
-        const warn = document.getElementById('drawWarning');
-        warn.className = "p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700";
-        warn.innerHTML = "⚠️ <strong>Chegara chizilmagan:</strong> Xaritada fermer xo'jaligining yer chegarasini belgilang (kamida 3 ta nuqtaga click qiling).";
+        updatePolygon();
     }
+
     function openAddFarmerModal() {
         const modal = document.getElementById('addFarmerModal');
         modal.classList.remove('hidden');
