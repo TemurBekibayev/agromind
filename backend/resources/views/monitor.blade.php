@@ -125,6 +125,7 @@
                     <div>
                         <h3 id="hudName" class="font-extrabold text-sm text-slate-800 font-display">-</h3>
                         <p id="hudPlate" class="text-xs text-slate-500 font-semibold font-display">-</p>
+                        <div id="hudConnectionStatus" class="mt-1"></div>
                     </div>
                     <button onclick="closeHud()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full transition">
                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -204,6 +205,21 @@
         
         let mapGeofenceLayers = [];
         const mapVehicleMarkers = {};
+
+        // Connection Status Badge helper
+        function getConnectionStatusBadge(recordedAt) {
+            const recordedTime = new Date(recordedAt);
+            const now = new Date();
+            const diffSeconds = Math.max(0, Math.floor((now - recordedTime) / 1000));
+            
+            if (diffSeconds <= 45) {
+                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 border border-emerald-250 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded-full animate-pulse">● JONLI ALOQA (FAOL)</span>`;
+            } else if (diffSeconds <= 180) {
+                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 border border-amber-250 bg-amber-100 text-amber-800 text-[9px] font-bold rounded-full">● ULANISH KUCHSIZ (${diffSeconds}s)</span>`;
+            } else {
+                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 border border-rose-250 bg-rose-100 text-rose-800 text-[9px] font-bold rounded-full">● ALOQA YO'Q (MUAMMO)</span>`;
+            }
+        }
 
         // Custom Glowing Marker Icon
         function getVehicleIcon(status, isMoving) {
@@ -306,12 +322,13 @@
         }
 
         // Selection of Farm Vehicle (centers map, zooms marker, opens HUD)
-        function focusVehicle(vId, lat, lng) {
+        function focusVehicle(vId, lat, lng, keepCurrentZoom = false) {
             selectedVehicleId = vId;
             
             if (lat && lng) {
                 const coords = [parseFloat(lat), parseFloat(lng)];
-                map.setView(coords, 15);
+                const targetZoom = keepCurrentZoom ? map.getZoom() : 15;
+                map.setView(coords, targetZoom);
                 
                 // Trigger Leaflet popup on the vehicle marker
                 if (mapVehicleMarkers[vId]) {
@@ -361,6 +378,7 @@
                 // Populate HUD
                 document.getElementById('hudName').textContent = foundVehicle.name;
                 document.getElementById('hudPlate').textContent = foundVehicle.plate_number;
+                document.getElementById('hudConnectionStatus').innerHTML = getConnectionStatusBadge(foundVehicle.latest_gps_track.recorded_at);
                 document.getElementById('hudSpeed').textContent = speed.toFixed(0);
                 document.getElementById('hudIgnition').textContent = ignitionText;
                 document.getElementById('hudIgnition').className = `text-[10px] font-bold mt-1 block text-center ${ignitionClass}`;
@@ -545,6 +563,21 @@
                                     if (mapVehicleMarkers[v.id]) {
                                         mapVehicleMarkers[v.id].setLatLng(coords);
                                         mapVehicleMarkers[v.id].setIcon(getVehicleIcon(v.status, speed > 0));
+                                        
+                                        // Update dynamic live status in popup
+                                        mapVehicleMarkers[v.id].setPopupContent(`
+                                            <div class="p-1.5 font-sans text-xs">
+                                                <h4 class="font-extrabold text-slate-800 text-sm font-display">${v.name} (${v.plate_number})</h4>
+                                                <div class="mt-2.5 space-y-1.5 text-slate-600">
+                                                    <div class="mb-2">${getConnectionStatusBadge(v.latest_gps_track.recorded_at)}</div>
+                                                    <p>Xo'jalik: <strong>${farm.name}</strong></p>
+                                                    <p>Dvigatel (ACC): <strong class="text-${v.status === 'online' ? (speed > 0 ? 'emerald' : 'amber') : 'red'}-600">${v.status === 'online' ? (speed > 0 ? 'YONIQ (Faol)' : 'KUTISHDA') : 'O\'CHIQ'}</strong></p>
+                                                    <p>Tezlik: <strong>${speed.toFixed(0)} km/soat</strong></p>
+                                                    <p>Akkumulyator: <strong>${v.gps_device_id === '862292055529242' ? '12.96' : '12.80'} V</strong></p>
+                                                    <p class="text-[10px] text-slate-400 mt-2 border-t pt-1.5">IMEI: ${v.gps_device_id || 'Yo\'q'}</p>
+                                                </div>
+                                            </div>
+                                        `);
                                     } else {
                                         // Create new Leaflet Marker
                                         const marker = L.marker(coords, {
@@ -556,6 +589,7 @@
                                             <div class="p-1.5 font-sans text-xs">
                                                 <h4 class="font-extrabold text-slate-800 text-sm font-display">${v.name} (${v.plate_number})</h4>
                                                 <div class="mt-2.5 space-y-1.5 text-slate-600">
+                                                    <div class="mb-2">${getConnectionStatusBadge(v.latest_gps_track.recorded_at)}</div>
                                                     <p>Xo'jalik: <strong>${farm.name}</strong></p>
                                                     <p>Dvigatel (ACC): <strong class="text-${v.status === 'online' ? (speed > 0 ? 'emerald' : 'amber') : 'red'}-600">${v.status === 'online' ? (speed > 0 ? 'YONIQ (Faol)' : 'KUTISHDA') : 'O\'CHIQ'}</strong></p>
                                                     <p>Tezlik: <strong>${speed.toFixed(0)} km/soat</strong></p>
@@ -591,7 +625,7 @@
 
                         if (activeV && activeV.latest_gps_track) {
                             const coords = [parseFloat(activeV.latest_gps_track.latitude), parseFloat(activeV.latest_gps_track.longitude)];
-                            focusVehicle(selectedVehicleId, coords[0], coords[1]);
+                            focusVehicle(selectedVehicleId, coords[0], coords[1], true);
                         }
                     }
                 })
