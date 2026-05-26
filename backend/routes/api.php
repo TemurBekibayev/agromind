@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\SoilAnalysisController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\TelemetryController;
+use App\Http\Controllers\Api\AiChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/farms/{farm}/analyses', [SoilAnalysisController::class, 'store']);
     Route::get('/analyses/{id}', [SoilAnalysisController::class, 'show']);
     Route::post('/analyses/{id}/recommend', [SoilAnalysisController::class, 'recommend']);
+    Route::post('/ai/chat', [AiChatController::class, 'ask']);
 
     // Transport vositalari va GPS kuzatish
     Route::get('/vehicles', [VehicleController::class, 'index']);

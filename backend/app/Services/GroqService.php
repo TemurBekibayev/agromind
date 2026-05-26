@@ -157,4 +157,82 @@ Iltimos, ushbu parametrlar asosida yetishtirilayotgan ekinning o'sish ehtimoli, 
             'tokens_used' => 240,
         ];
     }
+
+    /**
+     * Chat orqali foydalanuvchi savoliga agronom sifatida javob berish.
+     */
+    public function ask(string $message, array $history = []): string
+    {
+        if (empty($this->apiKey)) {
+            Log::warning("Groq API key is missing. Using mock chat response.");
+            return $this->getMockChatResponse($message);
+        }
+
+        try {
+            $messages = [
+                [
+                    'role' => 'system',
+                    'content' => "Siz O'zbekistondagi professional agronom va aqlli qishloq xo'jaligi bo'yicha maslahatchisiz (AgroMind loyihasida). Fermerlarga tuproq parvarishi, o'g'itlash, ekin ekish, sug'orish va kasalliklarga qarshi kurash bo'yicha mukammal, amaliy va faqat agronomik maslahatlar bering. Maslahatlarni o'zbek tilida, do'stona va sodda tilda yozing."
+                ]
+            ];
+
+            // Chat tarixini qo'shish
+            foreach ($history as $msg) {
+                if (isset($msg['role']) && isset($msg['content'])) {
+                    $messages[] = [
+                        'role' => $msg['role'],
+                        'content' => $msg['content']
+                    ];
+                }
+            }
+
+            // Joriy foydalanuvchi xabarini qo'shish
+            $messages[] = [
+                'role' => 'user',
+                'content' => $message
+            ];
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->timeout(30)->post('https://api.groq.com/openai/v1/chat/completions', [
+                'model' => $this->model,
+                'messages' => $messages,
+                'temperature' => 0.7,
+            ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                return $result['choices'][0]['message']['content'] ?? "Kechirasiz, tizimda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.";
+            }
+
+            Log::error("Groq Chat API error: " . $response->body());
+        } catch (\Exception $e) {
+            Log::error("Groq Chat failed: " . $e->getMessage());
+        }
+
+        return $this->getMockChatResponse($message);
+    }
+
+    /**
+     * Soxta (Fallback Mock) chat javobini olish. API kaliti bo'lmaganda ishlatiladi.
+     */
+    protected function getMockChatResponse(string $message): string
+    {
+        $msg = strtolower($message);
+        
+        if (str_contains($msg, 'o\'g\'it') || str_contains($msg, 'ogit') || str_contains($msg, 'o`g`it')) {
+            return "Aziz dehqon, tuproq unumdorligini oshirish uchun bahorda azotli o'g'itlar (karbamid, selitra), kuzda esa fosforli va kaliyli o'g'itlar solishni tavsiya etaman. Shuningdek, biogumus kabi organik chirindilar tuproq tuzilishini ancha yaxshilaydi.";
+        }
+        
+        if (str_contains($msg, 'sug\'or') || str_contains($msg, 'suv') || str_contains($msg, 'sug`or')) {
+            return "Ekinlarni sug'orishda tomchilatib sug'orish tizimidan foydalanishni maslahat beraman. Bu suvni 40-50% gacha tejaydi va o'g'itlarni bevosita o'simlik ildiziga yetkazib berish imkonini beradi. Sug'orishni quyosh botgandan keyin yoki ertalab barvaqt amalga oshirgan ma'qul.";
+        }
+        
+        if (str_contains($msg, 'kasallik') || str_contains($msg, 'zararkunanda') || str_contains($msg, 'hasharot')) {
+            return "Ekinlardagi kasalliklarga qarshi kurashish uchun birinchi navbatda fungitsidlar yoki biologik kurash usullaridan foydalanish lozim. Zararkunandalar ko'p bo'lsa, maxsus insektitsidlarni me'yorida seping.";
+        }
+
+        return "Salom dehqon! Men AgroMind aqlli agronom assistentiman. Menga tuproq tahlili, ekin ekish, sug'orish va o'g'itlar bo'yicha savollaringizni yozishingiz mumkin. Sizga maslahat berishdan xursandman!";
+    }
 }
