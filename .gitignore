@@ -1,0 +1,11 @@
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+tmp/
+node_modules/
+vendor/
+.env
+build/
+.dart_tool/

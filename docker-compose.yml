@@ -1,0 +1,98 @@
+services:
+  # Laravel Web Application Service
+  laravel.test:
+    build:
+      context: ./backend/vendor/laravel/sail/runtimes/8.4
+      dockerfile: Dockerfile
+      args:
+        WWWGROUP: '${WWWGROUP:-1000}'
+    image: sail-8.4/app
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '${APP_PORT:-80}:80'
+      - '${VITE_PORT:-5173}:5173'
+      - '5000:5000' # GPS Tracker TCP Port
+    environment:
+      WWWUSER: '${WWWUSER:-1000}'
+      LARAVEL_SAIL: 1
+      XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+      XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+      IGNITION_LOCAL_SITES_PATH: '${APP_DIR}'
+    volumes:
+      - './backend:/var/www/html'
+    networks:
+      - agromind-net
+    depends_on:
+      - mysql
+      - redis
+      - mosquitto
+
+  # MySQL Database
+  mysql:
+    image: 'mysql/mysql-server:8.0'
+    ports:
+      - '${FORWARD_DB_PORT:-3306}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD:-secret}'
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: '${DB_DATABASE:-agromind}'
+      MYSQL_USER: '${DB_USERNAME:-agromind_user}'
+      MYSQL_PASSWORD: '${DB_PASSWORD:-secret}'
+    volumes:
+      - 'agromind-mysql:/var/lib/mysql'
+      - './backend/vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+    networks:
+      - agromind-net
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - '-p${DB_PASSWORD:-secret}'
+      retries: 3
+      timeout: 5s
+
+  # Redis Cache & Queue
+  redis:
+    image: 'redis:alpine'
+    ports:
+      - '${FORWARD_REDIS_PORT:-6379}:6379'
+    volumes:
+      - 'agromind-redis:/data'
+    networks:
+      - agromind-net
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      retries: 3
+      timeout: 5s
+
+  # MQTT Broker (Eclipse Mosquitto) for future hardware GPS telemetry
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    ports:
+      - '${FORWARD_MQTT_PORT:-1883}:1883'
+      - '${FORWARD_MQTT_WS_PORT:-9001}:9001'
+    volumes:
+      - './mosquitto/config:/mosquitto/config'
+      - 'agromind-mqtt-data:/mosquitto/data'
+      - 'agromind-mqtt-log:/mosquitto/log'
+    networks:
+      - agromind-net
+
+networks:
+  agromind-net:
+    driver: bridge
+
+volumes:
+  agromind-mysql:
+    driver: local
+  agromind-redis:
+    driver: local
+  agromind-mqtt-data:
+    driver: local
+  agromind-mqtt-log:
+    driver: local

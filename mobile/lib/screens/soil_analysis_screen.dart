@@ -1,0 +1,550 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/providers.dart';
+
+class SoilAnalysisScreen extends ConsumerStatefulWidget {
+  const SoilAnalysisScreen({super.key});
+
+  @override
+  ConsumerState<SoilAnalysisScreen> createState() => _SoilAnalysisScreenState();
+}
+
+class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
+  int? _selectedFarmId;
+  List<dynamic> _analyses = [];
+  bool _isLoadingAnalyses = false;
+  Map<String, dynamic>? _selectedAnalysisDetails;
+  bool _isLoadingDetails = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Default farm tanlash
+    final farmsState = ref.watch(farmsProvider);
+    farmsState.whenData((farms) {
+      if (farms.isNotEmpty && _selectedFarmId == null) {
+        setState(() {
+          _selectedFarmId = farms[0]['id'];
+        });
+        _fetchAnalyses(farms[0]['id']);
+      }
+    });
+  }
+
+  Future<void> _fetchAnalyses(int farmId) async {
+    setState(() {
+      _isLoadingAnalyses = true;
+      _selectedAnalysisDetails = null;
+    });
+
+    final api = ref.read(apiServiceProvider);
+    try {
+      final res = await api.getSoilAnalyses(farmId);
+      if (res.data['status'] == 'success' && mounted) {
+        setState(() {
+          _analyses = res.data['analyses'] as List<dynamic>;
+          _isLoadingAnalyses = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingAnalyses = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchAnalysisDetails(int id) async {
+    setState(() {
+      _isLoadingDetails = true;
+    });
+
+    final api = ref.read(apiServiceProvider);
+    try {
+      final res = await api.getSoilAnalysis(id);
+      if (res.data['status'] == 'success' && mounted) {
+        setState(() {
+          _selectedAnalysisDetails = res.data['analysis'];
+          _isLoadingDetails = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingDetails = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _generateRecommendation(int id) async {
+    setState(() {
+      _isLoadingDetails = true;
+    });
+
+    final api = ref.read(apiServiceProvider);
+    try {
+      final res = await api.requestSoilRecommendation(id);
+      if (res.data['status'] == 'success' && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI tavsiyasi muvaffaqiyatli shakllantirildi.')),
+        );
+        _fetchAnalysisDetails(id);
+        if (_selectedFarmId != null) {
+          _fetchAnalyses(_selectedFarmId!);
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingDetails = false;
+        });
+      }
+    }
+  }
+
+  void _showAddAnalysisSheet() {
+    final formKey = GlobalKey<FormState>();
+    final cropController = TextEditingController(text: 'G\'o\'za (Paxta)');
+    double ph = 6.5;
+    double fertility = 55.0;
+    double moisture = 60.0;
+    double temperature = 25.0;
+    double sunlight = 12000.0;
+    double humidity = 45.0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 20,
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Yangi Tuproq Tahlili Qo\'shish',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                      ),
+                      const SizedBox(height: 15),
+
+                      // Crop Input
+                      TextFormField(
+                        controller: cropController,
+                        decoration: const InputDecoration(
+                          labelText: 'Yetishtiriladigan ekin turi',
+                          prefixIcon: Icon(Icons.eco_rounded),
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Ekin turini kiriting' : null,
+                      ),
+                      const SizedBox(height: 15),
+
+                      // pH Slider
+                      Text('Tuproq pH darajasi: ${ph.toStringAsFixed(1)}'),
+                      Slider(
+                        value: ph,
+                        min: 0,
+                        max: 14,
+                        divisions: 140,
+                        activeColor: const Color(0xFF1A3C2A),
+                        onChanged: (val) => setModalState(() => ph = val),
+                      ),
+
+                      // Fertility Slider
+                      Text('Unumdorlik darajasi (N,P,K): ${fertility.toStringAsFixed(0)}%'),
+                      Slider(
+                        value: fertility,
+                        min: 0,
+                        max: 100,
+                        divisions: 100,
+                        activeColor: const Color(0xFF1A3C2A),
+                        onChanged: (val) => setModalState(() => fertility = val),
+                      ),
+
+                      // Moisture Slider
+                      Text('Tuproq namligi: ${moisture.toStringAsFixed(0)}%'),
+                      Slider(
+                        value: moisture,
+                        min: 0,
+                        max: 100,
+                        divisions: 100,
+                        activeColor: const Color(0xFF1A3C2A),
+                        onChanged: (val) => setModalState(() => moisture = val),
+                      ),
+
+                      // Temperature Input
+                      TextFormField(
+                        initialValue: '25.0',
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Harorat (°C)',
+                          prefixIcon: Icon(Icons.thermostat_rounded),
+                        ),
+                        onChanged: (val) => temperature = double.tryParse(val) ?? 25.0,
+                      ),
+                      const SizedBox(height: 20),
+
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (!formKey.currentState!.validate()) return;
+                          
+                          final api = ref.read(apiServiceProvider);
+                          try {
+                            final res = await api.createSoilAnalysis(
+                              farmId: _selectedFarmId!,
+                              targetCrop: cropController.text.trim(),
+                              ph: ph,
+                              fertility: fertility,
+                              moisture: moisture,
+                              temperature: temperature,
+                              sunlight: sunlight,
+                              humidity: humidity,
+                              analysisDate: DateTime.now().toIso8601String(),
+                            );
+
+                            if (res.data['status'] == 'success' && context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Yangi tahlil yaratildi. AI tavsiyasini so\'rashingiz mumkin.')),
+                              );
+                              _fetchAnalyses(_selectedFarmId!);
+                            }
+                          } catch (_) {}
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A3C2A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Saqlash', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final farmsState = ref.watch(farmsProvider);
+
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      body: Column(
+        children: [
+          // 1. Farm dropdown selector
+          _buildFarmSelector(farmsState),
+
+          // 2. Main body split
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left Panel: Analyses List
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(right: BorderSide(color: Colors.black12)),
+                    ),
+                    child: _isLoadingAnalyses
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildAnalysesList(),
+                  ),
+                ),
+
+                // Right Panel: Advisory content
+                Expanded(
+                  flex: 3,
+                  child: _isLoadingDetails
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildAdvisoryPanel(),
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+      floatingActionButton: _selectedFarmId == null
+          ? null
+          : FloatingActionButton(
+              onPressed: _showAddAnalysisSheet,
+              backgroundColor: const Color(0xFF1A3C2A),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.add_rounded),
+            ),
+    );
+  }
+
+  Widget _buildFarmSelector(AsyncValue<List<dynamic>> farmsState) {
+    return farmsState.when(
+      data: (farms) {
+        return Container(
+          width: double.infinity,
+          color: const Color(0xFF1A3C2A),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: DropdownButton<int>(
+            value: _selectedFarmId,
+            dropdownColor: const Color(0xFF1A3C2A),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            underline: const SizedBox(),
+            icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white),
+            items: farms.map<DropdownMenuItem<int>>((f) {
+              return DropdownMenuItem<int>(
+                value: f['id'],
+                child: Text(f['name']),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => _selectedFarmId = val);
+                _fetchAnalyses(val);
+              }
+            },
+          ),
+        );
+      },
+      error: (_, __) => const SizedBox(),
+      loading: () => const LinearProgressIndicator(),
+    );
+  }
+
+  Widget _buildAnalysesList() {
+    if (_analyses.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Hozircha tahlillar yo\'q.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _analyses.length,
+      itemBuilder: (context, index) {
+        final a = _analyses[index];
+        final date = DateTime.tryParse(a['analysis_date']) ?? DateTime.now();
+        final formattedDate = '${date.day}.${date.month}.${date.year}';
+        final isCompleted = a['status'] == 'completed';
+
+        return ListTile(
+          selected: _selectedAnalysisDetails?['id'] == a['id'],
+          selectedTileColor: Colors.grey[100],
+          title: Text(
+            a['target_crop'],
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(formattedDate, style: const TextStyle(fontSize: 10)),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isCompleted ? Colors.green[50] : Colors.orange[50],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isCompleted ? 'Tayyor' : 'Kutilmoqda',
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: isCompleted ? Colors.green[800] : Colors.orange[800],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            ],
+          ),
+          onTap: () => _fetchAnalysisDetails(a['id']),
+        );
+      },
+    );
+  }
+
+  Widget _buildAdvisoryPanel() {
+    if (_selectedAnalysisDetails == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.science_outlined, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 12),
+              Text(
+                'Maslahat olish uchun chap paneldan tahlil hisobotini tanlang',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final isCompleted = _selectedAnalysisDetails!['status'] == 'completed';
+    final rec = _selectedAnalysisDetails!['recommendation'];
+
+    if (!isCompleted || rec == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.psychology_rounded, size: 48, color: Colors.orange),
+              const SizedBox(height: 12),
+              const Text(
+                'AI Tavsiyasi Kutilmoqda',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Groq Llama3 orqali agronomik tavsiyalarni shakllantiring.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => _generateRecommendation(_selectedAnalysisDetails!['id']),
+                icon: const Icon(Icons.bolt_rounded),
+                label: const Text('AI Maslahatini Olish'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[800],
+                  foregroundColor: Colors.white,
+                ),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Parse recommendations
+    final crops = rec['recommended_crops'] as List<dynamic>? ?? [];
+    final plan = rec['fertilizer_plan'] as Map<String, dynamic>? ?? {};
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Crop & Status card
+          Card(
+            color: Colors.green[50],
+            child: Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ekin turi: ${_selectedAnalysisDetails!['target_crop']}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1A3C2A)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'pH: ${_selectedAnalysisDetails!['ph']} | Unumdorlik: ${_selectedAnalysisDetails!['fertility']}% | Namlik: ${_selectedAnalysisDetails!['moisture']}%',
+                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                  )
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Main text advice
+          const Text(
+            'Agronomik Tavsiyalar',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1A3C2A)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            rec['content'],
+            style: const TextStyle(fontSize: 12, height: 1.5, color: Colors.black87),
+          ),
+          const SizedBox(height: 20),
+
+          // Recommended alternatives
+          if (crops.isNotEmpty) ...[
+            const Text(
+              'Almashlab ekish uchun muqobil ekinlar',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1A3C2A)),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: crops.map<Widget>((c) {
+                return Chip(
+                  label: Text('$c', style: const TextStyle(fontSize: 11)),
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: Color(0xFF1A3C2A)),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Seasonal fertilizer schedule
+          if (plan.isNotEmpty) ...[
+            const Text(
+              'Mavsumiy O\'g\'itlash Rejasi',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1A3C2A)),
+            ),
+            const SizedBox(height: 8),
+            ...plan.entries.map((entry) {
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.key.toUpperCase(),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.orange),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${entry.value}',
+                        style: const TextStyle(fontSize: 11, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ]
+        ],
+      ),
+    );
+  }
+}
