@@ -82,8 +82,8 @@
                             </td>
                             
                             <!-- Type -->
-                            <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-800">
-                                {{ $vehicle->type }}
+                            <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-805">
+                                {{ $vehicle->type === 'tractor' ? 'Traktor' : ($vehicle->type === 'combine' ? 'Kombayn' : 'Boshqa') }}
                             </td>
 
                             <!-- Farm -->
@@ -206,10 +206,9 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Dala Texnikasi Turi</label>
                     <select name="type" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
-                        <option value="Traktor">Traktor</option>
-                        <option value="Kombayn">Kombayn</option>
-                        <option value="Yuk mashinasi">Yuk mashinasi</option>
-                        <option value="Boshqa">Boshqa texnika</option>
+                        <option value="tractor">Traktor</option>
+                        <option value="combine">Kombayn</option>
+                        <option value="other">Boshqa texnika / Yuk mashinasi</option>
                     </select>
                 </div>
             </div>
