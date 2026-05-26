@@ -65,12 +65,26 @@ Route::post('/admin/farms/store', function (Request $request) {
     ]);
 
     $coordinates = json_decode($request->coordinates, true);
-    if (!is_array($coordinates) || count($coordinates) < 3) {
+    if (!is_array($coordinates) || count($coordinates) === 0) {
         return back()->withErrors(['coordinates' => 'Kamida 3 ta nuqta tanlab, yopiq ko\'rinishda chegara chizishingiz kerak.']);
     }
 
-    // Birinchi chizilgan nuqtani fermaning markaziy koordinatasi deb hisoblaymiz
-    $firstVertex = $coordinates[0];
+    // Check if multi-polygon or single polygon
+    $isMultiPolygon = is_array($coordinates[0]) && is_array($coordinates[0][0]);
+
+    if ($isMultiPolygon) {
+        foreach ($coordinates as $poly) {
+            if (!is_array($poly) || count($poly) < 3) {
+                return back()->withErrors(['coordinates' => 'Har bir alohida yer maydoni kamida 3 ta nuqtadan iborat bo\'lishi kerak.']);
+            }
+        }
+        $firstVertex = $coordinates[0][0];
+    } else {
+        if (count($coordinates) < 3) {
+            return back()->withErrors(['coordinates' => 'Kamida 3 ta nuqta tanlab, yopiq ko\'rinishda chegara chizishingiz kerak.']);
+        }
+        $firstVertex = $coordinates[0];
+    }
 
     $farm = \App\Models\Farm::create([
         'name' => $request->name,
@@ -84,14 +98,23 @@ Route::post('/admin/farms/store', function (Request $request) {
         'location' => 'GIS Chegara maydoni',
     ]);
 
-    // Xaritada chizilgan geofence chegara maydonini yaratish
-    \App\Models\Geofence::create([
-        'farm_id' => $farm->id,
-        'name' => 'Asosiy yer chegarasi',
-        'coordinates' => $coordinates,
-    ]);
+    if ($isMultiPolygon) {
+        foreach ($coordinates as $index => $poly) {
+            \App\Models\Geofence::create([
+                'farm_id' => $farm->id,
+                'name' => 'Yer maydoni #' . ($index + 1),
+                'coordinates' => $poly,
+            ]);
+        }
+    } else {
+        \App\Models\Geofence::create([
+            'farm_id' => $farm->id,
+            'name' => 'Asosiy yer chegarasi',
+            'coordinates' => $coordinates,
+        ]);
+    }
 
-    return back()->with('success', 'Yangi fermer xo\'jaligi va uning yer maydoni muvaffaqiyatli saqlandi!');
+    return back()->with('success', 'Yangi fermer xo\'jaligi va uning yer maydonlari muvaffaqiyatli saqlandi!');
 });
 
 // Texnikalar ro'yxati (Kombaynlar/Traktorlar modal uchun fermalar bilan birga)

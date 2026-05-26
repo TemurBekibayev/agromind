@@ -157,7 +157,7 @@
         </div>
         
         <!-- Modal Form -->
-        <form action="/admin/farms/store" method="POST" class="flex flex-col lg:flex-row overflow-hidden flex-1">
+        <form action="/admin/farms/store" method="POST" class="flex flex-col lg:flex-row overflow-hidden flex-1" id="farmStoreForm">
             @csrf
             
             <!-- Left inputs panel -->
@@ -218,6 +218,12 @@
                 </div>
                 
                 <div class="flex flex-col gap-2.5 pt-4 border-t border-slate-100 shrink-0">
+                    <button type="button" onclick="startNewParcel()" class="w-full px-4 py-2 bg-emerald-50 border border-emerald-300 rounded-lg text-xs font-bold text-emerald-850 hover:bg-emerald-100 transition flex items-center justify-center gap-1.5 shadow-sm">
+                        <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Yangi mustaqil maydon chizish
+                    </button>
                     <div class="flex gap-2">
                         <button type="button" onclick="undoLastPoint()" class="w-1/2 px-3 py-2 border border-slate-250 rounded-lg text-xs font-semibold text-slate-705 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
                             <svg class="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -237,7 +243,7 @@
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
-                        Yer chegarasini saqlash
+                        Yer chegaralarini saqlash
                     </button>
                 </div>
             </div>
@@ -316,6 +322,29 @@
     let polyPoints = [];
     let drawPolygon = null;
     let pointMarkers = [];
+    let polygonsList = [];
+    let completedPolygonLayers = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('farmStoreForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // If current active poly has points, try to save it
+                if (polyPoints.length >= 3) {
+                    polygonsList.push([...polyPoints]);
+                    polyPoints = [];
+                }
+                
+                if (polygonsList.length === 0) {
+                    alert("Kamida bitta mustaqil yer maydoni to'liq chizilgan bo'lishi kerak (kamida 3 ta nuqta).");
+                    e.preventDefault();
+                    return false;
+                }
+                
+                document.getElementById('coordinatesInput').value = JSON.stringify(polygonsList);
+            });
+        }
+    });
 
     const customDotIcon = L.divIcon({
         className: 'custom-div-icon',
@@ -395,19 +424,57 @@
                 fillOpacity: 0.25,
                 weight: 2.5
             }).addTo(drawMap);
+        }
 
-            // Update serial input
-            document.getElementById('coordinatesInput').value = JSON.stringify(polyPoints);
+        const totalCompleted = polygonsList.length;
+        const activeCount = polyPoints.length;
 
-            // Success notice
-            const warn = document.getElementById('drawWarning');
+        const warn = document.getElementById('drawWarning');
+        if (totalCompleted > 0 || activeCount >= 3) {
             warn.className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
-            warn.innerHTML = "✅ <strong>Yer maydoni aniqlandi:</strong> " + polyPoints.length + " ta koordinata chizildi.";
+            let msg = `✅ <strong>Yer maydonlari aniqlandi:</strong> `;
+            if (totalCompleted > 0) {
+                msg += `${totalCompleted} ta alohida maydon yakunlandi. `;
+            }
+            if (activeCount > 0) {
+                msg += `Hozirgi chizilayotgan maydonda ${activeCount} ta nuqta bor.`;
+            } else {
+                msg += `Yangi mustaqil maydon chizishni boshlashingiz mumkin.`;
+            }
+            warn.innerHTML = msg;
         } else {
-            document.getElementById('coordinatesInput').value = "";
-            const warn = document.getElementById('drawWarning');
             warn.className = "p-3 bg-amber-50 border border-amber-250 rounded-xl text-xs text-amber-700";
             warn.innerHTML = "⚠️ <strong>Chegara chizilmagan:</strong> Xaritada fermer xo'jaligining yer chegarasini belgilang (kamida 3 ta nuqtaga click qiling).";
+        }
+    }
+
+    function startNewParcel() {
+        if (polyPoints.length >= 3) {
+            // Push active polygon to completed list
+            polygonsList.push([...polyPoints]);
+            
+            // Draw static completed polygon
+            const staticPoly = L.polygon(polyPoints, {
+                color: '#059669',
+                fillColor: '#10B981',
+                fillOpacity: 0.20,
+                weight: 2.5
+            }).addTo(drawMap);
+            completedPolygonLayers.push(staticPoly);
+            
+            // Clear current active markers and polygon drawing
+            pointMarkers.forEach(m => drawMap.removeLayer(m));
+            pointMarkers = [];
+            
+            polyPoints = [];
+            drawPolygon = null;
+            
+            updatePolygon();
+            alert("Ushbu maydon saqlandi! Endi xaritaning boshqa joyiga bosib yangi mustaqil maydon chizishingiz mumkin.");
+        } else if (polyPoints.length > 0) {
+            alert("Yangi maydon boshlash uchun joriy maydonda kamida 3 ta nuqta bo'lishi kerak!");
+        } else {
+            alert("Siz hali nuqta chizmadingiz. Xaritada biron bir joyni belgilang.");
         }
     }
 
@@ -437,8 +504,11 @@
         }
         if (drawMap) {
             pointMarkers.forEach(m => drawMap.removeLayer(m));
+            completedPolygonLayers.forEach(l => drawMap.removeLayer(l));
         }
         pointMarkers = [];
+        completedPolygonLayers = [];
+        polygonsList = [];
         updatePolygon();
     }
 
