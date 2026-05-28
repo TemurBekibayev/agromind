@@ -1,0 +1,72 @@
+name: Deploy Laravel Backend to cPanel
+
+on:
+  push:
+    branches:
+      - main
+      - master # Triggers deployment when pushing to main or master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. Setup PHP Environment
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2' # Change this if your cPanel server uses a different PHP version
+          extensions: mbstring, xml, ctype, iconv, mysql, zip
+
+      # 2. Setup Node.js Environment (needed for compiling frontend assets)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Install Composer Dependencies (Laravel)
+      - name: Install Composer Dependencies
+        run: |
+          cd backend
+          composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+      # 4. Install NPM Dependencies & Build Production Assets (Vite)
+      - name: Install NPM & Build Production Assets
+        run: |
+          cd backend
+          npm ci
+          npm run build
+
+      # 5. Clean up Development Files to reduce transfer size
+      - name: Prepare deployment package
+        run: |
+          cd backend
+          rm -rf node_modules
+          rm -rf tests
+          rm -rf .env.example
+          rm -rf phpunit.xml
+          rm -rf vite.config.js
+          rm -rf package-lock.json
+          rm -rf tailwind.config.js
+          rm -rf postcss.config.js
+
+      # 6. Deploy files to cPanel via FTP/SFTP
+      - name: Deploy via FTP/SFTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # FTP_DIR secret allows flexibility:
+          # - If your FTP account is locked to "/agromind.uz", set FTP_DIR to "/"
+          # - If your FTP account is main cPanel root, set FTP_DIR to "/agromind.uz"
+          server-dir: ${{ secrets.FTP_DIR || '/' }}
+          local-dir: ./backend/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .env
