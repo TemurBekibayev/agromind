@@ -37,7 +37,7 @@ jobs:
       - name: Install NPM & Build Production Assets
         run: |
           cd backend
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
 
       # 5. Clean up Development Files to reduce transfer size
