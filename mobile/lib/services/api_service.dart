@@ -5,7 +5,7 @@ import 'dart:developer' as dev;
 class ApiService {
   // Mahalliy Docker yoki Laravel dev server uchun IP manzil (localhost yoki emulator IP)
   // Android emulyatorlari uchun 10.0.2.2 Laravel backend portiga ishora qiladi
-  static const String _defaultBaseUrl = 'http://192.168.1.20/api'; 
+  static const String _defaultBaseUrl = 'http://192.168.1.3:8000/api'; 
   
   final Dio _dio;
   final FlutterSecureStorage _storage;
