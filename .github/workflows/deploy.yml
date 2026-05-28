@@ -1,4 +1,4 @@
-name: Deploy Laravel Backend to cPanel
+name: Deploy Laravel Backend to cPanel (Blazing Fast ZIP)
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4' # Change this if your cPanel server uses a different PHP version
+          php-version: '8.4' # Matches your upgraded cPanel PHP 8.4
           extensions: mbstring, xml, ctype, iconv, mysql, zip
 
       # 2. Setup Node.js Environment (needed for compiling frontend assets)
@@ -53,20 +53,24 @@ jobs:
           rm -rf tailwind.config.js
           rm -rf postcss.config.js
 
-      # 6. Deploy files to cPanel via FTP/SFTP
-      - name: Deploy via FTP/SFTP
+      # 6. Create ZIP archive and prepare staging
+      - name: Create ZIP archive and prepare staging
+        run: |
+          cd backend
+          zip -r ../deploy.zip .
+          cd ..
+          mkdir staging
+          mv deploy.zip staging/
+
+      # 7. Deploy only the ZIP file to cPanel via FTP
+      - name: Deploy ZIP via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # FTP_DIR secret allows flexibility:
-          # - If your FTP account is locked to "/agromind.uz", set FTP_DIR to "/"
-          # - If your FTP account is main cPanel root, set FTP_DIR to "/agromind.uz"
           server-dir: ${{ secrets.FTP_DIR || '/' }}
-          local-dir: ./backend/
+          local-dir: ./staging/
           exclude: |
             **/.git*
             **/.git*/**
-            **/node_modules/**
-            .env
