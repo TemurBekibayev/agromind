@@ -1,4 +1,4 @@
-name: Deploy Laravel Backend to cPanel (Blazing Fast ZIP)
+name: Deploy Laravel Backend to cPanel (Optimized Clean FTP)
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4' # Matches your upgraded cPanel PHP 8.4
+          php-version: '8.4' # Matches your cPanel PHP 8.4
           extensions: mbstring, xml, ctype, iconv, mysql, zip
 
       # 2. Setup Node.js Environment (needed for compiling frontend assets)
@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: '20'
 
-      # 3. Install Composer Dependencies (Laravel)
+      # 3. Install Composer Dependencies locally to generate bootstrap files
       - name: Install Composer Dependencies
         run: |
           cd backend
@@ -40,7 +40,7 @@ jobs:
           npm install --no-audit --no-fund
           npm run build
 
-      # 5. Clean up Development Files to reduce transfer size
+      # 5. Clean up local dev files to avoid uploading them
       - name: Prepare deployment package
         run: |
           cd backend
@@ -53,24 +53,18 @@ jobs:
           rm -rf tailwind.config.js
           rm -rf postcss.config.js
 
-      # 6. Create ZIP archive and prepare staging
-      - name: Create ZIP archive and prepare staging
-        run: |
-          cd backend
-          zip -r ../deploy.zip .
-          cd ..
-          mkdir staging
-          mv deploy.zip staging/
-
-      # 7. Deploy only the ZIP file to cPanel via FTP
-      - name: Deploy ZIP via FTP
+      # 6. Deploy clean backend source code to cPanel (EXCLUDING vendor)
+      - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: ${{ secrets.FTP_DIR || '/' }}
-          local-dir: ./staging/
+          local-dir: ./backend/
           exclude: |
             **/.git*
             **/.git*/**
+            **/node_modules/**
+            **/vendor/**
+            .env
