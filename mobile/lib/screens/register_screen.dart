@@ -18,9 +18,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
 
   final List<Map<String, dynamic>> _regions = [
-    {'id': 1, 'name': 'Toshkent viloyati'},
-    {'id': 2, 'name': 'Buxoro viloyati'},
-    {'id': 3, 'name': 'Farg\'ona viloyati'},
+    {'id': 1, 'name': 'Toshkent shahri'},
+    {'id': 2, 'name': 'Toshkent viloyati'},
+    {'id': 3, 'name': 'Samarqand viloyati'},
+    {'id': 4, 'name': 'Farg\'ona viloyati'},
+    {'id': 5, 'name': 'Andijon viloyati'},
+    {'id': 6, 'name': 'Namangan viloyati'},
+    {'id': 7, 'name': 'Buxoro viloyati'},
+    {'id': 8, 'name': 'Xorazm viloyati'},
+    {'id': 9, 'name': 'Navoiy viloyati'},
+    {'id': 10, 'name': 'Qashqadaryo viloyati'},
+    {'id': 11, 'name': 'Surxondaryo viloyati'},
+    {'id': 12, 'name': 'Jizzax viloyati'},
+    {'id': 13, 'name': 'Sirdaryo viloyati'},
+    {'id': 14, 'name': 'Qoraqalpog\'iston Respublikasi'},
   ];
 
   @override

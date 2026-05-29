@@ -10,17 +10,15 @@ import 'screens/onboarding_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // SharedPreferences orqali maxsus o'rnatilgan API server manzilini yuklash
   final prefs = await SharedPreferences.getInstance();
-  final customApiUrl = prefs.getString('custom_api_url');
+  
+  // Eski sinov jarayonidagi vaqtinchalik local IP manzillarni tozalab yuboramiz
+  await prefs.remove('custom_api_url');
+  
   final seenOnboarding = prefs.getBool('seen_onboarding') ?? false;
 
   runApp(
     ProviderScope(
-      overrides: [
-        if (customApiUrl != null && customApiUrl.isNotEmpty)
-          apiServiceProvider.overrideWith((ref) => ApiService(baseUrl: customApiUrl)),
-      ],
       child: AgroMindApp(showOnboarding: !seenOnboarding),
     ),
   );
