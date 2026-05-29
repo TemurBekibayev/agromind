@@ -14,19 +14,16 @@ void main() async {
   
   // Eski sinov jarayonidagi vaqtinchalik local IP manzillarni tozalab yuboramiz
   await prefs.remove('custom_api_url');
-  
-  final seenOnboarding = prefs.getBool('seen_onboarding') ?? false;
 
   runApp(
-    ProviderScope(
-      child: AgroMindApp(showOnboarding: !seenOnboarding),
+    const ProviderScope(
+      child: AgroMindApp(),
     ),
   );
 }
 
 class AgroMindApp extends ConsumerWidget {
-  final bool showOnboarding;
-  const AgroMindApp({super.key, required this.showOnboarding});
+  const AgroMindApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,9 +65,7 @@ class AgroMindApp extends ConsumerWidget {
       ),
       home: authState.isLoading
           ? const SplashScreen()
-          : (showOnboarding 
-              ? const OnboardingScreen() 
-              : (authState.isAuthenticated ? const HomeScreen() : const LoginScreen())),
+          : (authState.isAuthenticated ? const HomeScreen() : const OnboardingScreen()),
     );
   }
 }
