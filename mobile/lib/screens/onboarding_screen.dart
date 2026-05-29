@@ -26,6 +26,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Tuproq Tahlili va AI',
       description: 'Tuproq tahlillarini kiritib boring va sun\'iy intellektdan ekinlaringiz uchun to\'g\'ri parvarish hamda o\'g\'itlash tavsiyalarini oling.',
       icon: Icons.analytics_rounded,
+      imagePath: 'assets/images/soil_analysis_intro.png',
       startColor: const Color(0xFF1565C0),
       endColor: const Color(0xFF00ACC1),
     ),
@@ -33,6 +34,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'GPS Harakat Kuzatuvi',
       description: 'Qishloq xo\'jaligi texnikalarining joriy koordinatalari va 24 soatlik harakat tarixini real vaqt rejimida GPS orqali kuzatib boring.',
       icon: Icons.map_rounded,
+      imagePath: 'assets/images/gps_tracking_intro.png',
       startColor: const Color(0xFFE65C00),
       endColor: const Color(0xFFF57C00),
     ),
@@ -73,44 +75,51 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // Premium visual illustration/icon container
-                        Container(
-                          height: 240,
-                          width: 240,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [page.startColor.withOpacity(0.15), page.endColor.withOpacity(0.05)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: Center(
-                            child: Container(
-                              height: 170,
-                              width: 170,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [page.startColor, page.endColor],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                        page.imagePath != null
+                            ? Image.asset(
+                                page.imagePath!,
+                                height: 240,
+                                width: 240,
+                                fit: BoxFit.contain,
+                              )
+                            : Container(
+                                height: 240,
+                                width: 240,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [page.startColor.withOpacity(0.15), page.endColor.withOpacity(0.05)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: page.startColor.withOpacity(0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 10),
-                                  )
-                                ],
+                                child: Center(
+                                  child: Container(
+                                    height: 170,
+                                    width: 170,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [page.startColor, page.endColor],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: page.startColor.withOpacity(0.4),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 10),
+                                        )
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      page.icon,
+                                      color: Colors.white,
+                                      size: 85,
+                                    ),
+                                  ),
+                                ),
                               ),
-                              child: Icon(
-                                page.icon,
-                                color: Colors.white,
-                                size: 85,
-                              ),
-                            ),
-                          ),
-                        ),
                         const SizedBox(height: 48),
                         // Slide Title
                         Text(
@@ -262,6 +271,7 @@ class OnboardingPageData {
   final String title;
   final String description;
   final IconData icon;
+  final String? imagePath;
   final Color startColor;
   final Color endColor;
 
@@ -269,6 +279,7 @@ class OnboardingPageData {
     required this.title,
     required this.description,
     required this.icon,
+    this.imagePath,
     required this.startColor,
     required this.endColor,
   });
