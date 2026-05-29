@@ -5,7 +5,8 @@ import 'dart:developer' as dev;
 class ApiService {
   // Mahalliy Docker yoki Laravel dev server uchun IP manzil (localhost yoki emulator IP)
   // Android emulyatorlari uchun 10.0.2.2 Laravel backend portiga ishora qiladi
-  static const String _defaultBaseUrl = 'http://192.168.1.3:8000/api'; 
+  static const String _defaultBaseUrl = 'https://agromind.uz.lazzatkafe.uz/api'
+      '';
   
   final Dio _dio;
   final FlutterSecureStorage _storage;
@@ -19,6 +20,9 @@ class ApiService {
   }
 
   void _initDio() {
+    if (!_baseUrl.endsWith('/')) {
+      _baseUrl = '$_baseUrl/';
+    }
     _dio.options.baseUrl = _baseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 15);
     _dio.options.receiveTimeout = const Duration(seconds: 15);
@@ -31,6 +35,10 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          // Path boshidagi '/' belgisini olib tashlaymiz, shunda Dio uni baseUrl ga nisbatan to'g'ri biriktiradi
+          if (options.path.startsWith('/')) {
+            options.path = options.path.substring(1);
+          }
           final token = await getToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -56,6 +64,9 @@ class ApiService {
 
   // Base URL ni dinamik yangilash (sozlamalar menyusi uchun)
   void updateBaseUrl(String newUrl) {
+    if (!newUrl.endsWith('/')) {
+      newUrl = '$newUrl/';
+    }
     _baseUrl = newUrl;
     _dio.options.baseUrl = newUrl;
   }
