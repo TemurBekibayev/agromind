@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -223,6 +224,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             'Tizimga Kirish',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Hisobingiz yo\'qmi? ',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                      GestureDetector(
+                        onTap: () async {
+                          final result = await Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                          );
+                          if (result != null && result is Map<String, String>) {
+                            setState(() {
+                              _phoneController.text = result['phone'] ?? '';
+                              _passwordController.text = result['password'] ?? '';
+                            });
+                          }
+                        },
+                        child: const Text(
+                          'Ro\'yxatdan o\'tish',
+                          style: TextStyle(
+                            color: Color(0xFF1A3C2A),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

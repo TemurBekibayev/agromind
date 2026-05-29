@@ -5,6 +5,7 @@ import 'services/api_service.dart';
 import 'providers/providers.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,7 @@ void main() async {
   // SharedPreferences orqali maxsus o'rnatilgan API server manzilini yuklash
   final prefs = await SharedPreferences.getInstance();
   final customApiUrl = prefs.getString('custom_api_url');
+  final seenOnboarding = prefs.getBool('seen_onboarding') ?? false;
 
   runApp(
     ProviderScope(
@@ -19,13 +21,14 @@ void main() async {
         if (customApiUrl != null && customApiUrl.isNotEmpty)
           apiServiceProvider.overrideWith((ref) => ApiService(baseUrl: customApiUrl)),
       ],
-      child: const AgroMindApp(),
+      child: AgroMindApp(showOnboarding: !seenOnboarding),
     ),
   );
 }
 
 class AgroMindApp extends ConsumerWidget {
-  const AgroMindApp({super.key});
+  final bool showOnboarding;
+  const AgroMindApp({super.key, required this.showOnboarding});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -67,7 +70,9 @@ class AgroMindApp extends ConsumerWidget {
       ),
       home: authState.isLoading
           ? const SplashScreen()
-          : (authState.isAuthenticated ? const HomeScreen() : const LoginScreen()),
+          : (showOnboarding 
+              ? const OnboardingScreen() 
+              : (authState.isAuthenticated ? const HomeScreen() : const LoginScreen())),
     );
   }
 }
