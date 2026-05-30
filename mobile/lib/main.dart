@@ -5,21 +5,19 @@ import 'services/api_service.dart';
 import 'providers/providers.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // SharedPreferences orqali maxsus o'rnatilgan API server manzilini yuklash
   final prefs = await SharedPreferences.getInstance();
-  final customApiUrl = prefs.getString('custom_api_url');
+  
+  // Eski sinov jarayonidagi vaqtinchalik local IP manzillarni tozalab yuboramiz
+  await prefs.remove('custom_api_url');
 
   runApp(
-    ProviderScope(
-      overrides: [
-        if (customApiUrl != null && customApiUrl.isNotEmpty)
-          apiServiceProvider.overrideWith((ref) => ApiService(baseUrl: customApiUrl)),
-      ],
-      child: const AgroMindApp(),
+    const ProviderScope(
+      child: AgroMindApp(),
     ),
   );
 }
@@ -67,7 +65,7 @@ class AgroMindApp extends ConsumerWidget {
       ),
       home: authState.isLoading
           ? const SplashScreen()
-          : (authState.isAuthenticated ? const HomeScreen() : const LoginScreen()),
+          : (authState.isAuthenticated ? const HomeScreen() : const OnboardingScreen()),
     );
   }
 }
