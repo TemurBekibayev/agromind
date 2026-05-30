@@ -56,6 +56,7 @@ class SoilAnalysisController extends Controller
         }
 
         $validated = $request->validate([
+            'geofence_id' => 'nullable|exists:geofences,id',
             'target_crop' => 'required|string|max:255',
             'ph' => 'required|numeric|between:0,14',
             'fertility' => 'required|numeric|between:0,100',

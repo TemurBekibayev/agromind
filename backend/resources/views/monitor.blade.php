@@ -205,6 +205,7 @@
         
         let mapGeofenceLayers = [];
         const mapVehicleMarkers = {};
+        const geofenceLayersMap = {};
 
         // Connection Status Badge helper
         function getConnectionStatusBadge(recordedAt) {
@@ -269,6 +270,19 @@
         function clearGeofenceLayers() {
             mapGeofenceLayers.forEach(layer => map.removeLayer(layer));
             mapGeofenceLayers = [];
+            // Clear geofence layers map cache
+            for (let key in geofenceLayersMap) {
+                delete geofenceLayersMap[key];
+            }
+        }
+
+        // Zoom to specific geofence on map
+        function zoomToGeofence(gfId) {
+            const polygon = geofenceLayersMap[gfId];
+            if (polygon) {
+                map.fitBounds(polygon.getBounds());
+                polygon.openPopup();
+            }
         }
 
         // Draw Farm Geofence boundary polygon
@@ -283,15 +297,91 @@
                     if (gf.coordinates && gf.coordinates.length > 0) {
                         coordsList.push(gf.coordinates);
                         
+                        // Default styling (soft blue for unanalyzed)
+                        let borderColor = '#3B82F6';
+                        let fillColor = '#60A5FA';
+                        let popupText = `
+                            <div class="p-1 font-sans text-xs">
+                                <h4 class="font-extrabold text-slate-800 text-sm font-display">${gf.name}</h4>
+                                <p class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Tahlil holati</p>
+                                <div class="bg-blue-50 p-2 rounded border border-blue-200 text-center">
+                                    <span class="text-blue-700 text-[10px] font-bold">TAHLIL QILINMAGAN</span>
+                                </div>
+                                <p class="text-[9px] text-slate-500 mt-2">Belgilangan yer maydoni: <strong>${farm.name}</strong></p>
+                            </div>
+                        `;
+
+                        if (gf.latest_soil_analysis) {
+                            const fertility = parseFloat(gf.latest_soil_analysis.fertility);
+                            const ph = gf.latest_soil_analysis.ph;
+                            const moisture = gf.latest_soil_analysis.moisture;
+                            const crop = gf.latest_soil_analysis.target_crop;
+                            const analysisDate = gf.latest_soil_analysis.analysis_date.split('T')[0];
+                            
+                            let fertilityStatus = '';
+                            let badgeClass = '';
+                            
+                            if (fertility >= 70) {
+                                borderColor = '#059669'; // Green
+                                fillColor = '#10B981';
+                                fertilityStatus = 'Unumdor (Yaxshi)';
+                                badgeClass = 'bg-emerald-100 text-emerald-800';
+                            } else if (fertility >= 40) {
+                                borderColor = '#D97706'; // Yellow/Orange
+                                fillColor = '#F59E0B';
+                                fertilityStatus = 'O\'rtacha';
+                                badgeClass = 'bg-amber-100 text-amber-800';
+                            } else {
+                                borderColor = '#B91C1C'; // Red
+                                fillColor = '#EF4444';
+                                fertilityStatus = 'Unumsiz (Yomon)';
+                                badgeClass = 'bg-rose-100 text-rose-800';
+                            }
+
+                            popupText = `
+                                <div class="p-1.5 font-sans text-xs w-52">
+                                    <h4 class="font-extrabold text-slate-800 text-sm font-display">${gf.name}</h4>
+                                    <p class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Tahlil hisoboti</p>
+                                    <div class="space-y-1.5 text-slate-600">
+                                        <div class="flex justify-between items-center bg-slate-50 p-1.5 rounded border border-slate-100">
+                                            <span>Unumdorlik:</span>
+                                            <span class="${badgeClass} px-2 py-0.5 rounded font-bold">${parseFloat(fertility).toFixed(0)}%</span>
+                                        </div>
+                                        <div class="flex justify-between items-center bg-slate-50 p-1.5 rounded border border-slate-100 text-[10px]">
+                                            <span>Baholash:</span>
+                                            <span class="font-bold text-slate-800">${fertilityStatus}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-1.5">
+                                            <div class="bg-slate-50 p-1.5 rounded border border-slate-100">
+                                                <span class="text-[8px] text-slate-400 font-bold block uppercase">pH darajasi:</span>
+                                                <span class="font-bold text-slate-800">${ph}</span>
+                                            </div>
+                                            <div class="bg-slate-50 p-1.5 rounded border border-slate-100">
+                                                <span class="text-[8px] text-slate-400 font-bold block uppercase">Namlik:</span>
+                                                <span class="font-bold text-slate-800">${parseFloat(moisture).toFixed(0)}%</span>
+                                            </div>
+                                        </div>
+                                        <div class="bg-slate-50 p-1.5 rounded border border-slate-100 text-[10px]">
+                                            Ekin turi: <strong class="text-slate-800">${crop}</strong>
+                                        </div>
+                                        <div class="text-[8px] text-slate-450 pt-1 border-t text-right">
+                                            Tahlil vaqti: ${analysisDate}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
                         const polygon = L.polygon(gf.coordinates, {
-                            color: '#059669', // solid green borders
-                            fillColor: '#10B981', // semi-transparent green fill
-                            fillOpacity: 0.18,
-                            weight: 2.5
+                            color: borderColor,
+                            fillColor: fillColor,
+                            fillOpacity: 0.22,
+                            weight: 3
                         }).addTo(map);
 
-                        polygon.bindPopup(`<b>${gf.name}</b><br>Belgilangan yer maydoni: ${farm.name}`);
+                        polygon.bindPopup(popupText);
                         mapGeofenceLayers.push(polygon);
+                        geofenceLayersMap[gf.id] = polygon;
                     }
                 });
             } else {
@@ -418,20 +508,31 @@
                     // 1. Geofences / Yer maydoni details
                     let geofenceHTML = `<div class="text-[10px] text-slate-400 italic">Maydon chegaralari kiritilmagan</div>`;
                     if (farm.geofences && farm.geofences.length > 0) {
-                        geofenceHTML = farm.geofences.map(gf => `
-                            <div class="flex justify-between items-center bg-slate-50 px-2.5 py-1.5 rounded border border-slate-100 text-[10px] text-slate-600">
-                                <span class="font-medium">${gf.name}</span>
-                                <span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">${farm.size || '35'} gektar</span>
-                            </div>
-                        `).join('');
-                    } else {
-                        // Fallback simulated geofence name
-                        geofenceHTML = `
-                            <div class="flex justify-between items-center bg-slate-50 px-2.5 py-1.5 rounded border border-slate-100 text-[10px] text-slate-600">
-                                <span class="font-medium">Chegara yer maydoni #1</span>
-                                <span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">${farm.size || '45'} gektar</span>
-                            </div>
-                        `;
+                        geofenceHTML = farm.geofences.map(gf => {
+                            let fertilityBadge = `<span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Tahlil yo'q</span>`;
+                            if (gf.latest_soil_analysis) {
+                                const fertility = parseFloat(gf.latest_soil_analysis.fertility).toFixed(0);
+                                if (fertility >= 70) {
+                                    fertilityBadge = `<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Unumdor: ${fertility}%</span>`;
+                                } else if (fertility >= 40) {
+                                    fertilityBadge = `<span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">O'rtacha: ${fertility}%</span>`;
+                                } else {
+                                    fertilityBadge = `<span class="bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Yomon: ${fertility}%</span>`;
+                                }
+                            }
+                            return `
+                                <div class="flex justify-between items-center bg-slate-50 px-2.5 py-1.5 rounded border border-slate-100 text-[10px] text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition cursor-pointer" onclick="event.stopPropagation(); zoomToGeofence(${gf.id})">
+                                    <span class="font-medium flex items-center gap-1.5">
+                                        <svg class="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        ${gf.name}
+                                    </span>
+                                    ${fertilityBadge}
+                                </div>
+                            `;
+                        }).join('');
                     }
 
                     // 2. Related Vehicles

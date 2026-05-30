@@ -201,7 +201,7 @@ Route::get('/api/live-vehicles', function () {
 
 // Real-vaqt rejimida fermer xo'jaliklari, geofencelar va tegishli texnikalarni beruvchi ochiq JSON API
 Route::get('/api/live-farms', function () {
-    $farms = \App\Models\Farm::with(['owner', 'geofences', 'vehicles.latestGpsTrack'])->get();
+    $farms = \App\Models\Farm::with(['owner', 'geofences.latestSoilAnalysis', 'vehicles.latestGpsTrack'])->get();
     $farms->each(function ($f) {
         $f->vehicles->each(function ($v) {
             $v->append('status');

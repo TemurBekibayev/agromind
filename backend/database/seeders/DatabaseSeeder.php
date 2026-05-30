@@ -128,6 +128,7 @@ class DatabaseSeeder extends Seeder
         // 6. Create Soil Analyses
         $soil = SoilAnalysis::create([
             'farm_id' => $farm1->id,
+            'geofence_id' => $geofence1->id,
             'target_crop' => 'G\'o\'za (Paxta)',
             'ph' => 6.80,
             'fertility' => 72.50,

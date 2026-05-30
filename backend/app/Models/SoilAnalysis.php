@@ -13,6 +13,7 @@ class SoilAnalysis extends Model
 
     protected $fillable = [
         'farm_id',
+        'geofence_id',
         'target_crop',
         'ph',
         'fertility',
@@ -43,6 +44,14 @@ class SoilAnalysis extends Model
     public function farm(): BelongsTo
     {
         return $this->belongsTo(Farm::class);
+    }
+
+    /**
+     * Tahlil qilingan aniq yer maydoni (geofence).
+     */
+    public function geofence(): BelongsTo
+    {
+        return $this->belongsTo(Geofence::class);
     }
 
     /**
