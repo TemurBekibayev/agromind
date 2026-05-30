@@ -11,12 +11,12 @@
  * 4. Ngrok orqali tashqi tarmoqqa ochish: `ngrok tcp 5000`
  */
 
-const net = require('net');
-const axios = require('axios');
+import net from 'net';
+import axios from 'axios';
 
 // SOZLAMALAR
 const PORT = 5000; // GPS trekker ulanadigan port
-const LARAVEL_API_URL = 'http://localhost/api/telemetry'; // Laravel API manzili
+const LARAVEL_API_URL = 'https://agromind.uz.lazzatkafe.uz/api/telemetry'; // Laravel API manzili
 
 // CRC-16/X-25 (CRC16) hisoblash funksiyasi (GT06 protokoli uchun zarur)
 function getCRC16(buffer) {
