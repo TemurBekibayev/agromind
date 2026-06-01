@@ -22,6 +22,16 @@ use App\Http\Controllers\Api\AiChatController;
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::any('/telemetry', [TelemetryController::class, 'receive']);
 
+Route::get('/debug-logs', function() {
+    $logPath = storage_path('logs/laravel.log');
+    if (!file_exists($logPath)) {
+        return response()->json(['message' => 'Log file not found.']);
+    }
+    $lines = file($logPath);
+    $lastLines = array_slice($lines, -150);
+    return response(implode("", $lastLines), 200, ['Content-Type' => 'text/plain']);
+});
+
 // Himoyalangan marshrutlar (Protected routes via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
     
