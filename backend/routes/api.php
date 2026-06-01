@@ -23,13 +23,21 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::any('/telemetry', [TelemetryController::class, 'receive']);
 
 Route::get('/debug-logs', function() {
-    $logPath = storage_path('logs/laravel.log');
-    if (!file_exists($logPath)) {
-        return response()->json(['message' => 'Log file not found.']);
+    $logFiles = glob(storage_path('logs/*.log'));
+    if (empty($logFiles)) {
+        return response()->json(['message' => 'No log files found.']);
     }
-    $lines = file($logPath);
+    usort($logFiles, function($a, $b) {
+        return filemtime($b) - filemtime($a);
+    });
+    $latestFile = $logFiles[0];
+    $lines = file($latestFile);
     $lastLines = array_slice($lines, -150);
-    return response(implode("", $lastLines), 200, ['Content-Type' => 'text/plain']);
+    return response(
+        "File: " . basename($latestFile) . "\n\n" . implode("", $lastLines),
+        200,
+        ['Content-Type' => 'text/plain']
+    );
 });
 
 // Himoyalangan marshrutlar (Protected routes via Sanctum)
