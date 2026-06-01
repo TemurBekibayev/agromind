@@ -22,6 +22,33 @@ class TelemetryController extends Controller
      */
     public function receive(Request $request)
     {
+        // Flespi formatidagi so'rovlarni aniqlash va moslashtirish
+        $data = $request->all();
+        
+        // Agar Flespi massiv (array) ko'rinishida yuborgan bo'lsa
+        if (is_array($data) && isset($data[0]) && is_array($data[0]) && isset($data[0]['ident'])) {
+            $fMessage = $data[0];
+            $request->merge([
+                'device_id' => $fMessage['ident'],
+                'latitude' => $fMessage['position.latitude'] ?? ($fMessage['latitude'] ?? null),
+                'longitude' => $fMessage['position.longitude'] ?? ($fMessage['longitude'] ?? null),
+                'speed' => $fMessage['position.speed'] ?? ($fMessage['speed'] ?? 0.00),
+                'fuel_level' => $fMessage['can.fuel.level'] ?? ($fMessage['fuel_level'] ?? 100.00),
+                'signal_strength' => $fMessage['gsm.signal.level'] ?? ($fMessage['signal_strength'] ?? 100),
+            ]);
+        } 
+        // Agar Flespi bitta obyekt ko'rinishida yuborgan bo'lsa
+        elseif (isset($data['ident'])) {
+            $request->merge([
+                'device_id' => $data['ident'],
+                'latitude' => $data['position.latitude'] ?? ($data['latitude'] ?? null),
+                'longitude' => $data['position.longitude'] ?? ($data['longitude'] ?? null),
+                'speed' => $data['position.speed'] ?? ($data['speed'] ?? 0.00),
+                'fuel_level' => $data['can.fuel.level'] ?? ($data['fuel_level'] ?? 100.00),
+                'signal_strength' => $data['gsm.signal.level'] ?? ($data['signal_strength'] ?? 100),
+            ]);
+        }
+
         $request->validate([
             'device_id' => 'required|string', // Tracker IMEI raqami
             'latitude' => 'required|numeric',
