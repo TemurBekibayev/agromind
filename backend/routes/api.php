@@ -20,7 +20,7 @@ use App\Http\Controllers\Api\AiChatController;
 
 // Ochiq marshrutlar (Public routes)
 Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/telemetry', [TelemetryController::class, 'receive']);
+Route::any('/telemetry', [TelemetryController::class, 'receive']);
 
 // Himoyalangan marshrutlar (Protected routes via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
