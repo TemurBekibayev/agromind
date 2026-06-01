@@ -22,9 +22,9 @@ class TelemetryController extends Controller
      */
     public function receive(Request $request)
     {
-        Log::info("Telemetry Debug - Method: " . $request->method());
-        Log::info("Telemetry Debug - Headers: " . json_encode($request->headers->all()));
-        Log::info("Telemetry Debug - Body: " . json_encode($request->all()));
+        Log::error("Telemetry Debug - Method: " . $request->method());
+        Log::error("Telemetry Debug - Headers: " . json_encode($request->headers->all()));
+        Log::error("Telemetry Debug - Body: " . json_encode($request->all()));
 
         if ($request->isMethod('get')) {
             return response()->json([
