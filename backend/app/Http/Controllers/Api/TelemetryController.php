@@ -62,7 +62,7 @@ class TelemetryController extends Controller
             ]);
         }
 
-        $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'device_id' => 'required|string', // Tracker IMEI raqami
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
@@ -71,15 +71,24 @@ class TelemetryController extends Controller
             'signal_strength' => 'nullable|integer',
         ]);
 
+        if ($validator->fails()) {
+            Log::warning("Telemetry validation skipped: " . json_encode($validator->errors()->all()));
+            return response()->json([
+                'status' => 'skipped',
+                'message' => 'Nogps yoki chala telemetriya paketi o\'tkazib yuborildi.',
+                'errors' => $validator->errors()->all()
+            ], 200);
+        }
+
         // Qurilmani gps_device_id (IMEI) bo'yicha bazadan qidiramiz
         $vehicle = Vehicle::where('gps_device_id', $request->device_id)->first();
 
         if (!$vehicle) {
             Log::warning("Telemetry received for unknown GPS Device ID (IMEI): {$request->device_id}");
             return response()->json([
-                'status' => 'error',
-                'message' => 'Ushbu IMEI raqamli texnika bazadan topilmadi.'
-            ], 404);
+                'status' => 'skipped',
+                'message' => 'Ushbu IMEI raqamli texnika bazadan topilmadi, lekin oqim to\'xtamasligi uchun 200 OK qaytarildi.'
+            ], 200);
         }
 
         // Ma'lumotlarni qayta ishlash (geofence, low fuel tekshiruvi bilan)
