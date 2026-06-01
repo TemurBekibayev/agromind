@@ -206,6 +206,54 @@
         let mapGeofenceLayers = [];
         const mapVehicleMarkers = {};
         const geofenceLayersMap = {};
+        
+        let activeHistoryPolyline = null;
+        let startMarker = null;
+
+        // Clear GPRS track history trail from map
+        function clearHistoryTrail() {
+            if (activeHistoryPolyline) {
+                map.removeLayer(activeHistoryPolyline);
+                activeHistoryPolyline = null;
+            }
+            if (startMarker) {
+                map.removeLayer(startMarker);
+                startMarker = null;
+            }
+        }
+
+        // Fetch and draw last 24h history trail for a vehicle
+        function loadVehicleHistoryAndDrawTrail(vId) {
+            clearHistoryTrail();
+            
+            fetch(`/api/live-vehicles/${vId}/history`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.history && data.history.length > 1) {
+                        const coordinates = data.history.map(point => [parseFloat(point.latitude), parseFloat(point.longitude)]);
+                        
+                        // Create elegant emerald green trail polyline
+                        activeHistoryPolyline = L.polyline(coordinates, {
+                            color: '#10B981', // Emerald green
+                            weight: 4,
+                            opacity: 0.8,
+                            dashArray: '6, 8', // elegant dashed/dotted line represent movement trail
+                            lineJoin: 'round'
+                        }).addTo(map);
+                        
+                        // Circle marker for the start of the trail (oldest point)
+                        const startPoint = coordinates[0];
+                        startMarker = L.circleMarker(startPoint, {
+                            radius: 6,
+                            color: '#3B82F6', // Blue border for start
+                            fillColor: '#93C5FD',
+                            fillOpacity: 1,
+                            weight: 2
+                        }).addTo(map).bindPopup("<b>Yo'nalish boshlanishi</b><br>24 soatlik izning ilk nuqtasi");
+                    }
+                })
+                .catch(err => console.error('Error loading history:', err));
+        }
 
         // Connection Status Badge helper
         function getConnectionStatusBadge(recordedAt) {
@@ -413,7 +461,12 @@
 
         // Selection of Farm Vehicle (centers map, zooms marker, opens HUD)
         function focusVehicle(vId, lat, lng, keepCurrentZoom = false) {
+            const vehicleIdChanged = (selectedVehicleId !== vId);
             selectedVehicleId = vId;
+            
+            if (vehicleIdChanged || !keepCurrentZoom) {
+                loadVehicleHistoryAndDrawTrail(vId);
+            }
             
             if (lat && lng) {
                 const coords = [parseFloat(lat), parseFloat(lng)];
@@ -486,6 +539,7 @@
         function closeHud() {
             document.getElementById('selectedDeviceHud').classList.add('hidden');
             selectedVehicleId = null;
+            clearHistoryTrail();
         }
 
         // Render Accordion Farms List on Sidebar

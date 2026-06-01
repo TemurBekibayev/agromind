@@ -209,3 +209,20 @@ Route::get('/api/live-farms', function () {
     });
     return response()->json($farms);
 });
+
+// Texnikaning oxirgi 24 soatlik GPS harakat tarixi (GIS monitor uchun ochiq API)
+Route::get('/api/live-vehicles/{id}/history', function ($id) {
+    $vehicle = \App\Models\Vehicle::find($id);
+    if (!$vehicle) {
+        return response()->json(['status' => 'error', 'message' => 'Texnika topilmadi.'], 404);
+    }
+    $history = $vehicle->gpsTracks()
+        ->where('recorded_at', '>=', now()->subHours(24))
+        ->orderBy('recorded_at', 'asc')
+        ->get();
+        
+    return response()->json([
+        'status' => 'success',
+        'history' => $history
+    ]);
+});

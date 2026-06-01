@@ -20,25 +20,7 @@ use App\Http\Controllers\Api\AiChatController;
 
 // Ochiq marshrutlar (Public routes)
 Route::post('/auth/login', [AuthController::class, 'login']);
-Route::any('/telemetry', [TelemetryController::class, 'receive']);
-
-Route::get('/debug-logs', function() {
-    $logFiles = glob(storage_path('logs/*.log'));
-    if (empty($logFiles)) {
-        return response()->json(['message' => 'No log files found.']);
-    }
-    usort($logFiles, function($a, $b) {
-        return filemtime($b) - filemtime($a);
-    });
-    $latestFile = $logFiles[0];
-    $lines = file($latestFile);
-    $lastLines = array_slice($lines, -150);
-    return response(
-        "File: " . basename($latestFile) . "\n\n" . implode("", $lastLines),
-        200,
-        ['Content-Type' => 'text/plain']
-    );
-});
+Route::post('/telemetry', [TelemetryController::class, 'receive']);
 
 // Himoyalangan marshrutlar (Protected routes via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {

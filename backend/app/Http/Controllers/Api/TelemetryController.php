@@ -22,19 +22,6 @@ class TelemetryController extends Controller
      */
     public function receive(Request $request)
     {
-        Log::error("Telemetry Debug - Method: " . $request->method());
-        Log::error("Telemetry Debug - Headers: " . json_encode($request->headers->all()));
-        Log::error("Telemetry Debug - Body: " . json_encode($request->all()));
-
-        if ($request->isMethod('get')) {
-            return response()->json([
-                'status' => 'debug',
-                'message' => 'GET request received successfully.',
-                'headers' => $request->headers->all(),
-                'data' => $request->all()
-            ]);
-        }
-
         // Flespi formatidagi so'rovlarni aniqlash va moslashtirish
         $data = $request->all();
         
