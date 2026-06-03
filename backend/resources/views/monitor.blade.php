@@ -221,11 +221,39 @@
             }
         });
 
-        // Standard clean light street map layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Base Layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19
-        }).addTo(map);
+        });
+
+        const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google Maps',
+            maxZoom: 20
+        });
+
+        const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google Maps',
+            maxZoom: 20
+        });
+
+        const googleStreets = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google Maps',
+            maxZoom: 20
+        });
+
+        // Add default map layer
+        osmLayer.addTo(map);
+
+        const baseMaps = {
+            "Oddiy xarita": osmLayer,
+            "Sun'iy yo'ldosh": googleSatellite,
+            "Gibrid xarita": googleHybrid,
+            "Google ko'chalari": googleStreets
+        };
+
+        // Add layers control on the top-left (so it does not overlap with the HUD on the right)
+        L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
 
         // Global states
         let rawFarmsData = [];
@@ -281,7 +309,7 @@
             if (!selectedVehicleId) return;
             const select = document.getElementById('historyDateFilter');
             const selectedDate = select.value;
-            loadVehicleHistoryAndDrawTrail(selectedVehicleId, selectedDate);
+            loadVehicleHistoryAndDrawTrail(selectedVehicleId, selectedDate, true);
         }
 
         // Clear GPRS track history trail from map
@@ -293,7 +321,7 @@
         }
 
         // Fetch and draw last 24h history trail for a vehicle
-        function loadVehicleHistoryAndDrawTrail(vId, date = '') {
+        function loadVehicleHistoryAndDrawTrail(vId, date = '', fitBounds = false) {
             clearHistoryTrail();
             
             let url = `/api/live-vehicles/${vId}/history`;
@@ -460,6 +488,14 @@
                                 lineJoin: 'round'
                             }).addTo(map);
                             activeHistoryPolylines.push(poly);
+                        }
+
+                        // Fit bounds to the drawn history trail if requested and polylines exist
+                        if (fitBounds && activeHistoryPolylines.length > 0) {
+                            const group = new L.featureGroup(activeHistoryPolylines);
+                            programmaticMove(() => {
+                                map.fitBounds(group.getBounds().pad(0.1));
+                            });
                         }
                     }
                 })
@@ -690,14 +726,19 @@
             // Always reload vehicle history and draw trail to update it in real-time
             const select = document.getElementById('historyDateFilter');
             const selectedDate = select ? select.value : '';
-            loadVehicleHistoryAndDrawTrail(vId, selectedDate);
+            // Only fit bounds on manual selection, not during periodic updates
+            loadVehicleHistoryAndDrawTrail(vId, selectedDate, !keepCurrentZoom);
             
             if (lat && lng) {
                 const coords = [parseFloat(lat), parseFloat(lng)];
                 const targetZoom = keepCurrentZoom ? map.getZoom() : 15;
                 
+                const isTodaySelected = select && select.options.length > 0 ? (select.value === select.options[0].value) : true;
                 const timeSinceInteraction = Date.now() - lastMapInteractionTime;
-                const shouldCenter = !keepCurrentZoom || (timeSinceInteraction >= 180000);
+                
+                // Only auto-center on periodic updates if Today is selected in the history filter
+                // and 3 minutes have passed since last user interaction
+                const shouldCenter = !keepCurrentZoom || (isTodaySelected && timeSinceInteraction >= 180000);
                 
                 if (shouldCenter) {
                     programmaticMove(() => {
