@@ -210,19 +210,28 @@ Route::get('/api/live-farms', function () {
     return response()->json($farms);
 });
 
-// Texnikaning oxirgi 24 soatlik GPS harakat tarixi (GIS monitor uchun ochiq API)
-Route::get('/api/live-vehicles/{id}/history', function ($id) {
+// Texnikaning ma'lum bir kundagi GPS harakat tarixi (GIS monitor uchun ochiq API)
+Route::get('/api/live-vehicles/{id}/history', function (Request $request, $id) {
     $vehicle = \App\Models\Vehicle::find($id);
     if (!$vehicle) {
         return response()->json(['status' => 'error', 'message' => 'Texnika topilmadi.'], 404);
     }
-    $history = $vehicle->gpsTracks()
-        ->where('recorded_at', '>=', now()->subHours(24))
-        ->orderBy('recorded_at', 'asc')
-        ->get();
+    
+    $date = $request->query('date'); // Format: YYYY-MM-DD
+    $query = $vehicle->gpsTracks();
+    
+    if ($date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        $query->whereDate('recorded_at', $date);
+    } else {
+        // Default: Bugungi kungi ma'lumotlar
+        $query->whereDate('recorded_at', \Carbon\Carbon::today());
+    }
+    
+    $history = $query->orderBy('recorded_at', 'asc')->get();
         
     return response()->json([
         'status' => 'success',
+        'selected_date' => $date ?: \Carbon\Carbon::today()->toDateString(),
         'history' => $history
     ]);
 });

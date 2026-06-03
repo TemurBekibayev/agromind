@@ -10,4 +10,5 @@ Artisan::command('inspire', function () {
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('gps:simulate')->everyMinute()->withoutOverlapping();
+Schedule::command('gps:clean')->daily()->withoutOverlapping();
 

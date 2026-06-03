@@ -134,6 +134,13 @@
                     </button>
                 </div>
                 
+                <!-- Harakat kuni filtri -->
+                <div class="mt-3.5 bg-slate-50 border border-slate-100 rounded-lg p-2.5">
+                    <label for="historyDateFilter" class="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Harakat traektoriyasi kuni</label>
+                    <select id="historyDateFilter" onchange="changeHistoryDate()" class="w-full text-xs bg-white border border-slate-200 rounded p-1.5 font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
+                    </select>
+                </div>
+                
                 <!-- Speedometer Widget -->
                 <div class="mt-4 bg-slate-50 border border-slate-100 rounded-lg p-3 flex flex-col items-center justify-center">
                     <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Hozirgi tezligi</span>
@@ -210,6 +217,50 @@
         let activeHistoryPolylines = [];
         let activeHistoryMarkers = [];
 
+        // Fill history date filter dropdown dynamically for the last 7 days in Uzbek
+        function populateDateFilter() {
+            const select = document.getElementById('historyDateFilter');
+            if (!select) return;
+            
+            select.innerHTML = '';
+            
+            const uzMonths = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
+            const uzWeekdays = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+            
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const dateStr = `${yyyy}-${mm}-${dd}`;
+                
+                let label = "";
+                if (i === 0) {
+                    label = `Bugun (${d.getDate()}-${uzMonths[d.getMonth()]})`;
+                } else if (i === 1) {
+                    label = `Kecha (${d.getDate()}-${uzMonths[d.getMonth()]})`;
+                } else {
+                    const weekday = uzWeekdays[d.getDay()];
+                    label = `${weekday} (${d.getDate()}-${uzMonths[d.getMonth()]})`;
+                }
+                
+                const option = document.createElement('option');
+                option.value = dateStr;
+                option.textContent = label;
+                select.appendChild(option);
+            }
+        }
+
+        // Change handler for date filter
+        function changeHistoryDate() {
+            if (!selectedVehicleId) return;
+            const select = document.getElementById('historyDateFilter');
+            const selectedDate = select.value;
+            loadVehicleHistoryAndDrawTrail(selectedVehicleId, selectedDate);
+        }
+
         // Clear GPRS track history trail from map
         function clearHistoryTrail() {
             activeHistoryPolylines.forEach(layer => map.removeLayer(layer));
@@ -219,10 +270,15 @@
         }
 
         // Fetch and draw last 24h history trail for a vehicle
-        function loadVehicleHistoryAndDrawTrail(vId) {
+        function loadVehicleHistoryAndDrawTrail(vId, date = '') {
             clearHistoryTrail();
             
-            fetch(`/api/live-vehicles/${vId}/history`)
+            let url = `/api/live-vehicles/${vId}/history`;
+            if (date) {
+                url += `?date=${date}`;
+            }
+            
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success' && data.history && data.history.length > 0) {
@@ -597,6 +653,11 @@
             selectedVehicleId = vId;
             
             if (vehicleIdChanged || !keepCurrentZoom) {
+                populateDateFilter();
+                const select = document.getElementById('historyDateFilter');
+                if (select && select.options.length > 0) {
+                    select.value = select.options[0].value; // Reset to Today
+                }
                 loadVehicleHistoryAndDrawTrail(vId);
             }
             
