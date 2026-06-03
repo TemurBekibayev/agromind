@@ -196,7 +196,30 @@
         updateClock();
 
         // Initialize Map centered directly in Karakalpakstan (Amudaryo)
-        const map = L.map('map').setView([42.11005, 60.07327], 9);
+        const map = L.map('map');
+        
+        let lastMapInteractionTime = 0;
+        let isProgrammaticMove = false;
+
+        function programmaticMove(action) {
+            isProgrammaticMove = true;
+            try {
+                action();
+            } finally {
+                isProgrammaticMove = false;
+            }
+        }
+
+        programmaticMove(() => {
+            map.setView([42.11005, 60.07327], 9);
+        });
+
+        // Track user interactions to suspend auto-centering
+        map.on('movestart', function() {
+            if (!isProgrammaticMove) {
+                lastMapInteractionTime = Date.now();
+            }
+        });
 
         // Standard clean light street map layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -494,7 +517,9 @@
                 if (farm) {
                     // Zoom and pan to farm center
                     if (farm.latitude && farm.longitude) {
-                        map.setView([farm.latitude, farm.longitude], 12);
+                        programmaticMove(() => {
+                            map.setView([farm.latitude, farm.longitude], 12);
+                        });
                     }
                     drawFarmGeofences(farm);
                 }
@@ -516,7 +541,9 @@
         function zoomToGeofence(gfId) {
             const polygon = geofenceLayersMap[gfId];
             if (polygon) {
-                map.fitBounds(polygon.getBounds());
+                programmaticMove(() => {
+                    map.fitBounds(polygon.getBounds());
+                });
                 polygon.openPopup();
             }
         }
@@ -658,16 +685,32 @@
                 if (select && select.options.length > 0) {
                     select.value = select.options[0].value; // Reset to Today
                 }
-                loadVehicleHistoryAndDrawTrail(vId);
             }
+            
+            // Always reload vehicle history and draw trail to update it in real-time
+            const select = document.getElementById('historyDateFilter');
+            const selectedDate = select ? select.value : '';
+            loadVehicleHistoryAndDrawTrail(vId, selectedDate);
             
             if (lat && lng) {
                 const coords = [parseFloat(lat), parseFloat(lng)];
                 const targetZoom = keepCurrentZoom ? map.getZoom() : 15;
-                map.setView(coords, targetZoom);
                 
-                // Trigger Leaflet popup on the vehicle marker
-                if (mapVehicleMarkers[vId]) {
+                const timeSinceInteraction = Date.now() - lastMapInteractionTime;
+                const shouldCenter = !keepCurrentZoom || (timeSinceInteraction >= 180000);
+                
+                if (shouldCenter) {
+                    programmaticMove(() => {
+                        map.setView(coords, targetZoom);
+                    });
+                    
+                    if (!keepCurrentZoom) {
+                        lastMapInteractionTime = 0; // reset interaction timer on manual focus
+                    }
+                }
+                
+                // Trigger Leaflet popup on the vehicle marker only on manual selection
+                if (!keepCurrentZoom && mapVehicleMarkers[vId]) {
                     mapVehicleMarkers[vId].openPopup();
                 }
             }
