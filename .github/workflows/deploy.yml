@@ -62,6 +62,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: ${{ secrets.FTP_DIR || '/' }}
           local-dir: ./backend/
+          timeout: 60000
           exclude: |
             **/.git*
             **/.git*/**
