@@ -207,19 +207,15 @@
         const mapVehicleMarkers = {};
         const geofenceLayersMap = {};
         
-        let activeHistoryPolyline = null;
-        let startMarker = null;
+        let activeHistoryPolylines = [];
+        let activeHistoryMarkers = [];
 
         // Clear GPRS track history trail from map
         function clearHistoryTrail() {
-            if (activeHistoryPolyline) {
-                map.removeLayer(activeHistoryPolyline);
-                activeHistoryPolyline = null;
-            }
-            if (startMarker) {
-                map.removeLayer(startMarker);
-                startMarker = null;
-            }
+            activeHistoryPolylines.forEach(layer => map.removeLayer(layer));
+            activeHistoryPolylines = [];
+            activeHistoryMarkers.forEach(layer => map.removeLayer(layer));
+            activeHistoryMarkers = [];
         }
 
         // Fetch and draw last 24h history trail for a vehicle
@@ -229,27 +225,119 @@
             fetch(`/api/live-vehicles/${vId}/history`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.status === 'success' && data.history && data.history.length > 1) {
-                        const coordinates = data.history.map(point => [parseFloat(point.latitude), parseFloat(point.longitude)]);
-                        
-                        // Create elegant emerald green trail polyline
-                        activeHistoryPolyline = L.polyline(coordinates, {
-                            color: '#10B981', // Emerald green
-                            weight: 4,
-                            opacity: 0.8,
-                            dashArray: '6, 8', // elegant dashed/dotted line represent movement trail
-                            lineJoin: 'round'
-                        }).addTo(map);
+                    if (data.status === 'success' && data.history && data.history.length > 0) {
+                        const history = data.history;
                         
                         // Circle marker for the start of the trail (oldest point)
-                        const startPoint = coordinates[0];
-                        startMarker = L.circleMarker(startPoint, {
-                            radius: 6,
+                        const firstPoint = history[0];
+                        const startLatLng = [parseFloat(firstPoint.latitude), parseFloat(firstPoint.longitude)];
+                        const startMarker = L.circleMarker(startLatLng, {
+                            radius: 7,
                             color: '#3B82F6', // Blue border for start
                             fillColor: '#93C5FD',
                             fillOpacity: 1,
-                            weight: 2
-                        }).addTo(map).bindPopup("<b>Yo'nalish boshlanishi</b><br>24 soatlik izning ilk nuqtasi");
+                            weight: 2.5
+                        }).addTo(map).bindPopup(`
+                            <div class="p-1.5 font-sans text-xs">
+                                <h4 class="font-extrabold text-blue-700 text-sm font-display mb-1">📍 Yo'nalish boshlanishi</h4>
+                                <p class="text-[10px] text-slate-500">Boshlangan vaqt: <strong>${firstPoint.recorded_at}</strong></p>
+                            </div>
+                        `);
+                        activeHistoryMarkers.push(startMarker);
+
+                        let currentSegment = [startLatLng];
+                        let gapCount = 0;
+                        
+                        // Time difference threshold: 5 minutes (300 seconds)
+                        const MAX_GAP_SECONDS = 300; 
+
+                        for (let i = 1; i < history.length; i++) {
+                            const prevPoint = history[i - 1];
+                            const currPoint = history[i];
+                            
+                            const prevTime = new Date(prevPoint.recorded_at).getTime();
+                            const currTime = new Date(currPoint.recorded_at).getTime();
+                            const diffSeconds = Math.floor((currTime - prevTime) / 1000);
+                            
+                            const currLatLng = [parseFloat(currPoint.latitude), parseFloat(currPoint.longitude)];
+                            
+                            if (diffSeconds > MAX_GAP_SECONDS) {
+                                // GPRS Gap / GPS Connection break found
+                                gapCount++;
+                                
+                                // Draw the current active green segment
+                                if (currentSegment.length > 0) {
+                                    const poly = L.polyline(currentSegment, {
+                                        color: '#10B981', // Emerald green
+                                        weight: 4,
+                                        opacity: 0.8,
+                                        dashArray: '6, 8', // elegant dashed line
+                                        lineJoin: 'round'
+                                    }).addTo(map);
+                                    activeHistoryPolylines.push(poly);
+                                }
+                                
+                                // Draw the red gap connection line to show building fly-over or connection loss jumps
+                                const lastLatLngOfPrevSegment = currentSegment[currentSegment.length - 1];
+                                const gapPoly = L.polyline([lastLatLngOfPrevSegment, currLatLng], {
+                                    color: '#EF4444', // Red for connection gap
+                                    weight: 2,
+                                    opacity: 0.6,
+                                    dashArray: '4, 6',
+                                    lineJoin: 'round'
+                                }).addTo(map);
+                                activeHistoryPolylines.push(gapPoly);
+                                
+                                // Format connection break duration
+                                let durationStr = "";
+                                const diffMinutes = Math.floor(diffSeconds / 60);
+                                if (diffMinutes < 60) {
+                                    durationStr = `${diffMinutes} daqiqa`;
+                                } else {
+                                    const diffHours = Math.floor(diffMinutes / 60);
+                                    const remMinutes = diffMinutes % 60;
+                                    durationStr = `${diffHours} soat ${remMinutes} daqiqa`;
+                                }
+                                
+                                // Create custom warning marker representing GPS break with popup
+                                const gapMarker = L.circleMarker(currLatLng, {
+                                    radius: 6,
+                                    color: '#B91C1C', // Dark red
+                                    fillColor: '#FCA5A5', // Light red
+                                    fillOpacity: 1,
+                                    weight: 2
+                                }).addTo(map).bindPopup(`
+                                    <div class="p-1.5 font-sans text-xs w-48">
+                                        <h4 class="font-bold text-red-650 text-xs font-display flex items-center gap-1">
+                                            ⚠️ ALOQA UZILISHI #${gapCount}
+                                        </h4>
+                                        <div class="mt-2 space-y-1 text-slate-600 text-[10px]">
+                                            <p>Aloqa yo'qolgan: <strong class="text-slate-800">${prevPoint.recorded_at}</strong></p>
+                                            <p>Aloqa tiklangan: <strong class="text-slate-800">${currPoint.recorded_at}</strong></p>
+                                            <p>Uzilish vaqti: <span class="bg-red-100 text-red-800 font-bold px-1.5 py-0.5 rounded">${durationStr}</span></p>
+                                        </div>
+                                    </div>
+                                `);
+                                activeHistoryMarkers.push(gapMarker);
+                                
+                                // Start new coordinate segment
+                                currentSegment = [currLatLng];
+                            } else {
+                                currentSegment.push(currLatLng);
+                            }
+                        }
+                        
+                        // Draw the final remaining segment
+                        if (currentSegment.length > 0) {
+                            const poly = L.polyline(currentSegment, {
+                                color: '#10B981', // Emerald green
+                                weight: 4,
+                                opacity: 0.8,
+                                dashArray: '6, 8',
+                                lineJoin: 'round'
+                            }).addTo(map);
+                            activeHistoryPolylines.push(poly);
+                        }
                     }
                 })
                 .catch(err => console.error('Error loading history:', err));
