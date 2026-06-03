@@ -226,8 +226,52 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success' && data.history && data.history.length > 0) {
-                        const history = data.history;
+                        const rawHistory = data.history;
                         
+                        // GPS Drift Filter & Stationary Noise Filter
+                        const history = [];
+                        for (let i = 0; i < rawHistory.length; i++) {
+                            const point = rawHistory[i];
+                            const lat = parseFloat(point.latitude);
+                            const lng = parseFloat(point.longitude);
+                            
+                            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
+                            
+                            if (history.length === 0) {
+                                history.push(point);
+                                continue;
+                            }
+                            
+                            const lastPoint = history[history.length - 1];
+                            const lastLat = parseFloat(lastPoint.latitude);
+                            const lastLng = parseFloat(lastPoint.longitude);
+                            
+                            const distance = L.latLng(lastLat, lastLng).distanceTo(L.latLng(lat, lng));
+                            
+                            const prevTime = new Date(lastPoint.recorded_at).getTime();
+                            const currTime = new Date(point.recorded_at).getTime();
+                            const diffSeconds = Math.max(1, Math.floor((currTime - prevTime) / 1000));
+                            
+                            // Average speed in meters per second
+                            const speedMPS = distance / diffSeconds;
+                            
+                            // GPS Drift: if vehicle jumps at a speed greater than 90 km/h (25 m/s) over short time
+                            // and the jump distance is substantial (> 35 meters)
+                            if (speedMPS > 25 && distance > 35 && diffSeconds < 180) {
+                                console.warn("GPS Drift filtrlangan: Tezlik =", (speedMPS * 3.6).toFixed(1), "km/h, Masofa =", distance.toFixed(1), "m");
+                                continue;
+                            }
+                            
+                            // Stationary Drift: if vehicle is stopped but GPS bounces slightly (under 5 meters)
+                            if (distance < 5 && parseFloat(point.speed) === 0) {
+                                continue;
+                            }
+                            
+                            history.push(point);
+                        }
+
+                        if (history.length === 0) return;
+
                         // Circle marker for the start of the trail (oldest point)
                         const firstPoint = history[0];
                         const startLatLng = [parseFloat(firstPoint.latitude), parseFloat(firstPoint.longitude)];
@@ -248,8 +292,8 @@
                         let currentSegment = [startLatLng];
                         let gapCount = 0;
                         
-                        // Time difference threshold: 5 minutes (300 seconds)
-                        const MAX_GAP_SECONDS = 300; 
+                        // Time difference threshold: 90 seconds (1.5 minutes) for connection break
+                        const MAX_GAP_SECONDS = 90; 
 
                         for (let i = 1; i < history.length; i++) {
                             const prevPoint = history[i - 1];
