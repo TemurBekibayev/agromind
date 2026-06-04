@@ -735,7 +735,9 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                   ),
                 );
               }),
-            ]
+            ],
+            // Spacing to allow scrolling content completely past the floating yellow AI button
+            const SizedBox(height: 80),
           ],
         ),
       );
