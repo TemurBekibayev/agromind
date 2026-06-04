@@ -11,13 +11,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   final prefs = await SharedPreferences.getInstance();
-  
-  // Eski sinov jarayonidagi vaqtinchalik local IP manzillarni tozalab yuboramiz
-  await prefs.remove('custom_api_url');
+  final customApiUrl = prefs.getString('custom_api_url');
 
   runApp(
-    const ProviderScope(
-      child: AgroMindApp(),
+    ProviderScope(
+      overrides: [
+        if (customApiUrl != null && customApiUrl.isNotEmpty)
+          apiServiceProvider.overrideWithValue(ApiService(baseUrl: customApiUrl)),
+      ],
+      child: const AgroMindApp(),
     ),
   );
 }

@@ -24,7 +24,13 @@ class SoilAnalysisController extends Controller
      */
     public function index(Request $request, $farmId)
     {
-        $farm = $request->user()->farms()->find($farmId);
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $farm = Farm::find($farmId);
+        } else {
+            $farm = $user->farms()->find($farmId);
+        }
 
         if (!$farm) {
             return response()->json([
@@ -46,7 +52,13 @@ class SoilAnalysisController extends Controller
      */
     public function store(Request $request, $farmId)
     {
-        $farm = $request->user()->farms()->find($farmId);
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $farm = Farm::find($farmId);
+        } else {
+            $farm = $user->farms()->find($farmId);
+        }
 
         if (!$farm) {
             return response()->json([
@@ -83,9 +95,17 @@ class SoilAnalysisController extends Controller
      */
     public function show(Request $request, $id)
     {
+        $user = $request->user();
         $analysis = SoilAnalysis::with(['farm', 'recommendation'])->find($id);
 
-        if (!$analysis || $analysis->farm->user_id !== $request->user()->id) {
+        if (!$analysis) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tahlil topilmadi.'
+            ], 404);
+        }
+
+        if (!$user->isAdmin() && !$user->isMonitor() && (int)$analysis->farm->user_id !== (int)$user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Tahlil topilmadi yoki sizga tegishli emas.'
@@ -103,9 +123,17 @@ class SoilAnalysisController extends Controller
      */
     public function recommend(Request $request, $id)
     {
+        $user = $request->user();
         $analysis = SoilAnalysis::with('farm')->find($id);
 
-        if (!$analysis || $analysis->farm->user_id !== $request->user()->id) {
+        if (!$analysis) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tahlil topilmadi.'
+            ], 404);
+        }
+
+        if (!$user->isAdmin() && !$user->isMonitor() && (int)$analysis->farm->user_id !== (int)$user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Tahlil topilmadi yoki sizga tegishli emas.'

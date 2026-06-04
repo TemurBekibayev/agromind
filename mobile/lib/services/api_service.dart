@@ -219,4 +219,15 @@ class ApiService {
   Future<Response> resolveAlert(int alertId) async {
     return await _dio.post('/alerts/$alertId/resolve');
   }
+
+  /// AI Agronomdan chat orqali maslahat so'rash
+  Future<Response> askAiAgronomist({
+    required String message,
+    List<dynamic>? history,
+  }) async {
+    return await _dio.post('/ai/chat', data: {
+      'message': message,
+      if (history != null) 'history': history,
+    });
+  }
 }

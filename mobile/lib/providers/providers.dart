@@ -85,7 +85,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Tarmoq xatoligi yoki server ishlamayapti.',
+        errorMessage: 'Tarmoq xatoligi yoki server ishlamayapti: $e',
       );
       return false;
     }

@@ -13,7 +13,13 @@ class FarmController extends Controller
      */
     public function index(Request $request)
     {
-        $farms = $request->user()->farms()->with('region')->get();
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $farms = Farm::with('region')->get();
+        } else {
+            $farms = $user->farms()->with('region')->get();
+        }
 
         return response()->json([
             'status' => 'success',
@@ -50,7 +56,13 @@ class FarmController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $farm = $request->user()->farms()->with(['region', 'geofences'])->find($id);
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $farm = Farm::with(['region', 'geofences'])->find($id);
+        } else {
+            $farm = $user->farms()->with(['region', 'geofences'])->find($id);
+        }
 
         if (!$farm) {
             return response()->json([
