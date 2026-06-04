@@ -164,6 +164,7 @@ class ApiService {
   /// Yangi tuproq tahlili kiritish
   Future<Response> createSoilAnalysis({
     required int farmId,
+    int? geofenceId,
     required String targetCrop,
     required double ph,
     required double fertility,
@@ -174,6 +175,7 @@ class ApiService {
     required String analysisDate,
   }) async {
     return await _dio.post('/farms/$farmId/analyses', data: {
+      'geofence_id': geofenceId,
       'target_crop': targetCrop,
       'ph': ph,
       'fertility': fertility,

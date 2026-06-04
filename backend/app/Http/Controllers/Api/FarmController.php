@@ -16,9 +16,9 @@ class FarmController extends Controller
         $user = $request->user();
 
         if ($user->isAdmin() || $user->isMonitor()) {
-            $farms = Farm::with('region')->get();
+            $farms = Farm::with(['region', 'geofences'])->get();
         } else {
-            $farms = $user->farms()->with('region')->get();
+            $farms = $user->farms()->with(['region', 'geofences'])->get();
         }
 
         return response()->json([

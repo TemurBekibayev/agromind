@@ -236,6 +236,24 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
     double sunlight = 12000.0;
     double humidity = 45.0;
 
+    // Load geofences for the selected farm
+    final farmsState = ref.read(farmsProvider);
+    List<dynamic> geofences = [];
+    farmsState.whenData((farms) {
+      final selectedFarm = farms.firstWhere(
+        (f) => f['id'] == _selectedFarmId,
+        orElse: () => null,
+      );
+      if (selectedFarm != null && selectedFarm['geofences'] != null) {
+        geofences = selectedFarm['geofences'] as List<dynamic>;
+      }
+    });
+
+    int? selectedGeofenceId;
+    if (geofences.isNotEmpty) {
+      selectedGeofenceId = geofences[0]['id'];
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -264,6 +282,52 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
                       ),
                       const SizedBox(height: 15),
+
+                      // Geofence (Yer maydoni) Selector
+                      if (geofences.isNotEmpty) ...[
+                        DropdownButtonFormField<int>(
+                          value: selectedGeofenceId,
+                          decoration: const InputDecoration(
+                            labelText: 'Tahlil qilinadigan yer maydoni',
+                            prefixIcon: Icon(Icons.landscape_rounded),
+                          ),
+                          items: geofences.map<DropdownMenuItem<int>>((g) {
+                            return DropdownMenuItem<int>(
+                              value: g['id'],
+                              child: Text(g['name'] ?? 'Nomsiz yer'),
+                            );
+                          }).toList(),
+                          validator: (v) => v == null ? 'Yer maydonini tanlang' : null,
+                          onChanged: (val) {
+                            setModalState(() {
+                              selectedGeofenceId = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber[50],
+                            border: Border.all(color: Colors.amber[300]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Diqqat: Ushbu fermada yer maydonlari (geofence) belgilanmagan. Tahlilni saqlashingiz mumkin, lekin xaritada yer rangini ko\'rish uchun avval yer maydonini belgilashingiz kerak.',
+                                  style: TextStyle(fontSize: 11, color: Colors.black87),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                      ],
 
                       // Crop Input
                       TextFormField(
@@ -329,6 +393,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                           try {
                             final res = await api.createSoilAnalysis(
                               farmId: _selectedFarmId!,
+                              geofenceId: selectedGeofenceId,
                               targetCrop: cropController.text.trim(),
                               ph: ph,
                               fertility: fertility,
@@ -342,7 +407,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                             if (res.data['status'] == 'success' && context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Yangi tahlil yaratildi. AI tavsiyasini so\'rashingiz mumkin.')),
+                                  const SnackBar(content: Text('Yangi tahlil yaratildi. AI tavsiyasini so\'rashingiz mumkin.')),
                               );
                               _fetchAnalyses(_selectedFarmId!);
                             }
