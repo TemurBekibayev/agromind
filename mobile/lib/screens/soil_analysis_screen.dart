@@ -19,7 +19,83 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
   Map<String, dynamic>? _selectedAnalysisDetails;
   bool _isLoadingDetails = false;
   final String _targetText = '24/7 yordamchi';
+  final Set<int> _selectedAnalysisIds = {};
+  bool _isSelectionMode = false;
+  bool _isDeleting = false;
   String _displayedText = '';
+
+  Future<void> _deleteSelectedAnalyses() async {
+    if (_selectedAnalysisIds.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tahlillarni o\'chirish'),
+          content: Text('Haqiqatan ham tanlangan ${_selectedAnalysisIds.length} ta tahlil hisobotini butunlay o\'chirib tashlamoqchimisiz?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Bekor qilish'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('O\'chirish'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isDeleting = true;
+    });
+
+    final api = ref.read(apiServiceProvider);
+    int successCount = 0;
+    
+    try {
+      for (final id in _selectedAnalysisIds) {
+        final res = await api.deleteSoilAnalysis(id);
+        if (res.data['status'] == 'success') {
+          successCount++;
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$successCount ta tahlil muvaffaqiyatli o\'chirildi.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        setState(() {
+          _isSelectionMode = false;
+          _selectedAnalysisIds.clear();
+          _selectedAnalysisDetails = null; // Clear details if selected item was deleted
+          _isDeleting = false;
+        });
+        if (_selectedFarmId != null) {
+          _fetchAnalyses(_selectedFarmId!);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tahlillarni o\'chirishda xatolik yuz berdi.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -314,21 +390,41 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3C2A),
+        backgroundColor: _isSelectionMode ? Colors.red[900] : const Color(0xFF1A3C2A),
         foregroundColor: Colors.white,
-        title: const Text('Tuproq AI Tahlili'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () {
-            if (isMobile && _selectedAnalysisDetails != null) {
-              setState(() {
-                _selectedAnalysisDetails = null;
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
+        title: Text(_isSelectionMode 
+            ? 'Tanlandi: ${_selectedAnalysisIds.length} ta' 
+            : 'Tuproq AI Tahlili'),
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () {
+                  setState(() {
+                    _isSelectionMode = false;
+                    _selectedAnalysisIds.clear();
+                  });
+                },
+              )
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () {
+                  if (isMobile && _selectedAnalysisDetails != null) {
+                    setState(() {
+                      _selectedAnalysisDetails = null;
+                    });
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+        actions: [
+          if (_isSelectionMode)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: 'Tanlanganlarni o\'chirish',
+              onPressed: _isDeleting ? null : _deleteSelectedAnalyses,
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -382,7 +478,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
           )
         ],
       ),
-      floatingActionButton: (_selectedFarmId != null && isMobile && _selectedAnalysisDetails != null)
+      floatingActionButton: (_selectedFarmId != null && isMobile && _selectedAnalysisDetails != null && !_isSelectionMode)
           ? FloatingActionButton.extended(
               heroTag: 'ai_chat_advisor_btn',
               onPressed: () {
@@ -471,10 +567,33 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
           final date = DateTime.tryParse(a['analysis_date']) ?? DateTime.now();
           final formattedDate = '${date.day}.${date.month}.${date.year}';
           final isCompleted = a['status'] == 'completed';
+          final isSelectedForDelete = _selectedAnalysisIds.contains(a['id']);
 
           return ListTile(
-            selected: _selectedAnalysisDetails?['id'] == a['id'],
-            selectedTileColor: Colors.grey[100],
+            selected: _isSelectionMode 
+                ? isSelectedForDelete 
+                : (_selectedAnalysisDetails?['id'] == a['id']),
+            selectedTileColor: _isSelectionMode 
+                ? Colors.red[50] 
+                : Colors.grey[100],
+            leading: _isSelectionMode
+                ? Checkbox(
+                    value: isSelectedForDelete,
+                    activeColor: Colors.red[900],
+                    onChanged: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedAnalysisIds.add(a['id']);
+                        } else {
+                          _selectedAnalysisIds.remove(a['id']);
+                          if (_selectedAnalysisIds.isEmpty) {
+                            _isSelectionMode = false;
+                          }
+                        }
+                      });
+                    },
+                  )
+                : null,
             title: Text(
               a['target_crop'],
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -501,7 +620,30 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                 )
               ],
             ),
-            onTap: () => _fetchAnalysisDetails(a['id']),
+            onTap: () {
+              if (_isSelectionMode) {
+                setState(() {
+                  if (isSelectedForDelete) {
+                    _selectedAnalysisIds.remove(a['id']);
+                    if (_selectedAnalysisIds.isEmpty) {
+                      _isSelectionMode = false;
+                    }
+                  } else {
+                    _selectedAnalysisIds.add(a['id']);
+                  }
+                });
+              } else {
+                _fetchAnalysisDetails(a['id']);
+              }
+            },
+            onLongPress: () {
+              if (!_isSelectionMode) {
+                setState(() {
+                  _isSelectionMode = true;
+                  _selectedAnalysisIds.add(a['id']);
+                });
+              }
+            },
           );
         },
       );
@@ -510,7 +652,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
     return Column(
       children: [
         Expanded(child: listWidget),
-        if (_selectedFarmId != null)
+        if (_selectedFarmId != null && !_isSelectionMode)
           Padding(
             padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0, bottom: 16.0),
             child: Column(

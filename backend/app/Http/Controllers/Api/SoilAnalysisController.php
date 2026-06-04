@@ -174,4 +174,34 @@ class SoilAnalysisController extends Controller
             'recommendation' => $recommendation
         ]);
     }
+
+    /**
+     * Tuproq tahlilini o'chirish.
+     */
+    public function destroy(Request $request, $id)
+    {
+        $user = $request->user();
+        $analysis = SoilAnalysis::with('farm')->find($id);
+
+        if (!$analysis) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tahlil topilmadi.'
+            ], 404);
+        }
+
+        if (!$user->isAdmin() && !$user->isMonitor() && (int)$analysis->farm->user_id !== (int)$user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Ushbu tahlilni o\'chirishga sizda ruxsat yo\'q.'
+            ], 403);
+        }
+
+        $analysis->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Tahlil muvaffaqiyatli o\'chirildi.'
+        ]);
+    }
 }

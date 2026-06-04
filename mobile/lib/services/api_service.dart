@@ -195,6 +195,11 @@ class ApiService {
     return await _dio.get('/analyses/$analysisId');
   }
 
+  /// Tuproq tahlilini o'chirish
+  Future<Response> deleteSoilAnalysis(int analysisId) async {
+    return await _dio.delete('/analyses/$analysisId');
+  }
+
   /// Texnikalar ro'yxatini olish
   Future<Response> getVehicles() async {
     return await _dio.get('/vehicles');
