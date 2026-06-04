@@ -37,10 +37,10 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
       }
       await Future.delayed(const Duration(milliseconds: 500));
 
-      // 2. Yozilish fazasi (har bir belgi uchun ~420ms, jami ~6 soniya)
+      // 2. Yozilish fazasi (har bir belgi uchun ~150ms, jami ~2.1 soniya)
       for (int i = 1; i <= _targetText.length; i++) {
         if (!mounted) return;
-        await Future.delayed(const Duration(milliseconds: 420));
+        await Future.delayed(const Duration(milliseconds: 150));
         setState(() {
           _displayedText = _targetText.substring(0, i);
         });
@@ -383,54 +383,35 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
       ),
       floatingActionButton: _selectedFarmId == null
           ? null
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // 1. Yangi tahlil qo'shish tugmasi (FAQAT ro'yxat ko'rinishida)
-                if (!(isMobile && _selectedAnalysisDetails != null)) ...[
-                  FloatingActionButton(
-                    heroTag: 'add_analysis_btn',
-                    onPressed: _showAddAnalysisSheet,
-                    backgroundColor: const Color(0xFF1A3C2A),
-                    foregroundColor: Colors.white,
-                    mini: true,
-                    child: const Icon(Icons.add_rounded),
+          : FloatingActionButton.extended(
+              heroTag: 'ai_chat_advisor_btn',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AiChatScreen(),
                   ),
-                  const SizedBox(height: 12),
-                ],
-                // 2. AI Maslahatchi Chat tugmasi (Sariq rangli Extended robot tugmasi)
-                FloatingActionButton.extended(
-                  heroTag: 'ai_chat_advisor_btn',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AiChatScreen(),
-                      ),
-                    );
-                  },
-                  backgroundColor: const Color(0xFFFFC107), // Sariq rang
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.smart_toy_rounded, size: 28), // Robot ikonkasi
-                  label: AnimatedSize(
-                    duration: const Duration(milliseconds: 200),
-                    child: _displayedText.isEmpty
-                        ? const SizedBox.shrink()
-                        : Padding(
-                            padding: const EdgeInsets.only(left: 4.0),
-                            child: Text(
-                              _displayedText,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
+                );
+              },
+              backgroundColor: const Color(0xFFFFC107), // Sariq rang
+              foregroundColor: const Color(0xFF1A3C2A), // Dark green for great contrast
+              icon: const Icon(Icons.smart_toy_rounded, size: 28), // Robot ikonkasi
+              label: AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                child: _displayedText.isEmpty
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(left: 4.0),
+                        child: Text(
+                          _displayedText,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            letterSpacing: 0.5,
                           ),
-                  ),
-                ),
-              ],
+                        ),
+                      ),
+              ),
             ),
     );
   }
@@ -469,8 +450,9 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
   }
 
   Widget _buildAnalysesList() {
+    Widget listWidget;
     if (_analyses.isEmpty) {
-      return Center(
+      listWidget = Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
@@ -480,48 +462,82 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
           ),
         ),
       );
+    } else {
+      listWidget = ListView.builder(
+        itemCount: _analyses.length,
+        itemBuilder: (context, index) {
+          final a = _analyses[index];
+          final date = DateTime.tryParse(a['analysis_date']) ?? DateTime.now();
+          final formattedDate = '${date.day}.${date.month}.${date.year}';
+          final isCompleted = a['status'] == 'completed';
+
+          return ListTile(
+            selected: _selectedAnalysisDetails?['id'] == a['id'],
+            selectedTileColor: Colors.grey[100],
+            title: Text(
+              a['target_crop'],
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(formattedDate, style: const TextStyle(fontSize: 10)),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isCompleted ? Colors.green[50] : Colors.orange[50],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isCompleted ? 'Tayyor' : 'Kutilmoqda',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: isCompleted ? Colors.green[800] : Colors.orange[800],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              ],
+            ),
+            onTap: () => _fetchAnalysisDetails(a['id']),
+          );
+        },
+      );
     }
 
-    return ListView.builder(
-      itemCount: _analyses.length,
-      itemBuilder: (context, index) {
-        final a = _analyses[index];
-        final date = DateTime.tryParse(a['analysis_date']) ?? DateTime.now();
-        final formattedDate = '${date.day}.${date.month}.${date.year}';
-        final isCompleted = a['status'] == 'completed';
-
-        return ListTile(
-          selected: _selectedAnalysisDetails?['id'] == a['id'],
-          selectedTileColor: Colors.grey[100],
-          title: Text(
-            a['target_crop'],
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(formattedDate, style: const TextStyle(fontSize: 10)),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isCompleted ? Colors.green[50] : Colors.orange[50],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  isCompleted ? 'Tayyor' : 'Kutilmoqda',
+    return Column(
+      children: [
+        Expanded(child: listWidget),
+        if (_selectedFarmId != null)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _showAddAnalysisSheet,
+                icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white),
+                label: const Text(
+                  'Yangi tahlil qo\'shish',
                   style: TextStyle(
-                    fontSize: 8,
-                    color: isCompleted ? Colors.green[800] : Colors.orange[800],
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
                 ),
-              )
-            ],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A3C2A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
           ),
-          onTap: () => _fetchAnalysisDetails(a['id']),
-        );
-      },
+      ],
     );
   }
 
