@@ -52,20 +52,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Default farm tanlash
-    final farmsState = ref.watch(farmsProvider);
-    farmsState.whenData((farms) {
-      if (farms.isNotEmpty && _selectedFarmId == null) {
-        setState(() {
-          _selectedFarmId = farms[0]['id'];
-        });
-        _fetchAnalyses(farms[0]['id']);
-      }
-    });
-  }
+  // Auto-selection is handled reactively inside the build method.
 
   Future<void> _fetchAnalyses(int farmId) async {
     setState(() {
@@ -309,6 +296,20 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
   Widget build(BuildContext context) {
     final farmsState = ref.watch(farmsProvider);
     final isMobile = MediaQuery.of(context).size.width < 600;
+
+    // Auto-select first farm reactively once farms list is loaded
+    farmsState.whenData((farms) {
+      if (farms.isNotEmpty && _selectedFarmId == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedFarmId == null) {
+            setState(() {
+              _selectedFarmId = farms[0]['id'];
+            });
+            _fetchAnalyses(farms[0]['id']);
+          }
+        });
+      }
+    });
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
