@@ -381,9 +381,8 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
           )
         ],
       ),
-      floatingActionButton: _selectedFarmId == null
-          ? null
-          : FloatingActionButton.extended(
+      floatingActionButton: (_selectedFarmId != null && isMobile && _selectedAnalysisDetails != null)
+          ? FloatingActionButton.extended(
               heroTag: 'ai_chat_advisor_btn',
               onPressed: () {
                 Navigator.push(
@@ -412,7 +411,8 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                         ),
                       ),
               ),
-            ),
+            )
+          : null,
     );
   }
 
@@ -511,30 +511,70 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
         Expanded(child: listWidget),
         if (_selectedFarmId != null)
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _showAddAnalysisSheet,
-                icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white),
-                label: const Text(
-                  'Yangi tahlil qo\'shish',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+            padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0, bottom: 16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 1. AI yordamchi tugmasi (Sariq rang)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AiChatScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.smart_toy_rounded, size: 24),
+                    label: Text(
+                      _displayedText.isEmpty ? '24/7 yordamchi' : _displayedText,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFC107), // Yellow
+                      foregroundColor: const Color(0xFF1A3C2A), // Dark green text
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A3C2A),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 12),
+                
+                // 2. Yangi tahlil qo'shish tugmasi (To'q yashil)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _showAddAnalysisSheet,
+                    icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white),
+                    label: const Text(
+                      'Yangi tahlil qo\'shish',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1A3C2A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
                   ),
-                  elevation: 2,
                 ),
-              ),
+              ],
             ),
           ),
       ],
