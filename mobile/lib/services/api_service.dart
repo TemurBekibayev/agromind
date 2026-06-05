@@ -164,6 +164,7 @@ class ApiService {
   /// Yangi tuproq tahlili kiritish
   Future<Response> createSoilAnalysis({
     required int farmId,
+    int? geofenceId,
     required String targetCrop,
     required double ph,
     required double fertility,
@@ -174,6 +175,7 @@ class ApiService {
     required String analysisDate,
   }) async {
     return await _dio.post('/farms/$farmId/analyses', data: {
+      'geofence_id': geofenceId,
       'target_crop': targetCrop,
       'ph': ph,
       'fertility': fertility,
@@ -193,6 +195,11 @@ class ApiService {
   /// Tuproq tahlili tafsilotlarini olish
   Future<Response> getSoilAnalysis(int analysisId) async {
     return await _dio.get('/analyses/$analysisId');
+  }
+
+  /// Tuproq tahlilini o'chirish
+  Future<Response> deleteSoilAnalysis(int analysisId) async {
+    return await _dio.delete('/analyses/$analysisId');
   }
 
   /// Texnikalar ro'yxatini olish
@@ -218,5 +225,16 @@ class ApiService {
   /// Ogohlantirishni bartaraf etish/yopish
   Future<Response> resolveAlert(int alertId) async {
     return await _dio.post('/alerts/$alertId/resolve');
+  }
+
+  /// AI Agronomdan chat orqali maslahat so'rash
+  Future<Response> askAiAgronomist({
+    required String message,
+    List<dynamic>? history,
+  }) async {
+    return await _dio.post('/ai/chat', data: {
+      'message': message,
+      if (history != null) 'history': history,
+    });
   }
 }

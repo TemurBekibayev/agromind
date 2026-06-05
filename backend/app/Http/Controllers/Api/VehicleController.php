@@ -14,11 +14,18 @@ class VehicleController extends Controller
      */
     public function index(Request $request)
     {
-        $farmIds = $request->user()->farms()->pluck('id');
+        $user = $request->user();
 
-        $vehicles = Vehicle::whereIn('farm_id', $farmIds)
-            ->with(['farm', 'latestGpsTrack'])
-            ->get();
+        if ($user->isAdmin() || $user->isMonitor()) {
+            // Admin va Monitorlar barcha texnikalarni ko'ra oladi
+            $vehicles = Vehicle::with(['farm', 'latestGpsTrack'])->get();
+        } else {
+            // Oddiy fermerlar faqat o'zlarining texnikalarini ko'radi
+            $farmIds = $user->farms()->pluck('id');
+            $vehicles = Vehicle::whereIn('farm_id', $farmIds)
+                ->with(['farm', 'latestGpsTrack'])
+                ->get();
+        }
 
         // Har bir texnika uchun virtual statusni hisoblab qo'shamiz
         $vehicles->each(function ($vehicle) {
@@ -36,8 +43,16 @@ class VehicleController extends Controller
      */
     public function location(Request $request, $id)
     {
-        $farmIds = $request->user()->farms()->pluck('id');
-        $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            // Admin va Monitorlar istalgan texnika joriy joylashuvini ko'radi
+            $vehicle = Vehicle::find($id);
+        } else {
+            // Fermer faqat o'zining texnikasini ko'radi
+            $farmIds = $user->farms()->pluck('id');
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        }
 
         if (!$vehicle) {
             return response()->json([
@@ -55,6 +70,15 @@ class VehicleController extends Controller
             ], 404);
         }
 
+        // Geodeziya/Geofence buzilishi haqida faol ogohlantirish bormi?
+        $hasGeofenceAlert = $vehicle->alerts()
+            ->where('type', 'geofence_breach')
+            ->where('status', 'active')
+            ->exists();
+
+        // Agar faol alert bo'lsa (tashqarida) is_inside_geofence = 0, aks holda 1
+        $latestTrack->setAttribute('is_inside_geofence', $hasGeofenceAlert ? 0 : 1);
+
         return response()->json([
             'status' => 'success',
             'location' => $latestTrack,
@@ -69,8 +93,16 @@ class VehicleController extends Controller
      */
     public function history(Request $request, $id)
     {
-        $farmIds = $request->user()->farms()->pluck('id');
-        $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            // Admin va Monitorlar istalgan texnika harakat tarixini ko'radi
+            $vehicle = Vehicle::find($id);
+        } else {
+            // Fermer faqat o'zining texnikasini ko'radi
+            $farmIds = $user->farms()->pluck('id');
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        }
 
         if (!$vehicle) {
             return response()->json([

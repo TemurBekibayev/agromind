@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/farms/{farm}/analyses', [SoilAnalysisController::class, 'store']);
     Route::get('/analyses/{id}', [SoilAnalysisController::class, 'show']);
     Route::post('/analyses/{id}/recommend', [SoilAnalysisController::class, 'recommend']);
+    Route::delete('/analyses/{id}', [SoilAnalysisController::class, 'destroy']);
     Route::post('/ai/chat', [AiChatController::class, 'ask']);
 
     // Transport vositalari va GPS kuzatish
