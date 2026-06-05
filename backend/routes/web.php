@@ -201,7 +201,7 @@ Route::get('/api/live-vehicles', function () {
 
 // Real-vaqt rejimida fermer xo'jaliklari, geofencelar va tegishli texnikalarni beruvchi ochiq JSON API
 Route::get('/api/live-farms', function () {
-    $farms = \App\Models\Farm::with(['owner', 'geofences.latestSoilAnalysis', 'vehicles.latestGpsTrack'])->get();
+    $farms = \App\Models\Farm::with(['owner', 'geofences.latestSoilAnalysis.recommendation', 'vehicles.latestGpsTrack'])->get();
     $farms->each(function ($f) {
         $f->vehicles->each(function ($v) {
             $v->append('status');
@@ -233,5 +233,42 @@ Route::get('/api/live-vehicles/{id}/history', function (Request $request, $id) {
         'status' => 'success',
         'selected_date' => $date ?: \Carbon\Carbon::today()->toDateString(),
         'history' => $history
+    ]);
+});
+
+// AI recommendation generator for monitor panel (unauthenticated / token-based)
+Route::post('/api/monitor-analysis/{id}/recommend', function (Request $request, $id) {
+    $analysis = SoilAnalysis::find($id);
+    if (!$analysis) {
+        return response()->json(['status' => 'error', 'message' => 'Tahlil topilmadi.'], 404);
+    }
+    
+    $existingRec = \App\Models\Recommendation::where('soil_analysis_id', $analysis->id)->first();
+    if ($existingRec) {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Tavsiya tayyor.',
+            'recommendation' => $existingRec
+        ]);
+    }
+    
+    $groqService = app(\App\Services\GroqService::class);
+    $aiData = $groqService->getSoilRecommendation($analysis);
+    
+    $recommendation = \App\Models\Recommendation::create([
+        'soil_analysis_id' => $analysis->id,
+        'content' => $aiData['content'],
+        'recommended_crops' => $aiData['recommended_crops'],
+        'fertilizer_plan' => $aiData['fertilizer_plan'],
+        'ai_model' => $aiData['ai_model'],
+        'tokens_used' => $aiData['tokens_used'],
+    ]);
+    
+    $analysis->update(['status' => 'completed']);
+    
+    return response()->json([
+        'status' => 'success',
+        'message' => 'AI tavsiyasi tayyorlandi.',
+        'recommendation' => $recommendation
     ]);
 });

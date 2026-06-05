@@ -56,7 +56,7 @@ class AgroMindApp extends ConsumerWidget {
             borderSide: const BorderSide(color: Color(0xFF1A3C2A), width: 1.5),
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 1,
           surfaceTintColor: Colors.white,
