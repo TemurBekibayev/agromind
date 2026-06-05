@@ -1478,15 +1478,14 @@
                         <span>Model: ${rec.ai_model} | Tokens: ${rec.tokens_used || 0}</span>
                         <span>AgroMind GIS Platform - ${new Date().getFullYear()}</span>
                     </div>
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                        }
-                    <\/script>
                 </body>
                 </html>
             `);
             printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
         }
 
         // Trigger AI recommendation generation in the backend
