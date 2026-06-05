@@ -703,7 +703,7 @@
                 };
                 polygon.setStyle({
                     color: '#ffffff',
-                    fillColor: '#10b981',
+                    fillColor: polygon.options.fillColor,
                     fillOpacity: 0.35,
                     weight: 4
                 });
