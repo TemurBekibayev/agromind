@@ -630,7 +630,10 @@
                 `,
                 iconSize: [24, 24],
                 iconAnchor: [12, 12]
-            })        // Selection of Farm Accordion
+            });
+        }
+
+        // Selection of Farm Accordion
         function toggleFarm(farmId) {
             if (selectedFarmId === farmId) {
                 // If clicked again, close it
