@@ -21,6 +21,7 @@ class HomeScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final vehiclesState = ref.watch(vehiclesProvider);
     final alertsState = ref.watch(alertsProvider);
+    final farmsState = ref.watch(farmsProvider);
 
     final userName = authState.user?['name'] ?? 'Fermer';
     final userRegion = authState.user?['region']?['name'] ?? 'O\'zbekiston';
@@ -28,6 +29,28 @@ class HomeScreen extends ConsumerWidget {
     final fullRegionDisplay = userDistrict != null && userDistrict.toString().isNotEmpty
         ? '$userRegion, $userDistrict'
         : userRegion;
+
+    double latitude = 41.311081;
+    double longitude = 69.240562;
+    final farms = farmsState.value;
+    if (farms != null && farms.isNotEmpty) {
+      latitude = double.tryParse('${farms[0]['latitude']}') ?? latitude;
+      longitude = double.tryParse('${farms[0]['longitude']}') ?? longitude;
+    } else {
+      Map<String, List<double>> regionCoords = {
+        'Toshkent viloyati': [41.311081, 69.240562],
+        'Buxoro viloyati': [39.7747, 64.4286],
+        'Farg\'ona viloyati': [40.3844, 71.7844],
+        'Qoraqalpog\'iston Respublikasi': [42.4608, 59.6021],
+      };
+      List<double>? coords = regionCoords[userRegion];
+      if (coords != null) {
+        latitude = coords[0];
+        longitude = coords[1];
+      }
+    }
+    final coordsStr = '$latitude,$longitude';
+    final weatherState = ref.watch(weatherProvider(coordsStr));
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -80,7 +103,7 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Weather Widget
-              _buildWeatherCard(context, fullRegionDisplay),
+              _buildWeatherCard(context, ref, weatherState, fullRegionDisplay, coordsStr),
               const SizedBox(height: 20),
 
               // 2. Quick navigation grid
@@ -137,12 +160,18 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWeatherCard(BuildContext context, String region) {
+  Widget _buildWeatherCard(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<Map<String, dynamic>> weatherState,
+    String region,
+    String coordsStr,
+  ) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => _navigateTo(context, WeatherForecastScreen(region: region)),
+        onTap: () => _navigateTo(context, WeatherForecastScreen(region: region, coordsStr: coordsStr)),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
@@ -154,44 +183,93 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           padding: const EdgeInsets.all(20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Bugun Havo Iliq',
-                      style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '+26°C',
-                      style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Yog\'ingarchilik ehtimoli: 5% | $region • Batafsil...',
-                      style: const TextStyle(color: Colors.white60, fontSize: 11),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Column(
+          child: weatherState.when(
+            data: (data) {
+              final current = data['current'];
+              final temp = current['temperature_2m'];
+              final code = current['weather_code'];
+              final precip = current['precipitation'];
+              
+              final conditions = {
+                0: {'name': 'Quyoshli', 'icon': Icons.wb_sunny_rounded, 'color': Colors.orange},
+                1: {'name': 'Qisman bulutli', 'icon': Icons.wb_cloudy_rounded, 'color': Colors.blueGrey[200]},
+                2: {'name': 'Qisman bulutli', 'icon': Icons.wb_cloudy_rounded, 'color': Colors.blueGrey[200]},
+                3: {'name': 'Bulutli', 'icon': Icons.cloud_rounded, 'color': Colors.grey[300]},
+                45: {'name': 'Tumanli', 'icon': Icons.filter_drama_rounded, 'color': Colors.grey[200]},
+                48: {'name': 'Tumanli', 'icon': Icons.filter_drama_rounded, 'color': Colors.grey[200]},
+                95: {'name': 'Momaqaldiroq', 'icon': Icons.thunderstorm_rounded, 'color': Colors.purple[200]},
+                96: {'name': 'Momaqaldiroq', 'icon': Icons.thunderstorm_rounded, 'color': Colors.purple[200]},
+                99: {'name': 'Momaqaldiroq', 'icon': Icons.thunderstorm_rounded, 'color': Colors.purple[200]},
+              };
+              
+              final cond = conditions[code] ?? {'name': 'Yomg\'irli', 'icon': Icons.grain_rounded, 'color': Colors.blue[300]};
+              
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.wb_sunny_rounded, color: Colors.orange, size: 48),
-                  SizedBox(height: 4),
-                  Text(
-                    'Quyoshli',
-                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bugun Havo ${cond['name']}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '+${temp.toStringAsFixed(0)}°C',
+                          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Yog\'in miqdori: ${precip}mm | $region • Batafsil...',
+                          style: const TextStyle(color: Colors.white60, fontSize: 11),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    children: [
+                      Icon(cond['icon'] as IconData, color: cond['color'] as Color, size: 48),
+                      const SizedBox(height: 4),
+                      Text(
+                        cond['name'] as String,
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      )
+                    ],
                   )
                 ],
-              )
-            ],
+              );
+            },
+            error: (e, __) => Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Ob-havoni yuklab bo\'lmadi', style: TextStyle(color: Colors.white70)),
+                      SizedBox(height: 4),
+                      Text('Aloqa xatoligi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  onPressed: () => ref.refresh(weatherProvider(coordsStr)),
+                )
+              ],
+            ),
+            loading: () => const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              ),
+            ),
           ),
         ),
       ),

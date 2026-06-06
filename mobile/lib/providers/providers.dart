@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 
 // --- API Service Provider ---
@@ -221,4 +222,16 @@ class AlertsNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
 final alertsProvider = StateNotifierProvider<AlertsNotifier, AsyncValue<List<dynamic>>>((ref) {
   final api = ref.watch(apiServiceProvider);
   return AlertsNotifier(api);
+});
+
+// --- Weather Provider ---
+final weatherProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, coordsStr) async {
+  final parts = coordsStr.split(',');
+  final lat = double.parse(parts[0]);
+  final lng = double.parse(parts[1]);
+  final dio = Dio();
+  final response = await dio.get(
+    'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto',
+  );
+  return response.data;
 });

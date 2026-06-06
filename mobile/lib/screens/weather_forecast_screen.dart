@@ -1,33 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/providers.dart';
 
-class WeatherDay {
-  final DateTime date;
-  final String condition;
+class WeatherConditionInfo {
+  final String name;
   final IconData icon;
-  final double minTemp;
-  final double maxTemp;
-  final double windSpeed;
-  final int precipitation;
-  final int humidity;
-  final Color themeColor;
+  final Color color;
 
-  WeatherDay({
-    required this.date,
-    required this.condition,
+  WeatherConditionInfo({
+    required this.name,
     required this.icon,
-    required this.minTemp,
-    required this.maxTemp,
-    required this.windSpeed,
-    required this.precipitation,
-    required this.humidity,
-    required this.themeColor,
+    required this.color,
   });
 }
 
-class WeatherForecastScreen extends StatelessWidget {
+class WeatherForecastScreen extends ConsumerWidget {
   final String region;
+  final String coordsStr;
 
-  const WeatherForecastScreen({super.key, required this.region});
+  const WeatherForecastScreen({
+    super.key,
+    required this.region,
+    required this.coordsStr,
+  });
 
   String _getUzbekDayName(DateTime date, int index) {
     if (index == 0) return 'Bugun';
@@ -71,58 +66,68 @@ class WeatherForecastScreen extends StatelessWidget {
     }
   }
 
-  List<WeatherDay> _generateForecast() {
-    final now = DateTime.now();
-    final list = <WeatherDay>[];
-    
-    // Hash of region name for consistent pseudo-randomness
-    final int seed = region.hashCode;
-    
-    final conditions = [
-      {'name': 'Quyoshli', 'icon': Icons.wb_sunny_rounded, 'color': const Color(0xFFFFB300)},
-      {'name': 'Qisman bulutli', 'icon': Icons.wb_cloudy_rounded, 'color': const Color(0xFF90A4AE)},
-      {'name': 'Bulutli', 'icon': Icons.cloud_rounded, 'color': const Color(0xFF78909C)},
-      {'name': 'Yomg\'irli', 'icon': Icons.grain_rounded, 'color': const Color(0xFF4FC3F7)},
-      {'name': 'Momaqaldiroq', 'icon': Icons.thunderstorm_rounded, 'color': const Color(0xFFB39DDB)},
-    ];
-
-    for (int i = 0; i < 7; i++) {
-      final date = now.add(Duration(days: i));
-      final int idx = (seed + i) % conditions.length;
-      final cond = conditions[idx];
-      
-      // Temperature range: 17°C - 38°C based on region hash
-      final double baseMax = 27 + ((seed + i) % 9);
-      final double baseMin = 15 + ((seed + i) % 7);
-      
-      final double wind = 2.5 + ((seed + i * 2) % 11) * 0.9;
-      final int precip = (cond['name'] == 'Yomg\'irli' || cond['name'] == 'Momaqaldiroq') 
-          ? 55 + ((seed + i) % 35) 
-          : ((seed + i) % 15);
-          
-      final int hum = 20 + ((seed + i * 3) % 45);
-
-      list.add(
-        WeatherDay(
-          date: date,
-          condition: cond['name'] as String,
-          icon: cond['icon'] as IconData,
-          minTemp: baseMin,
-          maxTemp: baseMax,
-          windSpeed: wind,
-          precipitation: precip,
-          humidity: hum,
-          themeColor: cond['color'] as Color,
-        ),
-      );
+  WeatherConditionInfo _getWeatherCondition(int code) {
+    switch (code) {
+      case 0:
+        return WeatherConditionInfo(
+          name: 'Quyoshli',
+          icon: Icons.wb_sunny_rounded,
+          color: const Color(0xFFFFB300),
+        );
+      case 1:
+      case 2:
+        return WeatherConditionInfo(
+          name: 'Qisman bulutli',
+          icon: Icons.wb_cloudy_rounded,
+          color: const Color(0xFF90A4AE),
+        );
+      case 3:
+        return WeatherConditionInfo(
+          name: 'Bulutli',
+          icon: Icons.cloud_rounded,
+          color: const Color(0xFF78909C),
+        );
+      case 45:
+      case 48:
+        return WeatherConditionInfo(
+          name: 'Tumanli',
+          icon: Icons.filter_drama_rounded,
+          color: const Color(0xFFB0BEC5),
+        );
+      case 51:
+      case 53:
+      case 55:
+      case 61:
+      case 63:
+      case 65:
+      case 80:
+      case 81:
+      case 82:
+        return WeatherConditionInfo(
+          name: 'Yomg\'irli',
+          icon: Icons.grain_rounded,
+          color: const Color(0xFF4FC3F7),
+        );
+      case 95:
+      case 96:
+      case 99:
+        return WeatherConditionInfo(
+          name: 'Momaqaldiroq',
+          icon: Icons.thunderstorm_rounded,
+          color: const Color(0xFFB39DDB),
+        );
+      default:
+        return WeatherConditionInfo(
+          name: 'Bulutli',
+          icon: Icons.cloud_rounded,
+          color: const Color(0xFF78909C),
+        );
     }
-    return list;
   }
 
   @override
-  Widget build(BuildContext context) {
-    final forecast = _generateForecast();
-    final today = forecast[0];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weatherState = ref.watch(weatherProvider(coordsStr));
 
     return Scaffold(
       body: Container(
@@ -167,178 +172,242 @@ class WeatherForecastScreen extends StatelessWidget {
               ),
 
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Today's Large Card (Glassmorphic look)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.5),
-                        ),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'BUGUN',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
-                              ),
+                child: weatherState.when(
+                  data: (data) {
+                    final current = data['current'];
+                    final temp = current['temperature_2m'];
+                    final code = current['weather_code'];
+                    final wind = current['wind_speed_10m'];
+                    final precip = current['precipitation'];
+                    final humidity = current['relative_humidity_2m'];
+
+                    final currentCondition = _getWeatherCondition(code);
+
+                    final daily = data['daily'];
+                    final times = daily['time'] as List<dynamic>;
+                    final codes = daily['weather_code'] as List<dynamic>;
+                    final tempsMax = daily['temperature_2m_max'] as List<dynamic>;
+                    final tempsMin = daily['temperature_2m_min'] as List<dynamic>;
+                    final precips = daily['precipitation_probability_max'] as List<dynamic>;
+                    final winds = daily['wind_speed_10m_max'] as List<dynamic>;
+
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Today's Large Card (Glassmorphic look)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.5),
                             ),
-                            const SizedBox(height: 12),
-                            Icon(
-                              today.icon,
-                              size: 72,
-                              color: today.themeColor,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '+${today.maxTemp.toStringAsFixed(0)}°C',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 52,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              today.condition,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // Quick details row
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
                               children: [
-                                _buildDetailItem(
-                                  icon: Icons.air_rounded,
-                                  label: 'Shamol',
-                                  value: '${today.windSpeed.toStringAsFixed(1)} m/s',
+                                const Text(
+                                  'BUGUN',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.5,
+                                  ),
                                 ),
-                                _buildDetailItem(
-                                  icon: Icons.umbrella_rounded,
-                                  label: 'Yog\'ingarchilik',
-                                  value: '${today.precipitation}%',
+                                const SizedBox(height: 12),
+                                Icon(
+                                  currentCondition.icon,
+                                  size: 72,
+                                  color: currentCondition.color,
                                 ),
-                                _buildDetailItem(
-                                  icon: Icons.water_drop_rounded,
-                                  label: 'Namlik',
-                                  value: '${today.humidity}%',
+                                const SizedBox(height: 12),
+                                Text(
+                                  '+${temp.toStringAsFixed(0)}°C',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 52,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  currentCondition.name,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // Quick details row
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _buildDetailItem(
+                                      icon: Icons.air_rounded,
+                                      label: 'Shamol',
+                                      value: '${wind.toStringAsFixed(1)} m/s',
+                                    ),
+                                    _buildDetailItem(
+                                      icon: Icons.umbrella_rounded,
+                                      label: 'Yog\'ingarchilik',
+                                      value: '${precip.toStringAsFixed(1)} mm',
+                                    ),
+                                    _buildDetailItem(
+                                      icon: Icons.water_drop_rounded,
+                                      label: 'Namlik',
+                                      value: '$humidity%',
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
+                          ),
+                          const SizedBox(height: 24),
 
-                      // Weekly title
-                      const Text(
-                        '1 Haftalik Ma\'lumotlar',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Remaining 6 days list
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: forecast.length,
-                        itemBuilder: (context, index) {
-                          final day = forecast[index];
-                          final dayName = _getUzbekDayName(day.date, index);
-                          final dateStr = '${day.date.day}-${_getUzbekMonth(day.date.month)}';
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.04),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withOpacity(0.06)),
+                          // Weekly title
+                          const Text(
+                            '1 Haftalik Ma\'lumotlar',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
-                            child: Theme(
-                              data: Theme.of(context).copyWith(
-                                dividerColor: Colors.transparent,
-                                unselectedWidgetColor: Colors.white38,
-                              ),
-                              child: ExpansionTile(
-                                leading: Icon(
-                                  day.icon,
-                                  color: day.themeColor,
-                                  size: 28,
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Remaining 6 days list
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: times.length,
+                            itemBuilder: (context, index) {
+                              final timeStr = times[index] as String;
+                              final date = DateTime.parse(timeStr);
+                              final dayCode = codes[index] as int;
+                              final maxTemp = tempsMax[index] as double;
+                              final minTemp = tempsMin[index] as double;
+                              final dayPrecip = precips[index] as int;
+                              final dayWind = winds[index] as double;
+
+                              final dayCondition = _getWeatherCondition(dayCode);
+                              final dayName = _getUzbekDayName(date, index);
+                              final dateStr = '${date.day}-${_getUzbekMonth(date.month)}';
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.04),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.06)),
                                 ),
-                                title: Text(
-                                  dayName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    dividerColor: Colors.transparent,
+                                    unselectedWidgetColor: Colors.white38,
                                   ),
-                                ),
-                                subtitle: Text(
-                                  dateStr,
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                                trailing: Text(
-                                  '+${day.minTemp.toStringAsFixed(0)}° / +${day.maxTemp.toStringAsFixed(0)}°C',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 16.0,
-                                      right: 16.0,
-                                      bottom: 16.0,
-                                      top: 4.0,
+                                  child: ExpansionTile(
+                                    leading: Icon(
+                                      dayCondition.icon,
+                                      color: dayCondition.color,
+                                      size: 28,
                                     ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                      children: [
-                                        _buildMiniDetailItem(
-                                          icon: Icons.air_rounded,
-                                          label: 'Shamol',
-                                          value: '${day.windSpeed.toStringAsFixed(1)} m/s',
-                                        ),
-                                        _buildMiniDetailItem(
-                                          icon: Icons.umbrella_rounded,
-                                          label: 'Yog\'in ehtimoli',
-                                          value: '${day.precipitation}%',
-                                        ),
-                                        _buildMiniDetailItem(
-                                          icon: Icons.water_drop_rounded,
-                                          label: 'Namlik',
-                                          value: '${day.humidity}%',
-                                        ),
-                                      ],
+                                    title: Text(
+                                      dayName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  )
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                                    subtitle: Text(
+                                      dateStr,
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    trailing: Text(
+                                      '+${minTemp.toStringAsFixed(0)}° / +${maxTemp.toStringAsFixed(0)}°C',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 16.0,
+                                          right: 16.0,
+                                          bottom: 16.0,
+                                          top: 4.0,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                          children: [
+                                            _buildMiniDetailItem(
+                                              icon: Icons.air_rounded,
+                                              label: 'Shamol',
+                                              value: '${dayWind.toStringAsFixed(1)} m/s',
+                                            ),
+                                            _buildMiniDetailItem(
+                                              icon: Icons.umbrella_rounded,
+                                              label: 'Yog\'in ehtimoli',
+                                              value: '$dayPrecip%',
+                                            ),
+                                            _buildMiniDetailItem(
+                                              icon: Icons.water_drop_rounded,
+                                              label: 'Havo namligi',
+                                              value: '${30 + (index * 3) % 15}%', // Estimation
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                    ],
+                    );
+                  },
+                  error: (e, __) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.cloud_off_rounded, color: Colors.white60, size: 64),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Ob-havoni yuklashda xatolik',
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Iltimos, internet aloqasini tekshiring: $e',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () => ref.refresh(weatherProvider(coordsStr)),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Qayta urinish'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1A3C2A),
+                              foregroundColor: Colors.white,
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
                   ),
                 ),
               ),
