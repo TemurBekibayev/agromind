@@ -235,3 +235,46 @@ final weatherProvider = FutureProvider.family<Map<String, dynamic>, String>((ref
   );
   return response.data;
 });
+
+// --- Reverse Geocode Provider ---
+final geocodeProvider = FutureProvider.family<Map<String, String>, String>((ref, coordsStr) async {
+  final parts = coordsStr.split(',');
+  if (parts.length != 2) return {'region': '', 'district': ''};
+  final lat = parts[0];
+  final lng = parts[1];
+  try {
+    final dio = Dio();
+    final res = await dio.get(
+      'https://nominatim.openstreetmap.org/reverse',
+      queryParameters: {
+        'lat': lat,
+        'lon': lng,
+        'format': 'json',
+        'accept-language': 'uz',
+      },
+      options: Options(
+        headers: {
+          'User-Agent': 'AgromindApp/1.0',
+        },
+      ),
+    );
+    if (res.statusCode == 200 && res.data != null) {
+      final address = res.data['address'];
+      if (address != null) {
+        final state = address['state']?.toString() ?? '';
+        final county = address['county']?.toString() ?? 
+                       address['district']?.toString() ?? 
+                       address['city_district']?.toString() ?? 
+                       address['suburb']?.toString() ?? 
+                       address['town']?.toString() ?? 
+                       address['city']?.toString() ?? 
+                       address['village']?.toString() ?? '';
+        return {
+          'region': state,
+          'district': county,
+        };
+      }
+    }
+  } catch (_) {}
+  return {'region': '', 'district': ''};
+});

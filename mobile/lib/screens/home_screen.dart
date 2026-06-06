@@ -33,36 +33,9 @@ class HomeScreen extends ConsumerWidget {
     double latitude = 41.311081;
     double longitude = 69.240562;
     final farms = farmsState.value;
-    String weatherLocationName = fullRegionDisplay;
-    String headerLocation = fullRegionDisplay;
     if (farms != null && farms.isNotEmpty) {
       latitude = double.tryParse('${farms[0]['latitude']}') ?? latitude;
       longitude = double.tryParse('${farms[0]['longitude']}') ?? longitude;
-      final farmName = farms[0]['name'] ?? 'Mening maydonim';
-      
-      // Filter out technical placeholder location values like "GIS Chegara..."
-      final String rawLoc = (farms[0]['location'] ?? '').toString();
-      final String farmLoc = (rawLoc.toLowerCase().contains('gis chegara') || rawLoc.toLowerCase().contains('chegara maydoni'))
-          ? ''
-          : rawLoc;
-      
-      final farmRegion = (farms[0]['region']?['name'] ?? '').toString();
-      final farmDistrict = (farms[0]['district'] ?? '').toString();
-
-      // Determine district/location detail
-      final detailLoc = farmDistrict.isNotEmpty 
-          ? farmDistrict 
-          : (farmLoc.isNotEmpty ? farmLoc : '');
-
-      if (farmRegion.isNotEmpty) {
-        headerLocation = detailLoc.isNotEmpty ? '$farmRegion, $detailLoc' : farmRegion;
-        weatherLocationName = detailLoc.isNotEmpty 
-            ? '$farmName ($farmRegion, $detailLoc)' 
-            : '$farmName ($farmRegion)';
-      } else {
-        headerLocation = detailLoc.isNotEmpty ? detailLoc : fullRegionDisplay;
-        weatherLocationName = detailLoc.isNotEmpty ? '$farmName ($detailLoc)' : farmName;
-      }
     } else {
       Map<String, List<double>> regionCoords = {
         'Toshkent viloyati': [41.311081, 69.240562],
@@ -78,6 +51,45 @@ class HomeScreen extends ConsumerWidget {
     }
     final coordsStr = '$latitude,$longitude';
     final weatherState = ref.watch(weatherProvider(coordsStr));
+    final geocodeState = ref.watch(geocodeProvider(coordsStr));
+
+    String weatherLocationName = fullRegionDisplay;
+    String headerLocation = fullRegionDisplay;
+
+    if (farms != null && farms.isNotEmpty) {
+      final farmName = farms[0]['name'] ?? 'Mening maydonim';
+      
+      // Get the geocoded region and district if loaded successfully
+      final geocodedData = geocodeState.value;
+      final farmRegion = geocodedData != null && geocodedData['region']!.isNotEmpty
+          ? geocodedData['region']!
+          : (farms[0]['region']?['name'] ?? '').toString();
+      
+      final farmDistrict = geocodedData != null && geocodedData['district']!.isNotEmpty
+          ? geocodedData['district']!
+          : (farms[0]['district'] ?? '').toString();
+
+      // Filter out technical placeholder location values like "GIS Chegara..."
+      final String rawLoc = (farms[0]['location'] ?? '').toString();
+      final String farmLoc = (rawLoc.toLowerCase().contains('gis chegara') || rawLoc.toLowerCase().contains('chegara maydoni'))
+          ? ''
+          : rawLoc;
+
+      // Determine district/location detail
+      final detailLoc = farmDistrict.isNotEmpty 
+          ? farmDistrict 
+          : (farmLoc.isNotEmpty ? farmLoc : '');
+
+      if (farmRegion.isNotEmpty) {
+        headerLocation = detailLoc.isNotEmpty ? '$farmRegion, $detailLoc' : farmRegion;
+        weatherLocationName = detailLoc.isNotEmpty 
+            ? '$farmName ($farmRegion, $detailLoc)' 
+            : '$farmName ($farmRegion)';
+      } else {
+        headerLocation = detailLoc.isNotEmpty ? detailLoc : fullRegionDisplay;
+        weatherLocationName = detailLoc.isNotEmpty ? '$farmName ($detailLoc)' : farmName;
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
