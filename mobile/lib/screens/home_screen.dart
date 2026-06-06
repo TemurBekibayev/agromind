@@ -33,9 +33,13 @@ class HomeScreen extends ConsumerWidget {
     double latitude = 41.311081;
     double longitude = 69.240562;
     final farms = farmsState.value;
+    String weatherLocationName = fullRegionDisplay;
     if (farms != null && farms.isNotEmpty) {
       latitude = double.tryParse('${farms[0]['latitude']}') ?? latitude;
       longitude = double.tryParse('${farms[0]['longitude']}') ?? longitude;
+      final farmName = farms[0]['name'] ?? 'Mening maydonim';
+      final farmLoc = farms[0]['location'] ?? '';
+      weatherLocationName = farmLoc.toString().isNotEmpty ? '$farmName ($farmLoc)' : farmName;
     } else {
       Map<String, List<double>> regionCoords = {
         'Toshkent viloyati': [41.311081, 69.240562],
@@ -103,7 +107,7 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Weather Widget
-              _buildWeatherCard(context, ref, weatherState, fullRegionDisplay, coordsStr),
+              _buildWeatherCard(context, ref, weatherState, weatherLocationName, coordsStr),
               const SizedBox(height: 20),
 
               // 2. Quick navigation grid
