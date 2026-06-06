@@ -62,6 +62,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final userName = user?['name'] ?? 'Fermer';
     final userPhone = user?['phone'] ?? '';
     final userRegion = user?['region']?['name'] ?? 'Yuklanmoqda...';
+    final userDistrict = user?['district'];
+    final fullRegionDisplay = userDistrict != null && userDistrict.toString().isNotEmpty
+        ? '$userRegion, $userDistrict'
+        : userRegion;
 
     return Scaffold(
       appBar: AppBar(
@@ -114,10 +118,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 10),
             _buildInfoTile(Icons.phone_rounded, 'Telefon raqam', userPhone),
-            _buildInfoTile(Icons.location_on_rounded, 'Hudud', userRegion),
+            _buildInfoTile(Icons.location_on_rounded, 'Hudud', fullRegionDisplay),
             const SizedBox(height: 30),
-
-            // Developer Configurations
             const Text(
               'Tizimni Sozlash (Ishlab chiquvchilar uchun)',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),

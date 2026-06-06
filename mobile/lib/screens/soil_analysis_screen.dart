@@ -229,12 +229,12 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
   void _showAddAnalysisSheet() {
     final formKey = GlobalKey<FormState>();
     final cropController = TextEditingController(text: 'G\'o\'za (Paxta)');
-    double ph = 6.5;
-    double fertility = 55.0;
-    double moisture = 60.0;
-    double temperature = 25.0;
-    double sunlight = 12000.0;
-    double humidity = 45.0;
+    final phController = TextEditingController(text: '7.0');
+    final fertilityController = TextEditingController(text: '0');
+    final moistureController = TextEditingController(text: '0');
+    final tempController = TextEditingController(text: '27.3');
+    final sunlightController = TextEditingController(text: '387');
+    final humidityController = TextEditingController(text: '29');
 
     // Load geofences for the selected farm
     final farmsState = ref.read(farmsProvider);
@@ -252,6 +252,111 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
     int? selectedGeofenceId;
     if (geofences.isNotEmpty) {
       selectedGeofenceId = geofences[0]['id'];
+    }
+
+    double convertEcToFertilityPercentage(double ec) {
+      if (ec <= 0) return 0.0;
+      if (ec >= 2000) return 100.0;
+      if (ec < 400) {
+        return (ec / 400.0) * 30.0;
+      } else if (ec < 1200) {
+        return 30.0 + ((ec - 400.0) / 800.0) * 50.0;
+      } else {
+        return 80.0 + ((ec - 1200.0) / 800.0) * 20.0;
+      }
+    }
+
+    Widget buildPhysicalButton(String text) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey[400]!, width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 1,
+              offset: Offset(0, 1.5),
+            )
+          ],
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 9,
+          ),
+        ),
+      );
+    }
+
+    Widget buildLcdRow({
+      required String label,
+      required TextEditingController controller,
+      String? unit,
+      String hint = '0',
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF0F3A0F),
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 80,
+                  height: 24,
+                  child: TextFormField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Color(0xFF0F3A0F),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+                    decoration: InputDecoration(
+                      hintText: hint,
+                      hintStyle: TextStyle(color: const Color(0xFF0F3A0F).withOpacity(0.3)),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                if (unit != null) ...[
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 45,
+                    child: Text(
+                      unit,
+                      style: const TextStyle(
+                        color: Color(0xFF0F3A0F),
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ] else
+                  const SizedBox(width: 49),
+              ],
+            ),
+          ],
+        ),
+      );
     }
 
     showModalBottomSheet(
@@ -277,11 +382,20 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Yangi Tuproq Tahlili Qo\'shish',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Yangi Tahlil Qo\'shish',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 10),
 
                       // Geofence (Yer maydoni) Selector
                       if (geofences.isNotEmpty) ...[
@@ -290,6 +404,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                           decoration: const InputDecoration(
                             labelText: 'Tahlil qilinadigan yer maydoni',
                             prefixIcon: Icon(Icons.landscape_rounded),
+                            border: OutlineInputBorder(),
                           ),
                           items: geofences.map<DropdownMenuItem<int>>((g) {
                             return DropdownMenuItem<int>(
@@ -335,59 +450,224 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Yetishtiriladigan ekin turi',
                           prefixIcon: Icon(Icons.eco_rounded),
+                          border: OutlineInputBorder(),
                         ),
                         validator: (v) => v == null || v.isEmpty ? 'Ekin turini kiriting' : null,
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 20),
 
-                      // pH Slider
-                      Text('Tuproq pH darajasi: ${ph.toStringAsFixed(1)}'),
-                      Slider(
-                        value: ph,
-                        min: 0,
-                        max: 14,
-                        divisions: 140,
-                        activeColor: const Color(0xFF1A3C2A),
-                        onChanged: (val) => setModalState(() => ph = val),
+                      // DEVICE MOCKUP CONTAINER
+                      const Text(
+                        'Detektor ko\'rsatkichlarini kiriting:',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54),
                       ),
-
-                      // Fertility Slider
-                      Text('Unumdorlik darajasi (N,P,K): ${fertility.toStringAsFixed(0)}%'),
-                      Slider(
-                        value: fertility,
-                        min: 0,
-                        max: 100,
-                        divisions: 100,
-                        activeColor: const Color(0xFF1A3C2A),
-                        onChanged: (val) => setModalState(() => fertility = val),
-                      ),
-
-                      // Moisture Slider
-                      Text('Tuproq namligi: ${moisture.toStringAsFixed(0)}%'),
-                      Slider(
-                        value: moisture,
-                        min: 0,
-                        max: 100,
-                        divisions: 100,
-                        activeColor: const Color(0xFF1A3C2A),
-                        onChanged: (val) => setModalState(() => moisture = val),
-                      ),
-
-                      // Temperature Input
-                      TextFormField(
-                        initialValue: '25.0',
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Harorat (°C)',
-                          prefixIcon: Icon(Icons.thermostat_rounded),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2E2E2E), // Matte black plastic body
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF1F1F1F), width: 4),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            )
+                          ],
                         ),
-                        onChanged: (val) => temperature = double.tryParse(val) ?? 25.0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Column(
+                          children: [
+                            // 1. Purple IR lens / sensor block at top center
+                            Container(
+                              width: 44,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFB030B0), // Purple lens
+                                borderRadius: BorderRadius.vertical(bottom: Radius.circular(6)),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // 2. Green LCD Screen
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4CFF4C), // Light green LCD backlight
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.black, width: 2),
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Top row with battery status
+                                  const Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      SizedBox(),
+                                      Icon(Icons.battery_4_bar_rounded, size: 18, color: Color(0xFF0F3A0F)),
+                                    ],
+                                  ),
+                                  
+                                  // — Soil —
+                                  const Text(
+                                    '—— Soil ——',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF0F3A0F),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      fontStyle: FontStyle.italic,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  buildLcdRow(label: 'Fertility', controller: fertilityController, unit: 'µs/cm', hint: '0'),
+                                  buildLcdRow(label: 'Moisture', controller: moistureController, unit: '%', hint: '0'),
+                                  buildLcdRow(label: 'PH', controller: phController, unit: null, hint: '7.0'),
+                                  buildLcdRow(label: 'Temp', controller: tempController, unit: '°C', hint: '25.0'),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // — Environment —
+                                  const Text(
+                                    '—— Environment ——',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF0F3A0F),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      fontStyle: FontStyle.italic,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  buildLcdRow(label: 'Sunlight', controller: sunlightController, unit: 'LUX', hint: '12000'),
+                                  buildLcdRow(label: 'Humidity', controller: humidityController, unit: '%', hint: '45'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // 3. Physical Buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                buildPhysicalButton('ON/OFF'),
+                                buildPhysicalButton('Measure'),
+                                buildPhysicalButton('°C/°F'),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // 4. Stencil device label
+                            const Text(
+                              'INTELLIGENT SOIL DETECTOR',
+                              style: TextStyle(
+                                color: Colors.white60,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Tooltip explaining conversions
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          border: Border.all(color: Colors.blue[150]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline_rounded, color: Colors.blue, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Qurilma ekranidagi Fertility ko\'rsatkichini µs/cm birligida kiriting. Tizim uni avtomatik tarzda foizga o\'girib saqlaydi.',
+                                style: TextStyle(fontSize: 11, color: Colors.black87),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 20),
 
                       ElevatedButton(
                         onPressed: () async {
                           if (!formKey.currentState!.validate()) return;
+
+                          // Parse inputs
+                          final enteredPh = double.tryParse(phController.text.trim());
+                          final enteredFertility = double.tryParse(fertilityController.text.trim());
+                          final enteredMoisture = double.tryParse(moistureController.text.trim());
+                          final enteredTemp = double.tryParse(tempController.text.trim());
+                          final enteredSunlight = double.tryParse(sunlightController.text.trim());
+                          final enteredHumidity = double.tryParse(humidityController.text.trim());
+
+                          if (enteredPh == null || enteredPh < 0 || enteredPh > 14) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('PH qiymati 0 va 14 oralig\'ida bo\'lishi kerak.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (enteredFertility == null || enteredFertility < 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Fertility qiymati noldan kam bo\'lmasligi kerak.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (enteredMoisture == null || enteredMoisture < 0 || enteredMoisture > 100) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Namlik (Moisture) foizi 0% va 100% oralig\'ida bo\'lishi kerak.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (enteredTemp == null || enteredTemp < -20 || enteredTemp > 60) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Harorat (Temp) -20 va 60 daraja oralig\'ida bo\'lishi kerak.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (enteredSunlight == null || enteredSunlight < 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Quyosh nuri (Sunlight) qiymatini kiriting.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (enteredHumidity == null || enteredHumidity < 0 || enteredHumidity > 100) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Havo namligi (Humidity) foizi 0% va 100% oralig\'ida bo\'lishi kerak.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          // Convert fertility to percentage
+                          final convertedFertility = convertEcToFertilityPercentage(enteredFertility);
                           
                           final api = ref.read(apiServiceProvider);
                           try {
@@ -395,19 +675,22 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                               farmId: _selectedFarmId!,
                               geofenceId: selectedGeofenceId,
                               targetCrop: cropController.text.trim(),
-                              ph: ph,
-                              fertility: fertility,
-                              moisture: moisture,
-                              temperature: temperature,
-                              sunlight: sunlight,
-                              humidity: humidity,
+                              ph: enteredPh,
+                              fertility: convertedFertility,
+                              moisture: enteredMoisture,
+                              temperature: enteredTemp,
+                              sunlight: enteredSunlight,
+                              humidity: enteredHumidity,
                               analysisDate: DateTime.now().toIso8601String(),
                             );
 
                             if (res.data['status'] == 'success' && context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Yangi tahlil yaratildi. AI tavsiyasini so\'rashingiz mumkin.')),
+                                const SnackBar(
+                                  content: Text('Yangi tahlil yaratildi. AI tavsiyasini so\'rashingiz mumkin.'),
+                                  backgroundColor: Colors.green,
+                                ),
                               );
                               _fetchAnalyses(_selectedFarmId!);
                             }

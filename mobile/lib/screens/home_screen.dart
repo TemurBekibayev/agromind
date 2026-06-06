@@ -4,6 +4,7 @@ import '../providers/providers.dart';
 import 'gps_map_screen.dart';
 import 'soil_analysis_screen.dart';
 import 'profile_screen.dart';
+import 'weather_forecast_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,10 @@ class HomeScreen extends ConsumerWidget {
 
     final userName = authState.user?['name'] ?? 'Fermer';
     final userRegion = authState.user?['region']?['name'] ?? 'O\'zbekiston';
+    final userDistrict = authState.user?['district'];
+    final fullRegionDisplay = userDistrict != null && userDistrict.toString().isNotEmpty
+        ? '$userRegion, $userDistrict'
+        : userRegion;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -42,7 +47,7 @@ class HomeScreen extends ConsumerWidget {
                 const Icon(Icons.location_on_rounded, size: 12, color: Colors.orange),
                 const SizedBox(width: 4),
                 Text(
-                  userRegion,
+                  fullRegionDisplay,
                   style: const TextStyle(fontSize: 12, color: Colors.white70),
                 ),
               ],
@@ -75,7 +80,7 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Weather Widget
-              _buildWeatherCard(userRegion),
+              _buildWeatherCard(context, fullRegionDisplay),
               const SizedBox(height: 20),
 
               // 2. Quick navigation grid
@@ -132,58 +137,62 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWeatherCard(String region) {
+  Widget _buildWeatherCard(BuildContext context, String region) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2A5C43), Color(0xFF1A3C2A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Bugun Havo Iliq',
-                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '+26°C',
-                    style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Yog\'ingarchilik ehtimoli: 5% | $region',
-                    style: const TextStyle(color: Colors.white60, fontSize: 11),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+      child: InkWell(
+        onTap: () => _navigateTo(context, WeatherForecastScreen(region: region)),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2A5C43), Color(0xFF1A3C2A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(width: 12),
-            const Column(
-              children: [
-                Icon(Icons.wb_sunny_rounded, color: Colors.orange, size: 48),
-                SizedBox(height: 4),
-                Text(
-                  'Quyoshli',
-                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                )
-              ],
-            )
-          ],
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Bugun Havo Iliq',
+                      style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '+26°C',
+                      style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Yog\'ingarchilik ehtimoli: 5% | $region • Batafsil...',
+                      style: const TextStyle(color: Colors.white60, fontSize: 11),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Column(
+                children: [
+                  Icon(Icons.wb_sunny_rounded, color: Colors.orange, size: 48),
+                  SizedBox(height: 4),
+                  Text(
+                    'Quyoshli',
+                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  )
+                ],
+              )
+            ],
+          ),
         ),
       ),
     );
