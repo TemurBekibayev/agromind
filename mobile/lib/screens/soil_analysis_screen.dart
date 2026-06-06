@@ -228,13 +228,13 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
 
   void _showAddAnalysisSheet() {
     final formKey = GlobalKey<FormState>();
-    final cropController = TextEditingController(text: 'G\'o\'za (Paxta)');
-    final phController = TextEditingController(text: '7.0');
-    final fertilityController = TextEditingController(text: '0');
-    final moistureController = TextEditingController(text: '0');
-    final tempController = TextEditingController(text: '27.3');
-    final sunlightController = TextEditingController(text: '387');
-    final humidityController = TextEditingController(text: '29');
+    final cropController = TextEditingController();
+    final phController = TextEditingController();
+    final fertilityController = TextEditingController();
+    final moistureController = TextEditingController();
+    final tempController = TextEditingController();
+    final sunlightController = TextEditingController();
+    final humidityController = TextEditingController();
 
     // Load geofences for the selected farm
     final farmsState = ref.read(farmsProvider);
@@ -266,31 +266,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
       }
     }
 
-    Widget buildPhysicalButton(String text) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.grey[400]!, width: 1.5),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 1,
-              offset: Offset(0, 1.5),
-            )
-          ],
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 9,
-          ),
-        ),
-      );
-    }
+
 
     Widget buildLcdRow({
       required String label,
@@ -447,10 +423,46 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                       // Crop Input
                       TextFormField(
                         controller: cropController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Yetishtiriladigan ekin turi',
-                          prefixIcon: Icon(Icons.eco_rounded),
-                          border: OutlineInputBorder(),
+                          hintText: 'Masalan: G\'o\'za (Paxta)',
+                          prefixIcon: const Icon(Icons.eco_rounded),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: PopupMenuButton<String>(
+                            icon: const Icon(Icons.arrow_drop_down_rounded, size: 28),
+                            onSelected: (String value) {
+                              cropController.text = value;
+                            },
+                            itemBuilder: (BuildContext context) {
+                              return <String>[
+                                'G\'o\'za (Paxta)',
+                                'Bug\'doy',
+                                'Arpa',
+                                'Makkajo\'xori',
+                                'Sholi',
+                                'Kartoshka',
+                                'Sabzi',
+                                'Piyoz',
+                                'Pomidor',
+                                'Bodring',
+                                'Qovun',
+                                'Tarvuz',
+                                'Bedavor',
+                                'Soya',
+                                'Kunjut',
+                                'Kungaboqar',
+                                'Olma',
+                                'Uzum',
+                                'O\'rik',
+                                'Shaftoli'
+                              ].map<PopupMenuItem<String>>((String value) {
+                                return PopupMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList();
+                            },
+                          ),
                         ),
                         validator: (v) => v == null || v.isEmpty ? 'Ekin turini kiriting' : null,
                       ),
@@ -548,17 +560,6 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-
-                            // 3. Physical Buttons
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                buildPhysicalButton('ON/OFF'),
-                                buildPhysicalButton('Measure'),
-                                buildPhysicalButton('°C/°F'),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
 
                             // 4. Stencil device label
                             const Text(
