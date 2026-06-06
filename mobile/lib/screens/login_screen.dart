@@ -13,9 +13,32 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController(text: '998901111111');
-  final _passwordController = TextEditingController(text: 'secret123');
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final remember = prefs.getBool('remember_me') ?? false;
+    setState(() {
+      _rememberMe = remember;
+      if (remember) {
+        _phoneController.text = prefs.getString('saved_phone') ?? '';
+        _passwordController.text = prefs.getString('saved_password') ?? '';
+      } else {
+        // Fallback to demo credentials
+        _phoneController.text = '998901111111';
+        _passwordController.text = 'secret123';
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -27,12 +50,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authProvider.notifier).login(
-          _phoneController.text.trim(),
-          _passwordController.text,
-        );
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+
+    final success = await ref.read(authProvider.notifier).login(phone, password);
 
     if (success && mounted) {
+      // Save or clear credentials based on "Remember Me" checkbox
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('remember_me', _rememberMe);
+      if (_rememberMe) {
+        await prefs.setString('saved_phone', phone);
+        await prefs.setString('saved_password', password);
+      } else {
+        await prefs.remove('saved_phone');
+        await prefs.remove('saved_password');
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Xush kelibsiz! AgroMind tizimiga kirildi.'),
@@ -289,7 +323,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 12),
+
+                  // Remember Me Checkbox
+                  Row(
+                    children: [
+                      SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: Checkbox(
+                          value: _rememberMe,
+                          activeColor: const Color(0xFF1A3C2A),
+                          onChanged: (value) {
+                            setState(() {
+                              _rememberMe = value ?? false;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Eslab qolish',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF1E293B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
                   // Submit Button
                   ElevatedButton(
