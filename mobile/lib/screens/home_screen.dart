@@ -34,12 +34,23 @@ class HomeScreen extends ConsumerWidget {
     double longitude = 69.240562;
     final farms = farmsState.value;
     String weatherLocationName = fullRegionDisplay;
+    String headerLocation = fullRegionDisplay;
     if (farms != null && farms.isNotEmpty) {
       latitude = double.tryParse('${farms[0]['latitude']}') ?? latitude;
       longitude = double.tryParse('${farms[0]['longitude']}') ?? longitude;
       final farmName = farms[0]['name'] ?? 'Mening maydonim';
       final farmLoc = farms[0]['location'] ?? '';
-      weatherLocationName = farmLoc.toString().isNotEmpty ? '$farmName ($farmLoc)' : farmName;
+      final farmRegion = farms[0]['region']?['name'] ?? '';
+
+      if (farmRegion.toString().isNotEmpty) {
+        headerLocation = farmLoc.toString().isNotEmpty ? '$farmRegion, $farmLoc' : farmRegion.toString();
+        weatherLocationName = farmLoc.toString().isNotEmpty 
+            ? '$farmName ($farmRegion, $farmLoc)' 
+            : '$farmName ($farmRegion)';
+      } else {
+        headerLocation = farmLoc.toString().isNotEmpty ? farmLoc.toString() : fullRegionDisplay;
+        weatherLocationName = farmLoc.toString().isNotEmpty ? '$farmName ($farmLoc)' : farmName;
+      }
     } else {
       Map<String, List<double>> regionCoords = {
         'Toshkent viloyati': [41.311081, 69.240562],
@@ -74,7 +85,7 @@ class HomeScreen extends ConsumerWidget {
                 const Icon(Icons.location_on_rounded, size: 12, color: Colors.orange),
                 const SizedBox(width: 4),
                 Text(
-                  fullRegionDisplay,
+                  headerLocation,
                   style: const TextStyle(fontSize: 12, color: Colors.white70),
                 ),
               ],
