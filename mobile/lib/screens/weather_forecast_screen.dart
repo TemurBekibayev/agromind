@@ -208,8 +208,8 @@ class WeatherForecastScreen extends StatelessWidget {
                             ),
                             Text(
                               today.condition,
-                              style: const TextStyle(
-                                color: Colors.white90,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),
