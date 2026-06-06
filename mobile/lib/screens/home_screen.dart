@@ -108,9 +108,13 @@ class HomeScreen extends ConsumerWidget {
               children: [
                 const Icon(Icons.location_on_rounded, size: 12, color: Colors.orange),
                 const SizedBox(width: 4),
-                Text(
-                  headerLocation,
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                Expanded(
+                  child: Text(
+                    headerLocation,
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
               ],
             )
