@@ -580,7 +580,7 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: Colors.blue[50],
-                          border: Border.all(color: Colors.blue[150]!),
+                          border: Border.all(color: Colors.blue[100]!),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
