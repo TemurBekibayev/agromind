@@ -440,21 +440,14 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
                                 'Arpa',
                                 'Makkajo\'xori',
                                 'Sholi',
-                                'Kartoshka',
-                                'Sabzi',
-                                'Piyoz',
-                                'Pomidor',
-                                'Bodring',
-                                'Qovun',
-                                'Tarvuz',
-                                'Bedavor',
+                                'Kungaboqar',
                                 'Soya',
                                 'Kunjut',
-                                'Kungaboqar',
-                                'Olma',
-                                'Uzum',
-                                'O\'rik',
-                                'Shaftoli'
+                                'Bedavor (Beda)',
+                                'Lavlagi (Qand lavlagi)',
+                                'Tamaki',
+                                'Maxsar',
+                                'Zira'
                               ].map<PopupMenuItem<String>>((String value) {
                                 return PopupMenuItem<String>(
                                   value: value,
