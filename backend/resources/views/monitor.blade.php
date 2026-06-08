@@ -1238,7 +1238,7 @@
                 }
 
                 let fertilizerListHTML = '';
-                if (rec.fertilizer_plan && rec.fertilizer_plan.length > 0) {
+                if (rec.fertilizer_plan && Array.isArray(rec.fertilizer_plan) && rec.fertilizer_plan.length > 0) {
                     fertilizerListHTML = rec.fertilizer_plan.map(step => `
                         <li class="flex items-start gap-2 text-[10px] text-slate-350 bg-slate-900 border border-slate-850 p-2 rounded">
                             <svg class="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1247,6 +1247,18 @@
                             <span>${step}</span>
                         </li>
                     `).join('');
+                } else if (rec.fertilizer_plan && typeof rec.fertilizer_plan === 'object' && Object.keys(rec.fertilizer_plan).length > 0) {
+                    fertilizerListHTML = Object.entries(rec.fertilizer_plan).map(([key, value]) => {
+                        const label = key.charAt(0).toUpperCase() + key.slice(1);
+                        return `
+                            <li class="flex items-start gap-2 text-[10px] text-slate-350 bg-slate-900 border border-slate-850 p-2 rounded">
+                                <svg class="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span><strong class="text-emerald-400">${label}:</strong> ${value}</span>
+                            </li>
+                        `;
+                    }).join('');
                 } else {
                     fertilizerListHTML = `<li class="text-[10px] text-slate-500 italic">O'g'itlash rejasi kiritilmagan</li>`;
                 }
@@ -1375,7 +1387,19 @@
             const printWindow = window.open('', '_blank', 'width=800,height=900');
             
             const cropsHTML = (rec.recommended_crops || []).map(c => `<li>${c}</li>`).join('');
-            const fertHTML = (rec.fertilizer_plan || []).map(f => `<li>${f}</li>`).join('');
+            
+            let fertHTML = '';
+            if (rec.fertilizer_plan) {
+                if (Array.isArray(rec.fertilizer_plan)) {
+                    fertHTML = rec.fertilizer_plan.map(f => `<li>${f}</li>`).join('');
+                } else if (typeof rec.fertilizer_plan === 'object') {
+                    fertHTML = Object.entries(rec.fertilizer_plan).map(([key, value]) => {
+                        const label = key.charAt(0).toUpperCase() + key.slice(1);
+                        return `<li><strong>${label}:</strong> ${value}</li>`;
+                    }).join('');
+                }
+            }
+            if (!fertHTML) fertHTML = '<li>Kiritilmagan</li>';
 
             printWindow.document.write(`
                 <!DOCTYPE html>

@@ -361,12 +361,41 @@
         // Initialize Map inside modal (wait for layout animation)
         if (!drawMap) {
             setTimeout(() => {
-                drawMap = L.map('drawMap').setView([42.11005, 60.07327], 14); // Zomed in for easier field drawing
+                drawMap = L.map('drawMap').setView([42.11005, 60.07327], 14); // Zoomed in for easier field drawing
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                // Base Layers
+                const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 19
-                }).addTo(drawMap);
+                });
+
+                const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    attribution: '&copy; Google Maps',
+                    maxZoom: 20
+                });
+
+                const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                    attribution: '&copy; Google Maps',
+                    maxZoom: 20
+                });
+
+                const googleStreets = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                    attribution: '&copy; Google Maps',
+                    maxZoom: 20
+                });
+
+                // Add Google Hybrid as default for drawing boundaries
+                googleHybrid.addTo(drawMap);
+
+                const baseMaps = {
+                    "Gibrid xarita": googleHybrid,
+                    "Sun'iy yo'ldosh": googleSatellite,
+                    "Oddiy xarita": osmLayer,
+                    "Google ko'chalari": googleStreets
+                };
+
+                // Add layers control on the top-left
+                L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(drawMap);
 
                 // Handle click to draw polygon vertices
                 drawMap.on('click', function(e) {
