@@ -161,6 +161,43 @@ Route::post('/admin/vehicles/store', function (Request $request) {
     return back()->with('success', 'Yangi texnika va uning GPS IMEI raqami muvaffaqiyatli ro\'yxatga olindi!');
 });
 
+// Texnikani tahrirlash (update)
+Route::post('/admin/vehicles/update/{id}', function (Request $request, $id) {
+    $vehicle = Vehicle::findOrFail($id);
+    
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'type' => 'required|string',
+        'plate_number' => 'required|string|max:20',
+        'farm_id' => 'required|exists:farms,id',
+        'gps_device_id' => 'required|string|max:50|unique:vehicles,gps_device_id,' . $id,
+        'fuel_capacity' => 'required|numeric|min:10',
+    ]);
+
+    $vehicle->update([
+        'name' => $request->name,
+        'type' => $request->type,
+        'plate_number' => $request->plate_number,
+        'farm_id' => $request->farm_id,
+        'gps_device_id' => $request->gps_device_id,
+        'fuel_capacity' => $request->fuel_capacity,
+    ]);
+
+    return back()->with('success', 'Texnika ma\'lumotlari muvaffaqiyatli yangilandi!');
+});
+
+// Texnikani o'chirish (delete)
+Route::post('/admin/vehicles/destroy/{id}', function ($id) {
+    $vehicle = Vehicle::findOrFail($id);
+    
+    // Bog'liq ma'lumotlarni o'chiramiz
+    $vehicle->gpsTracks()->delete();
+    $vehicle->alerts()->delete();
+    $vehicle->delete();
+
+    return back()->with('success', 'Texnika muvaffaqiyatli o\'chirildi!');
+});
+
 // Tuproq Tahlillari ro'yxati
 Route::get('/admin/soil', function () {
     $soilAnalyses = SoilAnalysis::with(['farm', 'recommendation'])->get();
