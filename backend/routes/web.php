@@ -26,7 +26,7 @@ Route::get('/admin/dashboard', function () {
 
 // Dehqonlar ro'yxati (Xo'jalik chizish uchun viloyatlar bilan birga)
 Route::get('/admin/farmers', function () {
-    $farmers = User::where('role', 'farmer')->with(['region', 'farms'])->get();
+    $farmers = User::where('role', 'farmer')->with(['region', 'farms.geofences'])->get();
     $regions = Region::all();
     return view('admin.farmers', compact('farmers', 'regions'));
 });
