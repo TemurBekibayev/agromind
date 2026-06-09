@@ -5,7 +5,6 @@ import 'services/api_service.dart';
 import 'providers/providers.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,7 +66,7 @@ class AgroMindApp extends ConsumerWidget {
       ),
       home: authState.isLoading
           ? const SplashScreen()
-          : (authState.isAuthenticated ? const HomeScreen() : const OnboardingScreen()),
+          : (authState.isAuthenticated ? const HomeScreen() : const LoginScreen()),
     );
   }
 }

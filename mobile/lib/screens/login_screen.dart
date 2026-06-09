@@ -76,83 +76,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       Navigator.of(context).pop();
     }
   }
-
-  void _showApiUrlDialog(BuildContext context) {
-    final apiService = ref.read(apiServiceProvider);
-    final controller = TextEditingController(text: apiService.baseUrl);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('API Server Sozlamalari'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Mahalliy serverga ulanish uchun API manzilingizni kiriting:',
-                style: TextStyle(fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'API Base URL',
-                  hintText: 'https://example.com/api/',
-                ),
-                style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                const defaultUrl = 'https://agromind.uz.lazzatkafe.uz/api';
-                apiService.updateBaseUrl(defaultUrl);
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('custom_api_url');
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Standart API manzili tiklandi.'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Asliga qaytarish', style: TextStyle(color: Colors.red)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Bekor qilish'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final newUrl = controller.text.trim();
-                if (newUrl.isNotEmpty) {
-                  apiService.updateBaseUrl(newUrl);
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('custom_api_url', newUrl);
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('API manzili muvaffaqiyatli yangilandi.'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Saqlash'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -166,12 +89,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1E293B)),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_rounded, color: Color(0xFF1E293B)),
-            onPressed: () => _showApiUrlDialog(context),
-          ),
-        ],
       ),
       body: Center(
         child: SingleChildScrollView(
