@@ -26,7 +26,7 @@ Route::get('/admin/dashboard', function () {
 
 // Dehqonlar ro'yxati (Xo'jalik chizish uchun viloyatlar bilan birga)
 Route::get('/admin/farmers', function () {
-    $farmers = User::where('role', 'farmer')->with(['region', 'farms'])->get();
+    $farmers = User::where('role', 'farmer')->with(['region', 'farms.geofences'])->get();
     $regions = Region::all();
     return view('admin.farmers', compact('farmers', 'regions'));
 });
@@ -50,6 +50,61 @@ Route::post('/admin/farmers/store', function (Request $request) {
     ]);
 
     return back()->with('success', 'Yangi dehqon (fermer) muvaffaqiyatli ro\'yxatga olindi!');
+});
+
+// Dehqon (Fermer) tahrirlash (update)
+Route::post('/admin/farmers/update/{id}', function (Request $request, $id) {
+    $farmer = User::where('role', 'farmer')->findOrFail($id);
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'phone' => 'required|string|max:20|unique:users,phone,' . $id,
+        'region_id' => 'required|exists:regions,id',
+        'district' => 'nullable|string|max:255',
+    ]);
+
+    $farmer->update([
+        'name' => $request->name,
+        'phone' => $request->phone,
+        'region_id' => $request->region_id,
+        'district' => $request->district ?? 'Amudaryo tumani',
+    ]);
+
+    return back()->with('success', 'Dehqon (fermer) ma\'lumotlari muvaffaqiyatli yangilandi!');
+});
+
+// Dehqon (Fermer) o'chirish (delete)
+Route::post('/admin/farmers/destroy/{id}', function ($id) {
+    $farmer = User::where('role', 'farmer')->with('farms.vehicles', 'farms.soilAnalyses', 'farms.geofences', 'farms.alerts')->findOrFail($id);
+
+    // Cascade delete related farms and their data
+    foreach ($farmer->farms as $farm) {
+        // Delete vehicles & their data
+        foreach ($farm->vehicles as $vehicle) {
+            $vehicle->gpsTracks()->delete();
+            $vehicle->alerts()->delete();
+            $vehicle->delete();
+        }
+        
+        // Delete farm alerts
+        $farm->alerts()->delete();
+
+        // Delete soil analyses & recommendations
+        foreach ($farm->soilAnalyses as $analysis) {
+            $analysis->recommendation()->delete();
+            $analysis->delete();
+        }
+
+        // Delete geofences
+        $farm->geofences()->delete();
+
+        // Delete farm
+        $farm->delete();
+    }
+
+    $farmer->delete();
+
+    return back()->with('success', 'Dehqon (fermer) va uning barcha yer maydonlari muvaffaqiyatli o\'chirildi!');
 });
 
 // Yangi Farm va uning xarita geofence chegarasini saqlash
@@ -117,6 +172,112 @@ Route::post('/admin/farms/store', function (Request $request) {
     return back()->with('success', 'Yangi fermer xo\'jaligi va uning yer maydonlari muvaffaqiyatli saqlandi!');
 });
 
+// Fermer xo'jaligi (Farm) tahrirlash (update)
+Route::post('/admin/farms/update/{id}', function (Request $request, $id) {
+    $farm = \App\Models\Farm::findOrFail($id);
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'user_id' => 'required|exists:users,id',
+        'region_id' => 'required|exists:regions,id',
+        'district' => 'nullable|string|max:255',
+        'size' => 'required|numeric|min:0.1',
+        'soil_type' => 'required|string',
+        'coordinates' => 'nullable|string',
+    ]);
+
+    $farm->update([
+        'name' => $request->name,
+        'user_id' => $request->user_id,
+        'region_id' => $request->region_id,
+        'district' => $request->district ?? 'Amudaryo tumani',
+        'size' => $request->size,
+        'soil_type' => $request->soil_type,
+    ]);
+
+    if ($request->filled('coordinates')) {
+        $coordinates = json_decode($request->coordinates, true);
+        if ($coordinates !== null) {
+            if (!is_array($coordinates) || count($coordinates) === 0) {
+                return back()->withErrors(['coordinates' => 'Kamida 3 ta nuqta tanlab, yopiq ko\'rinishda chegara chizishingiz kerak.']);
+            }
+
+            // Check if multi-polygon or single polygon
+            $isMultiPolygon = is_array($coordinates[0]) && is_array($coordinates[0][0]);
+
+            if ($isMultiPolygon) {
+                foreach ($coordinates as $poly) {
+                    if (!is_array($poly) || count($poly) < 3) {
+                        return back()->withErrors(['coordinates' => 'Har bir alohida yer maydoni kamida 3 ta nuqtadan iborat bo\'lishi kerak.']);
+                    }
+                }
+                $firstVertex = $coordinates[0][0];
+            } else {
+                if (count($coordinates) < 3) {
+                    return back()->withErrors(['coordinates' => 'Kamida 3 ta nuqta tanlab, yopiq ko\'rinishda chegara chizishingiz kerak.']);
+                }
+                $firstVertex = $coordinates[0];
+            }
+
+            // Update latitude/longitude
+            $farm->update([
+                'latitude' => $firstVertex[0],
+                'longitude' => $firstVertex[1],
+            ]);
+
+            // Recreate geofences
+            $farm->geofences()->delete();
+
+            if ($isMultiPolygon) {
+                foreach ($coordinates as $index => $poly) {
+                    \App\Models\Geofence::create([
+                        'farm_id' => $farm->id,
+                        'name' => 'Yer maydoni #' . ($index + 1),
+                        'coordinates' => $poly,
+                    ]);
+                }
+            } else {
+                \App\Models\Geofence::create([
+                    'farm_id' => $farm->id,
+                    'name' => 'Asosiy yer chegarasi',
+                    'coordinates' => $coordinates,
+                ]);
+            }
+        }
+    }
+
+    return back()->with('success', 'Fermer xo\'jaligi (yer) ma\'lumotlari muvaffaqiyatli yangilandi!');
+});
+
+// Fermer xo'jaligi (Farm) o'chirish (delete)
+Route::post('/admin/farms/destroy/{id}', function ($id) {
+    $farm = \App\Models\Farm::with('vehicles', 'soilAnalyses', 'geofences', 'alerts')->findOrFail($id);
+
+    // Delete vehicles & their data
+    foreach ($farm->vehicles as $vehicle) {
+        $vehicle->gpsTracks()->delete();
+        $vehicle->alerts()->delete();
+        $vehicle->delete();
+    }
+
+    // Delete farm alerts
+    $farm->alerts()->delete();
+
+    // Delete soil analyses & recommendations
+    foreach ($farm->soilAnalyses as $analysis) {
+        $analysis->recommendation()->delete();
+        $analysis->delete();
+    }
+
+    // Delete geofences
+    $farm->geofences()->delete();
+
+    // Delete farm
+    $farm->delete();
+
+    return back()->with('success', 'Fermer xo\'jaligi (yer maydoni) muvaffaqiyatli o\'chirildi!');
+});
+
 // Texnikalar ro'yxati (Kombaynlar/Traktorlar modal uchun fermalar bilan birga)
 Route::get('/admin/vehicles', function () {
     $vehicles = Vehicle::with(['farm', 'latestGpsTrack'])->get();
@@ -159,6 +320,43 @@ Route::post('/admin/vehicles/store', function (Request $request) {
     }
 
     return back()->with('success', 'Yangi texnika va uning GPS IMEI raqami muvaffaqiyatli ro\'yxatga olindi!');
+});
+
+// Texnikani tahrirlash (update)
+Route::post('/admin/vehicles/update/{id}', function (Request $request, $id) {
+    $vehicle = Vehicle::findOrFail($id);
+    
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'type' => 'required|string',
+        'plate_number' => 'required|string|max:20',
+        'farm_id' => 'required|exists:farms,id',
+        'gps_device_id' => 'required|string|max:50|unique:vehicles,gps_device_id,' . $id,
+        'fuel_capacity' => 'required|numeric|min:10',
+    ]);
+
+    $vehicle->update([
+        'name' => $request->name,
+        'type' => $request->type,
+        'plate_number' => $request->plate_number,
+        'farm_id' => $request->farm_id,
+        'gps_device_id' => $request->gps_device_id,
+        'fuel_capacity' => $request->fuel_capacity,
+    ]);
+
+    return back()->with('success', 'Texnika ma\'lumotlari muvaffaqiyatli yangilandi!');
+});
+
+// Texnikani o'chirish (delete)
+Route::post('/admin/vehicles/destroy/{id}', function ($id) {
+    $vehicle = Vehicle::findOrFail($id);
+    
+    // Bog'liq ma'lumotlarni o'chiramiz
+    $vehicle->gpsTracks()->delete();
+    $vehicle->alerts()->delete();
+    $vehicle->delete();
+
+    return back()->with('success', 'Texnika muvaffaqiyatli o\'chirildi!');
 });
 
 // Tuproq Tahlillari ro'yxati

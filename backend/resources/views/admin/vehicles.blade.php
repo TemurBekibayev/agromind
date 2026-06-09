@@ -55,6 +55,7 @@
                         <th scope="col" class="px-6 py-4">Yoqilg'i Darajasi</th>
                         <th scope="col" class="px-6 py-4">Tezlik & Koordinatalar</th>
                         <th scope="col" class="px-6 py-4">Oxirgi signal</th>
+                        <th scope="col" class="px-6 py-4 text-right">Amallar</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white text-gray-700">
@@ -164,6 +165,19 @@
                                     -
                                 @endif
                             </td>
+                            
+                            <!-- Actions -->
+                            <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium space-x-2 shrink-0">
+                                <button onclick="openEditVehicleModal({{ json_encode($vehicle->only(['id', 'name', 'type', 'plate_number', 'farm_id', 'gps_device_id', 'fuel_capacity'])) }})" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1 px-2.5 rounded transition inline-block">
+                                    Tahrirlash
+                                </button>
+                                <form action="/admin/vehicles/destroy/{{ $vehicle->id }}" method="POST" class="inline-block" onsubmit="return confirm('Haqiqatan ham ushbu texnikani o\'chirmoqchimisiz? Barcha tegishli GPS ma\'lumotlari ham butunlay o\'chib ketadi!')">
+                                    @csrf
+                                    <button type="submit" class="text-red-650 hover:text-red-900 bg-red-50 hover:bg-red-100 p-1 px-2.5 rounded transition inline-block">
+                                        O'chirish
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     @empty
                         <tr>
@@ -247,6 +261,76 @@
         </form>
     </div>
 </div>
+
+<!-- Tahrirlash Modal Overlay -->
+<div id="editVehicleModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-250 flex justify-between items-center">
+            <div>
+                <h3 class="font-bold text-gray-900 text-base">Texnika Ma'lumotlarini Tahrirlash</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Dala texnikasi va unga tegishli ma'lumotlarni o'zgartirish</p>
+            </div>
+            <button onclick="closeEditVehicleModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Modal Form -->
+        <form id="editVehicleForm" action="" method="POST" class="p-6 space-y-4">
+            @csrf
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Texnika Nomi</label>
+                    <input type="text" name="name" id="edit_name" required placeholder="Masalan: TTZ-80 Traktor" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Dala Texnikasi Turi</label>
+                    <select name="type" id="edit_type" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                        <option value="tractor">Traktor</option>
+                        <option value="combine">Kombayn</option>
+                        <option value="other">Boshqa texnika / Yuk mashinasi</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Davlat Raqami</label>
+                    <input type="text" name="plate_number" id="edit_plate_number" required placeholder="Masalan: 01 A 123 AA" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Biriktirilgan Ferma</label>
+                    <select name="farm_id" id="edit_farm_id" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                        <option value="">Fermani tanlang...</option>
+                        @foreach($farms as $farm)
+                            <option value="{{ $farm->id }}">{{ $farm->name }} (Rahbar: {{ $farm->owner ? $farm->owner->name : 'Noma\'lum' }})</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">GPS Qurilma IMEI</label>
+                    <input type="text" name="gps_device_id" id="edit_gps_device_id" required placeholder="Masalan: 862292055529242" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yoqilg'i Sig'imi (Litr)</label>
+                    <input type="number" step="1" name="fuel_capacity" id="edit_fuel_capacity" required placeholder="Masalan: 150" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onclick="closeEditVehicleModal()" class="w-1/2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Bekor qilish</button>
+                <button type="submit" class="w-1/2 px-4 py-2 bg-forest-700 text-white rounded-lg text-xs font-semibold hover:bg-forest-600 transition">Saqlash</button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
@@ -259,6 +343,30 @@
 
     function closeAddVehicleModal() {
         const modal = document.getElementById('addVehicleModal');
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }
+
+    function openEditVehicleModal(vehicle) {
+        // Update form action with actual vehicle ID
+        document.getElementById('editVehicleForm').action = '/admin/vehicles/update/' + vehicle.id;
+        
+        // Populate input values
+        document.getElementById('edit_name').value = vehicle.name;
+        document.getElementById('edit_type').value = vehicle.type;
+        document.getElementById('edit_plate_number').value = vehicle.plate_number;
+        document.getElementById('edit_farm_id').value = vehicle.farm_id;
+        document.getElementById('edit_gps_device_id').value = vehicle.gps_device_id;
+        document.getElementById('edit_fuel_capacity').value = Math.round(vehicle.fuel_capacity);
+        
+        // Open modal
+        const modal = document.getElementById('editVehicleModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeEditVehicleModal() {
+        const modal = document.getElementById('editVehicleModal');
         modal.classList.remove('flex');
         modal.classList.add('hidden');
     }

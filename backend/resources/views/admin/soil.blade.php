@@ -225,11 +225,20 @@
         // Fertilizer Plan List
         const fertilizerList = document.getElementById('modal-fertilizer-plan');
         fertilizerList.innerHTML = '';
-        if (Array.isArray(fertilizerPlan)) {
+        if (Array.isArray(fertilizerPlan) && fertilizerPlan.length > 0) {
             fertilizerPlan.forEach(step => {
                 const li = document.createElement('li');
                 li.className = 'flex items-start gap-2 text-sm text-gray-800 bg-gray-50 p-2 rounded border border-gray-100';
                 li.innerHTML = `<svg class="h-4 w-4 text-orange-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.008v.008H12V18zm0-3h.008v.008H12V15zm0-3h.008v.008H12V12zm0-3h.008v.008H12V9zm0-3h.008v.008H12V6z" /></svg> ${step}`;
+                fertilizerList.appendChild(li);
+            });
+        } else if (fertilizerPlan && typeof fertilizerPlan === 'object' && Object.keys(fertilizerPlan).length > 0) {
+            Object.entries(fertilizerPlan).forEach(([key, value]) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-start gap-2 text-sm text-gray-800 bg-gray-50 p-2 rounded border border-gray-100';
+                // Capitalize first letter of season/key
+                const label = key.charAt(0).toUpperCase() + key.slice(1);
+                li.innerHTML = `<svg class="h-4 w-4 text-orange-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.008v.008H12V18zm0-3h.008v.008H12V15zm0-3h.008v.008H12V12zm0-3h.008v.008H12V9zm0-3h.008v.008H12V6z" /></svg> <div><strong class="text-orange-700">${label}:</strong> ${value}</div>`;
                 fertilizerList.appendChild(li);
             });
         } else {
