@@ -540,6 +540,8 @@
     let editPointMarkers = [];
     let editPolygonsList = [];
     let editCompletedPolygonLayers = [];
+    let editCompletedPolygonMarkers = [];
+
 
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -823,6 +825,7 @@
         editPointMarkers = [];
         editPolygonsList = [];
         editCompletedPolygonLayers = [];
+        editCompletedPolygonMarkers = [];
 
         // Open modal
         const modal = document.getElementById('editFarmModal');
@@ -878,6 +881,7 @@
                     const lat = parseFloat(e.latlng.lat);
                     const lng = parseFloat(e.latlng.lng);
                     
+                    const idx = editPolyPoints.length;
                     editPolyPoints.push([lat, lng]);
 
                     // Add vertex marker to map
@@ -889,11 +893,8 @@
                     // Handle drag behavior
                     marker.on('drag', function(evt) {
                         const newLatlng = evt.target.getLatLng();
-                        const idx = editPointMarkers.indexOf(marker);
-                        if (idx !== -1) {
-                            editPolyPoints[idx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
-                            updateEditPolygon();
-                        }
+                        editPolyPoints[idx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
+                        updateEditPolygon();
                     });
 
                     marker.on('dragend', function() {
@@ -919,27 +920,52 @@
         if (editMap) {
             editCompletedPolygonLayers.forEach(l => editMap.removeLayer(l));
             editPointMarkers.forEach(m => editMap.removeLayer(m));
+            editCompletedPolygonMarkers.forEach(m => editMap.removeLayer(m));
             if (editDrawPolygon) {
                 editMap.removeLayer(editDrawPolygon);
             }
         }
         editCompletedPolygonLayers = [];
         editPointMarkers = [];
+        editCompletedPolygonMarkers = [];
         editDrawPolygon = null;
         editPolygonsList = [];
         editPolyPoints = [];
 
         // Load farm geofences
         let existingGeofences = farm.geofences || [];
-        existingGeofences.forEach(gf => {
+        existingGeofences.forEach((gf, pIdx) => {
             if (gf.coordinates && gf.coordinates.length > 0) {
-                const poly = L.polygon(gf.coordinates, {
+                const points = gf.coordinates.map(c => [parseFloat(c[0]), parseFloat(c[1])]);
+                editPolygonsList.push(points);
+
+                const poly = L.polygon(points, {
                     color: '#059669',
                     fillColor: '#10B981',
                     fillOpacity: 0.20,
                     weight: 2.5
                 }).addTo(editMap);
                 editCompletedPolygonLayers.push(poly);
+
+                // Add draggable markers for vertices
+                points.forEach((pt, vIdx) => {
+                    const marker = L.marker(pt, {
+                        icon: customDotIcon,
+                        draggable: true
+                    }).addTo(editMap);
+
+                    marker.on('drag', function(evt) {
+                        const newLatlng = evt.target.getLatLng();
+                        editPolygonsList[pIdx][vIdx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
+                        poly.setLatLngs(editPolygonsList[pIdx]);
+                    });
+
+                    marker.on('dragend', function() {
+                        poly.setLatLngs(editPolygonsList[pIdx]);
+                    });
+
+                    editCompletedPolygonMarkers.push(marker);
+                });
             }
         });
 
@@ -949,7 +975,7 @@
             editMap.fitBounds(group.getBounds().pad(0.1));
             
             document.getElementById('editDrawWarning').className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
-            document.getElementById('editDrawWarning').innerHTML = "✅ <strong>Chegara yuklangan:</strong> Xaritada joriy yer chegarasi ko'rsatilgan. Uni o'zgartirish uchun \"Tozalash\" tugmasini bosing va yangidan chizing.";
+            document.getElementById('editDrawWarning').innerHTML = "✅ <strong>Chegara yuklangan:</strong> Xaritada joriy yer chegarasi ko'rsatilgan. Burchaklardagi nuqtalarni surib tahrirlashingiz mumkin.";
         } else if (farm.latitude && farm.longitude) {
             editMap.setView([farm.latitude, farm.longitude], 14);
             document.getElementById('editDrawWarning').className = "p-3 bg-amber-50 border border-amber-250 rounded-xl text-xs text-amber-700";
@@ -997,8 +1023,10 @@
     function startEditNewParcel() {
         if (editPolyPoints.length >= 3) {
             editPolygonsList.push([...editPolyPoints]);
+            const pIdx = editPolygonsList.length - 1;
+            const points = [...editPolyPoints];
             
-            const staticPoly = L.polygon(editPolyPoints, {
+            const staticPoly = L.polygon(points, {
                 color: '#059669',
                 fillColor: '#10B981',
                 fillOpacity: 0.20,
@@ -1008,6 +1036,25 @@
             
             editPointMarkers.forEach(m => editMap.removeLayer(m));
             editPointMarkers = [];
+            
+            points.forEach((pt, vIdx) => {
+                const marker = L.marker(pt, {
+                    icon: customDotIcon,
+                    draggable: true
+                }).addTo(editMap);
+
+                marker.on('drag', function(evt) {
+                    const newLatlng = evt.target.getLatLng();
+                    editPolygonsList[pIdx][vIdx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
+                    staticPoly.setLatLngs(editPolygonsList[pIdx]);
+                });
+
+                marker.on('dragend', function() {
+                    staticPoly.setLatLngs(editPolygonsList[pIdx]);
+                });
+
+                editCompletedPolygonMarkers.push(marker);
+            });
             
             editPolyPoints = [];
             editDrawPolygon = null;
@@ -1038,9 +1085,11 @@
         }
         if (editMap) {
             editPointMarkers.forEach(m => editMap.removeLayer(m));
+            editCompletedPolygonMarkers.forEach(m => editMap.removeLayer(m));
             editCompletedPolygonLayers.forEach(l => editMap.removeLayer(l));
         }
         editPointMarkers = [];
+        editCompletedPolygonMarkers = [];
         editCompletedPolygonLayers = [];
         editPolygonsList = [];
         

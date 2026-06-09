@@ -183,6 +183,7 @@ Route::post('/admin/farms/update/{id}', function (Request $request, $id) {
         'district' => 'nullable|string|max:255',
         'size' => 'required|numeric|min:0.1',
         'soil_type' => 'required|string',
+        'coordinates' => 'nullable|string',
     ]);
 
     $farm->update([
@@ -193,6 +194,57 @@ Route::post('/admin/farms/update/{id}', function (Request $request, $id) {
         'size' => $request->size,
         'soil_type' => $request->soil_type,
     ]);
+
+    if ($request->filled('coordinates')) {
+        $coordinates = json_decode($request->coordinates, true);
+        if ($coordinates !== null) {
+            if (!is_array($coordinates) || count($coordinates) === 0) {
+                return back()->withErrors(['coordinates' => 'Kamida 3 ta nuqta tanlab, yopiq ko\'rinishda chegara chizishingiz kerak.']);
+            }
+
+            // Check if multi-polygon or single polygon
+            $isMultiPolygon = is_array($coordinates[0]) && is_array($coordinates[0][0]);
+
+            if ($isMultiPolygon) {
+                foreach ($coordinates as $poly) {
+                    if (!is_array($poly) || count($poly) < 3) {
+                        return back()->withErrors(['coordinates' => 'Har bir alohida yer maydoni kamida 3 ta nuqtadan iborat bo\'lishi kerak.']);
+                    }
+                }
+                $firstVertex = $coordinates[0][0];
+            } else {
+                if (count($coordinates) < 3) {
+                    return back()->withErrors(['coordinates' => 'Kamida 3 ta nuqta tanlab, yopiq ko\'rinishda chegara chizishingiz kerak.']);
+                }
+                $firstVertex = $coordinates[0];
+            }
+
+            // Update latitude/longitude
+            $farm->update([
+                'latitude' => $firstVertex[0],
+                'longitude' => $firstVertex[1],
+            ]);
+
+            // Recreate geofences
+            $farm->geofences()->delete();
+
+            if ($isMultiPolygon) {
+                foreach ($coordinates as $index => $poly) {
+                    \App\Models\Geofence::create([
+                        'farm_id' => $farm->id,
+                        'name' => 'Yer maydoni #' . ($index + 1),
+                        'coordinates' => $poly,
+                    ]);
+                }
+            } else {
+                \App\Models\Geofence::create([
+                    'farm_id' => $farm->id,
+                    'name' => 'Asosiy yer chegarasi',
+                    'coordinates' => $coordinates,
+                ]);
+            }
+        }
+    }
 
     return back()->with('success', 'Fermer xo\'jaligi (yer) ma\'lumotlari muvaffaqiyatli yangilandi!');
 });
