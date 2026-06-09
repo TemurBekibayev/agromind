@@ -534,6 +534,14 @@
     let polygonsList = [];
     let completedPolygonLayers = [];
 
+    let editMap = null;
+    let editPolyPoints = [];
+    let editDrawPolygon = null;
+    let editPointMarkers = [];
+    let editPolygonsList = [];
+    let editCompletedPolygonLayers = [];
+
+
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('farmStoreForm');
         if (form) {
