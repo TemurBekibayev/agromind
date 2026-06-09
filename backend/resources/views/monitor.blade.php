@@ -638,7 +638,6 @@
             if (selectedFarmId === farmId) {
                 // If clicked again, close it
                 selectedFarmId = null;
-                clearGeofenceLayers();
             } else {
                 selectedFarmId = farmId;
                 const farm = rawFarmsData.find(f => f.id === farmId);
@@ -649,9 +648,9 @@
                             map.setView([farm.latitude, farm.longitude], 12);
                         });
                     }
-                    drawFarmGeofences(farm);
                 }
             }
+            drawAllFarmsGeofences(rawFarmsData);
             renderFarmsSidebar();
         }
 
@@ -718,82 +717,96 @@
             }
         }
 
-        // Draw Farm Geofence boundary polygon
-        function drawFarmGeofences(farm) {
+        // Draw All Farm Geofences on the map globally
+        function drawAllFarmsGeofences(farms) {
             clearGeofenceLayers();
 
-            let coordsList = [];
-            
-            // Check if geofence records exist in database
-            if (farm.geofences && farm.geofences.length > 0) {
-                farm.geofences.forEach(gf => {
-                    if (gf.coordinates && gf.coordinates.length > 0) {
-                        coordsList.push(gf.coordinates);
-                        
-                        // Default styling (soft blue for unanalyzed)
-                        let borderColor = '#475569';
-                        let fillColor = '#64748b';
-                        
-                        if (gf.latest_soil_analysis) {
-                            const fertility = parseFloat(gf.latest_soil_analysis.fertility);
-                            if (fertility >= 70) {
-                                borderColor = '#059669'; // Emerald
-                                fillColor = '#10B981';
-                            } else if (fertility >= 40) {
-                                borderColor = '#D97706'; // Amber
-                                fillColor = '#F59E0B';
-                            } else {
-                                borderColor = '#E11D48'; // Rose
-                                fillColor = '#F43F5E';
+            farms.forEach(farm => {
+                // Check if geofence records exist in database
+                if (farm.geofences && farm.geofences.length > 0) {
+                    farm.geofences.forEach(gf => {
+                        if (gf.coordinates && gf.coordinates.length > 0) {
+                            // Default styling (soft blue/gray for unanalyzed)
+                            let borderColor = '#475569';
+                            let fillColor = '#64748b';
+                            
+                            if (gf.latest_soil_analysis) {
+                                const fertility = parseFloat(gf.latest_soil_analysis.fertility);
+                                if (fertility >= 70) {
+                                    borderColor = '#059669'; // Emerald
+                                    fillColor = '#10B981';
+                                } else if (fertility >= 40) {
+                                    borderColor = '#D97706'; // Amber
+                                    fillColor = '#F59E0B';
+                                } else {
+                                    borderColor = '#E11D48'; // Rose
+                                    fillColor = '#F43F5E';
+                                }
                             }
+                            
+                            const isSelected = selectedFarmId === farm.id;
+                            
+                            const polygon = L.polygon(gf.coordinates, {
+                                color: isSelected ? '#ffffff' : borderColor,
+                                fillColor: fillColor,
+                                fillOpacity: isSelected ? 0.25 : 0.18,
+                                weight: isSelected ? 3.5 : 2.5
+                            }).addTo(map);
+
+                            let tooltipContent = `${farm.name} - ${gf.name}`;
+                            if (gf.latest_soil_analysis) {
+                                tooltipContent += ` (${parseFloat(gf.latest_soil_analysis.fertility).toFixed(0)}% NPK)`;
+                            } else {
+                                tooltipContent += ` (Tahlil qilinmagan)`;
+                            }
+                            polygon.bindTooltip(tooltipContent, { sticky: true });
+
+                            // Click event to open the AI drawer / Farmer Info
+                            polygon.on('click', (e) => {
+                                L.DomEvent.stopPropagation(e);
+                                selectGeofence(gf.id, farm.id);
+                                // Expand this farm in accordion if not open
+                                if (selectedFarmId !== farm.id) {
+                                    selectedFarmId = farm.id;
+                                    renderFarmsSidebar();
+                                }
+                            });
+
+                            mapGeofenceLayers.push(polygon);
+                            geofenceLayersMap[gf.id] = polygon;
                         }
-                        
-                        const polygon = L.polygon(gf.coordinates, {
-                            color: borderColor,
-                            fillColor: fillColor,
-                            fillOpacity: 0.18,
-                            weight: 2.5
+                    });
+                } else {
+                    // FALLBACK: Generate a mock boundary only if selected and center coordinates are available
+                    if (selectedFarmId === farm.id && farm.latitude && farm.longitude) {
+                        const lat = parseFloat(farm.latitude);
+                        const lng = parseFloat(farm.longitude);
+                        const deltaLat = 0.004;
+                        const deltaLng = 0.007;
+
+                        const mockCoordinates = [
+                            [lat + deltaLat, lng],
+                            [lat - deltaLat / 2, lng + deltaLng],
+                            [lat - deltaLat, lng - deltaLng / 2],
+                            [lat + deltaLat, lng]
+                        ];
+
+                        const polygon = L.polygon(mockCoordinates, {
+                            color: '#ffffff',
+                            fillColor: '#10B981',
+                            fillOpacity: 0.25,
+                            weight: 3.5
                         }).addTo(map);
 
-                        let tooltipContent = `${gf.name}`;
-                        if (gf.latest_soil_analysis) {
-                            tooltipContent += ` (${parseFloat(gf.latest_soil_analysis.fertility).toFixed(0)}% NPK)`;
-                        }
-                        polygon.bindTooltip(tooltipContent, { sticky: true });
-
-                        // Click event to open the AI drawer
-                        polygon.on('click', (e) => {
-                            L.DomEvent.stopPropagation(e);
-                            selectGeofence(gf.id, farm.id);
-                        });
-
+                        polygon.bindTooltip(`Maydon: ${farm.name} (Chegara chizilmagan)`, { sticky: true });
                         mapGeofenceLayers.push(polygon);
-                        geofenceLayersMap[gf.id] = polygon;
                     }
-                });
-            } else {
-                // FALLBACK: Generate a gorgeous mock farm boundary polygon around farm center
-                const lat = parseFloat(farm.latitude);
-                const lng = parseFloat(farm.longitude);
-                const deltaLat = 0.004;
-                const deltaLng = 0.007;
+                }
+            });
 
-                const mockCoordinates = [
-                    [lat + deltaLat, lng],
-                    [lat - deltaLat / 2, lng + deltaLng],
-                    [lat - deltaLat, lng - deltaLng / 2],
-                    [lat + deltaLat, lng]
-                ];
-
-                const polygon = L.polygon(mockCoordinates, {
-                    color: '#10B981',
-                    fillColor: '#10B981',
-                    fillOpacity: 0.15,
-                    weight: 2
-                }).addTo(map);
-
-                polygon.bindTooltip(`Maydon: ${farm.name} (Chegara chizilmagan)`, { sticky: true });
-                mapGeofenceLayers.push(polygon);
+            // Keep the highlighted polygon highlighted if it's still there
+            if (activeGeofence) {
+                highlightGeofenceOnMap(activeGeofence.id);
             }
         }
 
@@ -1168,15 +1181,56 @@
             const latestAnalysis = gf.latest_soil_analysis;
             if (!latestAnalysis) {
                 contentContainer.innerHTML = `
-                    <div class="flex flex-col items-center justify-center py-12 text-center">
-                        <div class="h-14 w-14 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-4 animate-pulse">
-                            <svg class="h-6.5 w-6.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <!-- Farmer Info Card -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 shadow-md mb-4">
+                        <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                            <div class="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-350">
+                                <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Fermer Ma'lumotlari</h4>
+                                <p class="text-[9px] font-semibold text-slate-400">Xo'jalik rahbari</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-[11px] text-slate-300">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Ism-familiya:</span>
+                                <span class="font-bold text-slate-200">${farm.owner ? farm.owner.name : 'Noma\'lum'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Telefon raqami:</span>
+                                <span class="font-bold text-slate-200">${farm.owner ? farm.owner.phone : '-'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-550 font-bold uppercase tracking-wider block">Hudud:</span>
+                                <span class="font-bold text-slate-200">${farm.owner && farm.owner.region ? farm.owner.region.name : 'Qoraqalpog\'iston'}, ${farm.district || 'Amudaryo tumani'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Xo'jalik nomi:</span>
+                                <span class="font-bold text-slate-200">${farm.name}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Umumiy maydon:</span>
+                                <span class="font-bold text-slate-200">${farm.size || '0'} GA</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-555 font-bold uppercase tracking-wider block font-sans">Tuproq turi:</span>
+                                <span class="font-bold text-slate-200">${farm.soil_type || 'Noma\'lum'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center py-6 text-center">
+                        <div class="h-12 w-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-3 animate-pulse">
+                            <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                         </div>
-                        <h4 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Tahlil Natijalari Yo'q</h4>
-                        <p class="text-[10px] text-slate-500 mt-2 max-w-[200px] leading-relaxed">Ushbu yer maydoni uchun tuproq kimyoviy tarkibi tahlillari kiritilmagan.</p>
-                        <a href="/admin/soil" target="_blank" class="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition">
+                        <h4 class="text-[10px] font-extrabold text-slate-350 uppercase tracking-wider">Tahlil Natijalari Yo'q</h4>
+                        <p class="text-[9px] text-slate-500 mt-1 max-w-[200px] leading-relaxed">Ushbu yer maydoni uchun tuproq kimyoviy tarkibi tahlillari kiritilmagan.</p>
+                        <a href="/admin/soil" target="_blank" class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition">
                             Tahlil kiritish
                         </a>
                     </div>
@@ -1566,6 +1620,9 @@
                     // Refresh active filters
                     applyFilters();
 
+                    // Draw all geofences on the map globally
+                    drawAllFarmsGeofences(farms);
+
                     // Refresh AI Drawer if open
                     if (activeGeofence && activeFarm) {
                         openAiAnalysisDrawer(activeGeofence.id, activeFarm.id);
@@ -1652,9 +1709,9 @@
                 .catch(err => console.error('Error fetching live farms data:', err));
         }
 
-        // First Load and 5 seconds interval refresh
+        // First Load and 5 minutes interval refresh
         loadFarmsAndVehicles();
-        setInterval(loadFarmsAndVehicles, 5000);
+        setInterval(loadFarmsAndVehicles, 300000);
     </script>
 </body>
 </html>
