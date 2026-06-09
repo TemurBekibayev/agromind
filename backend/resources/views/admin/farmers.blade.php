@@ -934,40 +934,14 @@
 
         // Load farm geofences
         let existingGeofences = farm.geofences || [];
-        existingGeofences.forEach((gf, pIdx) => {
+        existingGeofences.forEach((gf) => {
             if (gf.coordinates && gf.coordinates.length > 0) {
                 const points = gf.coordinates.map(c => [parseFloat(c[0]), parseFloat(c[1])]);
                 editPolygonsList.push(points);
-
-                const poly = L.polygon(points, {
-                    color: '#059669',
-                    fillColor: '#10B981',
-                    fillOpacity: 0.20,
-                    weight: 2.5
-                }).addTo(editMap);
-                editCompletedPolygonLayers.push(poly);
-
-                // Add draggable markers for vertices
-                points.forEach((pt, vIdx) => {
-                    const marker = L.marker(pt, {
-                        icon: customDotIcon,
-                        draggable: true
-                    }).addTo(editMap);
-
-                    marker.on('drag', function(evt) {
-                        const newLatlng = evt.target.getLatLng();
-                        editPolygonsList[pIdx][vIdx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
-                        poly.setLatLngs(editPolygonsList[pIdx]);
-                    });
-
-                    marker.on('dragend', function() {
-                        poly.setLatLngs(editPolygonsList[pIdx]);
-                    });
-
-                    editCompletedPolygonMarkers.push(marker);
-                });
             }
         });
+
+        redrawCompletedPolygons();
 
         // Fit map bounds to the existing geofences
         if (editCompletedPolygonLayers.length > 0) {
@@ -975,12 +949,108 @@
             editMap.fitBounds(group.getBounds().pad(0.1));
             
             document.getElementById('editDrawWarning').className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
-            document.getElementById('editDrawWarning').innerHTML = "✅ <strong>Chegara yuklangan:</strong> Xaritada joriy yer chegarasi ko'rsatilgan. Burchaklardagi nuqtalarni surib tahrirlashingiz mumkin.";
+            document.getElementById('editDrawWarning').innerHTML = "✅ <strong>Chegara yuklangan:</strong> Xaritada joriy yer chegarasi ko'rsatilgan. Burchaklardagi nuqtalarni surib tahrirlashingiz, chiziq ustiga click qilib yangi nuqta qo'shishingiz yoki nuqtani 2 marta click qilib o'chirishingiz mumkin.";
         } else if (farm.latitude && farm.longitude) {
             editMap.setView([farm.latitude, farm.longitude], 14);
             document.getElementById('editDrawWarning').className = "p-3 bg-amber-50 border border-amber-250 rounded-xl text-xs text-amber-700";
             document.getElementById('editDrawWarning').innerHTML = "⚠️ <strong>Chegara chizilmagan:</strong> Xaritada fermer xo'jaligining yer chegarasini belgilang.";
         }
+    }
+
+    function redrawCompletedPolygons() {
+        // Remove old completed layers and markers
+        editCompletedPolygonLayers.forEach(l => editMap.removeLayer(l));
+        editCompletedPolygonMarkers.forEach(m => editMap.removeLayer(m));
+        
+        editCompletedPolygonLayers = [];
+        editCompletedPolygonMarkers = [];
+
+        editPolygonsList.forEach((points, pIdx) => {
+            const poly = L.polygon(points, {
+                color: '#059669',
+                fillColor: '#10B981',
+                fillOpacity: 0.20,
+                weight: 2.5
+            }).addTo(editMap);
+            editCompletedPolygonLayers.push(poly);
+
+            // Click polygon to add vertex
+            poly.on('click', function(e) {
+                if (e.originalEvent.target.closest('.custom-dot-icon')) {
+                    return;
+                }
+                
+                const lat = parseFloat(e.latlng.lat);
+                const lng = parseFloat(e.latlng.lng);
+                
+                let minDist = Infinity;
+                let insertIdx = -1;
+                for (let i = 0; i < points.length; i++) {
+                    let p1 = points[i];
+                    let p2 = points[(i + 1) % points.length];
+                    let dist = getSqSegDist([lat, lng], p1, p2);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        insertIdx = i + 1;
+                    }
+                }
+                
+                if (insertIdx !== -1) {
+                    points.splice(insertIdx, 0, [lat, lng]);
+                    redrawCompletedPolygons();
+                }
+                
+                L.DomEvent.stopPropagation(e);
+            });
+
+            // Draggable vertex markers
+            points.forEach((pt, vIdx) => {
+                const marker = L.marker(pt, {
+                    icon: customDotIcon,
+                    draggable: true
+                }).addTo(editMap);
+
+                marker.on('drag', function(evt) {
+                    const newLatlng = evt.target.getLatLng();
+                    points[vIdx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
+                    poly.setLatLngs(points);
+                });
+
+                marker.on('dragend', function() {
+                    poly.setLatLngs(points);
+                });
+
+                // Double click marker to remove vertex
+                marker.on('dblclick', function(evt) {
+                    if (points.length > 3) {
+                        points.splice(vIdx, 1);
+                        redrawCompletedPolygons();
+                    } else {
+                        alert("Poligon kamida 3 ta nuqtadan iborat bo'lishi kerak!");
+                    }
+                });
+
+                editCompletedPolygonMarkers.push(marker);
+            });
+        });
+    }
+
+    function getSqSegDist(p, p1, p2) {
+        let x = p1[0], y = p1[1];
+        let dx = p2[0] - x, dy = p2[1] - y;
+        if (dx !== 0 || dy !== 0) {
+            let t = ((p[0] - x) * dx + (p[1] - y) * dy) / (dx * dx + dy * dy);
+            if (t > 1) {
+                x = p2[0];
+                y = p2[1];
+            } else if (t > 0) {
+                x += dx * t;
+                y += dy * t;
+            }
+        }
+        dx = p[0] - x;
+        dy = p[1] - y;
+        return dx * dx + dy * dy;
     }
 
     function updateEditPolygon() {
@@ -1023,42 +1093,14 @@
     function startEditNewParcel() {
         if (editPolyPoints.length >= 3) {
             editPolygonsList.push([...editPolyPoints]);
-            const pIdx = editPolygonsList.length - 1;
-            const points = [...editPolyPoints];
-            
-            const staticPoly = L.polygon(points, {
-                color: '#059669',
-                fillColor: '#10B981',
-                fillOpacity: 0.20,
-                weight: 2.5
-            }).addTo(editMap);
-            editCompletedPolygonLayers.push(staticPoly);
             
             editPointMarkers.forEach(m => editMap.removeLayer(m));
             editPointMarkers = [];
             
-            points.forEach((pt, vIdx) => {
-                const marker = L.marker(pt, {
-                    icon: customDotIcon,
-                    draggable: true
-                }).addTo(editMap);
-
-                marker.on('drag', function(evt) {
-                    const newLatlng = evt.target.getLatLng();
-                    editPolygonsList[pIdx][vIdx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
-                    staticPoly.setLatLngs(editPolygonsList[pIdx]);
-                });
-
-                marker.on('dragend', function() {
-                    staticPoly.setLatLngs(editPolygonsList[pIdx]);
-                });
-
-                editCompletedPolygonMarkers.push(marker);
-            });
-            
             editPolyPoints = [];
             editDrawPolygon = null;
             
+            redrawCompletedPolygons();
             updateEditPolygon();
             alert("Ushbu maydon saqlandi! Yangi mustaqil maydon chizishingiz mumkin.");
         } else if (editPolyPoints.length > 0) {
@@ -1085,13 +1127,11 @@
         }
         if (editMap) {
             editPointMarkers.forEach(m => editMap.removeLayer(m));
-            editCompletedPolygonMarkers.forEach(m => editMap.removeLayer(m));
-            editCompletedPolygonLayers.forEach(l => editMap.removeLayer(l));
         }
         editPointMarkers = [];
-        editCompletedPolygonMarkers = [];
-        editCompletedPolygonLayers = [];
         editPolygonsList = [];
+        
+        redrawCompletedPolygons();
         
         document.getElementById('editCoordinatesInput').value = '[]';
         updateEditPolygon();
