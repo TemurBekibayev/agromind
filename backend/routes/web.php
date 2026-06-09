@@ -52,6 +52,61 @@ Route::post('/admin/farmers/store', function (Request $request) {
     return back()->with('success', 'Yangi dehqon (fermer) muvaffaqiyatli ro\'yxatga olindi!');
 });
 
+// Dehqon (Fermer) tahrirlash (update)
+Route::post('/admin/farmers/update/{id}', function (Request $request, $id) {
+    $farmer = User::where('role', 'farmer')->findOrFail($id);
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'phone' => 'required|string|max:20|unique:users,phone,' . $id,
+        'region_id' => 'required|exists:regions,id',
+        'district' => 'nullable|string|max:255',
+    ]);
+
+    $farmer->update([
+        'name' => $request->name,
+        'phone' => $request->phone,
+        'region_id' => $request->region_id,
+        'district' => $request->district ?? 'Amudaryo tumani',
+    ]);
+
+    return back()->with('success', 'Dehqon (fermer) ma\'lumotlari muvaffaqiyatli yangilandi!');
+});
+
+// Dehqon (Fermer) o'chirish (delete)
+Route::post('/admin/farmers/destroy/{id}', function ($id) {
+    $farmer = User::where('role', 'farmer')->with('farms.vehicles', 'farms.soilAnalyses', 'farms.geofences', 'farms.alerts')->findOrFail($id);
+
+    // Cascade delete related farms and their data
+    foreach ($farmer->farms as $farm) {
+        // Delete vehicles & their data
+        foreach ($farm->vehicles as $vehicle) {
+            $vehicle->gpsTracks()->delete();
+            $vehicle->alerts()->delete();
+            $vehicle->delete();
+        }
+        
+        // Delete farm alerts
+        $farm->alerts()->delete();
+
+        // Delete soil analyses & recommendations
+        foreach ($farm->soilAnalyses as $analysis) {
+            $analysis->recommendation()->delete();
+            $analysis->delete();
+        }
+
+        // Delete geofences
+        $farm->geofences()->delete();
+
+        // Delete farm
+        $farm->delete();
+    }
+
+    $farmer->delete();
+
+    return back()->with('success', 'Dehqon (fermer) va uning barcha yer maydonlari muvaffaqiyatli o\'chirildi!');
+});
+
 // Yangi Farm va uning xarita geofence chegarasini saqlash
 Route::post('/admin/farms/store', function (Request $request) {
     $request->validate([
@@ -115,6 +170,60 @@ Route::post('/admin/farms/store', function (Request $request) {
     }
 
     return back()->with('success', 'Yangi fermer xo\'jaligi va uning yer maydonlari muvaffaqiyatli saqlandi!');
+});
+
+// Fermer xo'jaligi (Farm) tahrirlash (update)
+Route::post('/admin/farms/update/{id}', function (Request $request, $id) {
+    $farm = \App\Models\Farm::findOrFail($id);
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'user_id' => 'required|exists:users,id',
+        'region_id' => 'required|exists:regions,id',
+        'district' => 'nullable|string|max:255',
+        'size' => 'required|numeric|min:0.1',
+        'soil_type' => 'required|string',
+    ]);
+
+    $farm->update([
+        'name' => $request->name,
+        'user_id' => $request->user_id,
+        'region_id' => $request->region_id,
+        'district' => $request->district ?? 'Amudaryo tumani',
+        'size' => $request->size,
+        'soil_type' => $request->soil_type,
+    ]);
+
+    return back()->with('success', 'Fermer xo\'jaligi (yer) ma\'lumotlari muvaffaqiyatli yangilandi!');
+});
+
+// Fermer xo'jaligi (Farm) o'chirish (delete)
+Route::post('/admin/farms/destroy/{id}', function ($id) {
+    $farm = \App\Models\Farm::with('vehicles', 'soilAnalyses', 'geofences', 'alerts')->findOrFail($id);
+
+    // Delete vehicles & their data
+    foreach ($farm->vehicles as $vehicle) {
+        $vehicle->gpsTracks()->delete();
+        $vehicle->alerts()->delete();
+        $vehicle->delete();
+    }
+
+    // Delete farm alerts
+    $farm->alerts()->delete();
+
+    // Delete soil analyses & recommendations
+    foreach ($farm->soilAnalyses as $analysis) {
+        $analysis->recommendation()->delete();
+        $analysis->delete();
+    }
+
+    // Delete geofences
+    $farm->geofences()->delete();
+
+    // Delete farm
+    $farm->delete();
+
+    return back()->with('success', 'Fermer xo\'jaligi (yer maydoni) muvaffaqiyatli o\'chirildi!');
 });
 
 // Texnikalar ro'yxati (Kombaynlar/Traktorlar modal uchun fermalar bilan birga)
