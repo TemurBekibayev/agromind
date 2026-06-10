@@ -28,7 +28,8 @@ Route::get('/admin/dashboard', function () {
 Route::get('/admin/farmers', function () {
     $farmers = User::where('role', 'farmer')->with(['region', 'farms.geofences'])->get();
     $regions = Region::all();
-    return view('admin.farmers', compact('farmers', 'regions'));
+    $predefinedFarms = \App\Models\PredefinedFarm::orderBy('name')->get();
+    return view('admin.farmers', compact('farmers', 'regions', 'predefinedFarms'));
 });
 
 // Yangi Dehqon (Fermer) saqlash

@@ -158,5 +158,7 @@ class DatabaseSeeder extends Seeder
             'message' => 'Tractor TTZ-80 fermadan tashqariga chiqdi (Geofence buzilishi)',
             'status' => 'active',
         ]);
+
+        $this->call(PredefinedFarmSeeder::class);
     }
 }

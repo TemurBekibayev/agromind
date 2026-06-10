@@ -199,7 +199,8 @@
             <div class="w-full lg:w-96 p-6 border-r border-slate-200 overflow-y-auto space-y-4 shrink-0">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fermer Xo'jaligi Nomi</label>
-                    <input type="text" name="name" required placeholder="Masalan: G'ofur G'ulom Xo'jaligi" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                    <input type="text" name="name" id="add_farm_name" list="predefined_farms_list" required placeholder="Masalan: G'ofur G'ulom Xo'jaligi" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                    <div id="add_farm_predefined_info" class="mt-1.5 text-xs text-forest-750 font-semibold hidden"></div>
                 </div>
 
                 <div>
@@ -231,7 +232,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Maydoni (Gektar)</label>
-                        <input type="number" step="0.1" name="size" required placeholder="Masalan: 45" class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                        <input type="number" step="0.1" name="size" id="add_farm_size" required placeholder="Masalan: 45" class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tuproq Turi</label>
@@ -427,7 +428,8 @@
             <div class="w-full lg:w-96 p-6 border-r border-slate-200 overflow-y-auto space-y-4 shrink-0">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fermer Xo'jaligi Nomi</label>
-                    <input type="text" name="name" id="edit_farm_name" required placeholder="Masalan: G'ofur G'ulom Xo'jaligi" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                    <input type="text" name="name" id="edit_farm_name" list="predefined_farms_list" required placeholder="Masalan: G'ofur G'ulom Xo'jaligi" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                    <div id="edit_farm_predefined_info" class="mt-1.5 text-xs text-forest-750 font-semibold hidden"></div>
                 </div>
 
                 <div>
@@ -522,6 +524,12 @@
         </form>
     </div>
 </div>
+
+<datalist id="predefined_farms_list">
+    @foreach($predefinedFarms as $pf)
+        <option value="{{ $pf->name }}">{{ $pf->name }} (STIR: {{ $pf->stir }})</option>
+    @endforeach
+</datalist>
 @endsection
 
 @section('scripts')
@@ -1142,5 +1150,48 @@
         modal.classList.remove('flex');
         modal.classList.add('hidden');
     }
+
+    // Autocomplete & autofill logic for predefined farms
+    (function() {
+        const predefinedFarms = @json($predefinedFarms ?? []);
+
+        const addInput = document.getElementById('add_farm_name');
+        const addInfo = document.getElementById('add_farm_predefined_info');
+        const addSize = document.getElementById('add_farm_size');
+
+        const editInput = document.getElementById('edit_farm_name');
+        const editInfo = document.getElementById('edit_farm_predefined_info');
+        const editSize = document.getElementById('edit_farm_size');
+
+        function handleAutocomplete(inputEl, infoEl, sizeEl) {
+            if (!inputEl) return;
+            inputEl.addEventListener('input', function() {
+                const val = this.value.trim();
+                const farm = predefinedFarms.find(f => f.name.toLowerCase() === val.toLowerCase());
+                if (farm) {
+                    if (sizeEl && farm.size) {
+                        sizeEl.value = farm.size;
+                    }
+                    if (infoEl) {
+                        let details = [];
+                        if (farm.stir) details.push(`<strong>STIR (INN):</strong> ${farm.stir}`);
+                        if (farm.crop_type) details.push(`<strong>Ixtisosligi:</strong> ${farm.crop_type}`);
+                        if (farm.size) details.push(`<strong>Hajmi:</strong> ${farm.size} ga`);
+                        
+                        infoEl.innerHTML = `✨ Tanlangan fermer xo'jaligi ma'lumotlari:<br>` + details.join(' | ');
+                        infoEl.classList.remove('hidden');
+                        infoEl.className = "mt-1.5 text-xs text-forest-800 bg-forest-50/80 p-2 rounded-lg border border-forest-200/50 shadow-sm leading-relaxed";
+                    }
+                } else {
+                    if (infoEl) {
+                        infoEl.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        handleAutocomplete(addInput, addInfo, addSize);
+        handleAutocomplete(editInput, editInfo, editSize);
+    })();
 </script>
 @endsection
