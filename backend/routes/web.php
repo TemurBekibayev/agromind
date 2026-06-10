@@ -471,3 +471,21 @@ Route::post('/api/monitor-analysis/{id}/recommend', function (Request $request, 
         'recommendation' => $recommendation
     ]);
 });
+
+// Helper to run migrations & seeders on production (cPanel)
+Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request) {
+    if ($request->query('token') !== 'agromind_monitoring_token_2026') {
+        abort(403, 'Unauthorized.');
+    }
+
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        \Illuminate\Support\Facades\Artisan::call('db:seed', [
+            '--class' => 'Database\\Seeders\\PredefinedFarmSeeder',
+            '--force' => true
+        ]);
+        return 'Migrations and Seeding completed successfully!';
+    } catch (\Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
