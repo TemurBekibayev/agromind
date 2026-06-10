@@ -1327,7 +1327,15 @@
             
             const fertilityBadge = document.getElementById('statAvgFertility');
             if (avgFertility >= 70) {
-// AI Drawer variables
+                fertilityBadge.className = 'text-xs font-black text-emerald-400 font-display';
+            } else if (avgFertility >= 40) {
+                fertilityBadge.className = 'text-xs font-black text-amber-400 font-display';
+            } else {
+                fertilityBadge.className = 'text-xs font-black text-rose-400 font-display';
+            }
+        }
+
+        // AI Drawer variables
         let activeGeofence = null;
         let activeFarm = null;
         let activeDrawerTab = 'soil';
