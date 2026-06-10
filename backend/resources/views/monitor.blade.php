@@ -1234,13 +1234,18 @@
                             return `
                                 <div class="vehicle-card p-2.5 border rounded-lg shadow-sm transition hover:shadow-md cursor-pointer ${activeCardStyle}" ${clickHandler}>
                                     <div class="flex justify-between items-center">
-                                        <span class="font-bold text-[11px] text-slate-300 font-display">${v.name}</span>
-                                        <span class="flex items-center gap-1 text-[9px] font-bold text-slate-400">
+                                        <span class="font-bold text-[11px] text-slate-300 font-display flex items-center gap-2">
+                                            <span class="p-1 rounded bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center shrink-0" style="width: 22px; height: 22px;">
+                                                ${getVehicleSvg(v.type)}
+                                            </span>
+                                            <span>${v.name}</span>
+                                        </span>
+                                        <span class="flex items-center gap-1 text-[9px] font-bold text-slate-400 font-sans">
                                             <span class="h-1.5 w-1.5 rounded-full ${badgeColor}"></span>
                                             ${statusText}
                                         </span>
                                     </div>
-                                    <div class="flex justify-between items-center mt-2 text-[9px] text-slate-550">
+                                    <div class="flex justify-between items-center mt-2 text-[9px] text-slate-550 font-sans">
                                         <span>Raqami: <strong>${v.plate_number}</strong></span>
                                         <span>Tezlik: <strong>${speed.toFixed(0)} km/s</strong></span>
                                     </div>
