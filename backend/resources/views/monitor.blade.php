@@ -646,11 +646,72 @@
             }
         }
 
-        // Custom Glowing Marker Icon
-        function getVehicleIcon(status, isMoving) {
-            let color = '#94A3B8'; // offline (gray)
+        // Vehicle Heading/Bearing cache
+        const vehicleAngles = {};
+        const lastVehicleCoords = {};
+
+        function getBearing(lat1, lng1, lat2, lng2) {
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const lat1Rad = lat1 * Math.PI / 180;
+            const lat2Rad = lat2 * Math.PI / 180;
+            const y = Math.sin(dLng) * Math.cos(lat2Rad);
+            const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+            let brng = Math.atan2(y, x) * 180 / Math.PI;
+            return (brng + 360) % 360;
+        }
+
+        function updateVehicleAngle(vehicleId, newCoords, speed) {
+            let angle = vehicleAngles[vehicleId];
+            if (angle === undefined) {
+                // Seed a default angle based on vehicle ID so they aren't all facing North initially
+                angle = (vehicleId * 53) % 360;
+                vehicleAngles[vehicleId] = angle;
+            }
+
+            const last = lastVehicleCoords[vehicleId];
+            if (last) {
+                if (speed > 0 && (last[0] !== newCoords[0] || last[1] !== newCoords[1])) {
+                    angle = getBearing(last[0], last[1], newCoords[0], newCoords[1]);
+                    vehicleAngles[vehicleId] = angle;
+                }
+            }
+            lastVehicleCoords[vehicleId] = newCoords;
+            return angle;
+        }
+
+        // SVG templates for different vehicle types
+        function getVehicleSvg(type) {
+            if (type === 'tractor') {
+                return `
+                    <svg viewBox="0 0 24 24" class="w-4 h-4 fill-current text-white">
+                        <path d="M19 15h-1.2c-.4-1.2-1.5-2-2.8-2s-2.4.8-2.8 2H9.8c-.4-1.2-1.5-2-2.8-2s-2.4.8-2.8 2H3v-2.5C3 11.1 4.1 10 5.5 10H8l.8-2.5C9.2 6.6 10.1 6 11.1 6H15c1.1 0 2 .9 2 2v2.5h2c1.1 0 2 .9 2 2.5v2zm-12 3a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+                    </svg>
+                `;
+            } else if (type === 'combine') {
+                return `
+                    <svg viewBox="0 0 24 24" class="w-4.5 h-4.5 fill-current text-white">
+                        <path d="M18 7h-6l-1.5 3H6v4h12v-5c0-1.1-.9-2-2-2z" />
+                        <path d="M2 13v3h1.5v-3H2z M3 14.2h2v1H3z" />
+                        <path d="M5 13.5l1.5-1.5v2.5z" />
+                        <path d="M14 7l-4-4-.7.7 3.5 3.5z" />
+                        <circle cx="8.5" cy="16.5" r="2.2" />
+                        <circle cx="15.5" cy="17" r="1.3" />
+                    </svg>
+                `;
+            } else { // other
+                return `
+                    <svg viewBox="0 0 24 24" class="w-4 h-4 fill-current text-white">
+                        <path d="M20 10h-2V7c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h1.2c.4 1.2 1.5 2 2.8 2s2.4-.8 2.8-2h4.4c.4 1.2 1.5 2 2.8 2s2.4-.8 2.8-2H22v-4c0-1.7-1.3-3-3-3zM7.5 17c-.8 0-1.5-.7-1.5-1.5S6.7 14 7.5 14s1.5.7 1.5 1.5S8.3 17 7.5 17zm10 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zM17 11h-3V7h3v4z"/>
+                    </svg>
+                `;
+            }
+        }
+
+        // Custom Glowing Marker Icon with Direction Arrow & Vehicle SVG
+        function getVehicleIcon(status, isMoving, type = 'tractor', angle = 0) {
+            let color = '#64748B'; // offline (gray)
             if (status === 'online') {
-                color = isMoving ? '#10B981' : '#F59E0B'; // yashil (harakatda) yoki sariq (o'chirilgan)
+                color = isMoving ? '#10B981' : '#F59E0B'; // yashil (harakatda) yoki sariq (kutishda)
             } else if (status === 'problem') {
                 color = '#EF4444'; // red
             }
@@ -658,15 +719,28 @@
             return L.divIcon({
                 className: 'custom-gps-icon',
                 html: `
-                    <div class="relative flex items-center justify-center" style="width: 24px; height: 24px;">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-35" style="background-color: ${color};"></span>
-                        <div class="rounded-full shadow-md border-2 border-white flex items-center justify-center" style="width: 16px; height: 16px; background-color: ${color};">
-                            <span class="block bg-white rounded-full" style="width: 4px; height: 4px;"></span>
+                    <div class="relative flex items-center justify-center" style="width: 36px; height: 36px;">
+                        <!-- Glow effect for online & moving -->
+                        ${status === 'online' && isMoving ? `
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-30" style="background-color: ${color};"></span>
+                        ` : ''}
+                        
+                        <!-- Circular border / background with SVG Icon inside -->
+                        <div class="rounded-full shadow-lg border-2 border-slate-900 flex items-center justify-center z-10" 
+                             style="width: 28px; height: 28px; background-color: ${color};">
+                            ${getVehicleSvg(type)}
+                        </div>
+                        
+                        <!-- Direction Arrow overlay pointing in the direction of travel -->
+                        <div class="absolute inset-0 flex items-start justify-center pointer-events-none" style="transform: rotate(${angle}deg); z-index: 20;">
+                            <!-- Small triangle pointing upwards at the top edge of the marker -->
+                            <div class="w-0 h-0 border-l-[4px] border-r-[4px] border-b-[6px] border-l-transparent border-r-transparent" 
+                                 style="border-b-color: ${color}; filter: drop-shadow(0px -1px 1px rgba(0,0,0,0.6)); margin-top: -6px;"></div>
                         </div>
                     </div>
                 `,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
             });
         }
 
@@ -1963,7 +2037,8 @@
                                     // Update existing marker position
                                     if (mapVehicleMarkers[v.id]) {
                                         mapVehicleMarkers[v.id].setLatLng(coords);
-                                        mapVehicleMarkers[v.id].setIcon(getVehicleIcon(v.status, speed > 0));
+                                        const angle = updateVehicleAngle(v.id, coords, speed);
+                                        mapVehicleMarkers[v.id].setIcon(getVehicleIcon(v.status, speed > 0, v.type, angle));
                                         
                                         // Update dynamic live status in popup
                                         mapVehicleMarkers[v.id].setPopupContent(`
@@ -1981,8 +2056,9 @@
                                         `);
                                     } else {
                                         // Create new Leaflet Marker
+                                        const angle = updateVehicleAngle(v.id, coords, speed);
                                         const marker = L.marker(coords, {
-                                            icon: getVehicleIcon(v.status, speed > 0)
+                                            icon: getVehicleIcon(v.status, speed > 0, v.type, angle)
                                         }).addTo(map);
 
                                         // Detailed popup matching screenshot details
