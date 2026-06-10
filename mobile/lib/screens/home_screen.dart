@@ -6,10 +6,23 @@ import 'soil_analysis_screen.dart';
 import 'profile_screen.dart';
 import 'weather_forecast_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
-  void _navigateTo(BuildContext context, Widget screen) {
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _currentIndex = 0;
+
+  void _navigateToTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  void _navigateTo(Widget screen) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => screen),
@@ -17,12 +30,8 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final vehiclesState = ref.watch(vehiclesProvider);
-    final alertsState = ref.watch(alertsProvider);
-    final farmsState = ref.watch(farmsProvider);
-
     final userName = authState.user?['name'] ?? 'Fermer';
     final userRegion = authState.user?['region']?['name'] ?? 'O\'zbekiston';
     final userDistrict = authState.user?['district'];
@@ -32,6 +41,7 @@ class HomeScreen extends ConsumerWidget {
 
     double latitude = 41.311081;
     double longitude = 69.240562;
+    final farmsState = ref.watch(farmsProvider);
     final farms = farmsState.value;
     if (farms != null && farms.isNotEmpty) {
       latitude = double.tryParse('${farms[0]['latitude']}') ?? latitude;
@@ -50,7 +60,6 @@ class HomeScreen extends ConsumerWidget {
       }
     }
     final coordsStr = '$latitude,$longitude';
-    final weatherState = ref.watch(weatherProvider(coordsStr));
     final geocodeState = ref.watch(geocodeProvider(coordsStr));
 
     String weatherLocationName = fullRegionDisplay;
@@ -59,7 +68,6 @@ class HomeScreen extends ConsumerWidget {
     if (farms != null && farms.isNotEmpty) {
       final farmName = farms[0]['name'] ?? 'Mening maydonim';
       
-      // Get the geocoded region and district if loaded successfully
       final geocodedData = geocodeState.value;
       final farmRegion = geocodedData != null && geocodedData['region']!.isNotEmpty
           ? geocodedData['region']!
@@ -69,13 +77,11 @@ class HomeScreen extends ConsumerWidget {
           ? geocodedData['district']!
           : (farms[0]['district'] ?? '').toString();
 
-      // Filter out technical placeholder location values like "GIS Chegara..."
       final String rawLoc = (farms[0]['location'] ?? '').toString();
       final String farmLoc = (rawLoc.toLowerCase().contains('gis chegara') || rawLoc.toLowerCase().contains('chegara maydoni'))
           ? ''
           : rawLoc;
 
-      // Determine district/location detail
       final detailLoc = farmDistrict.isNotEmpty 
           ? farmDistrict 
           : (farmLoc.isNotEmpty ? farmLoc : '');
@@ -90,6 +96,59 @@ class HomeScreen extends ConsumerWidget {
         weatherLocationName = detailLoc.isNotEmpty ? '$farmName ($detailLoc)' : farmName;
       }
     }
+
+    // List of screens to display in tabs
+    final List<Widget> pages = [
+      _buildDashboardBody(userName, headerLocation, weatherLocationName, coordsStr),
+      WeatherForecastScreen(region: weatherLocationName, coordsStr: coordsStr, showBackButton: false),
+      const GpsMapScreen(),
+      const ProfileScreen(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _navigateToTab,
+        indicatorColor: const Color(0xFF1A3C2A).withOpacity(0.15),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF1A3C2A)),
+            label: 'Asosiy',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.wb_sunny_outlined),
+            selectedIcon: Icon(Icons.wb_sunny_rounded, color: Color(0xFF1A3C2A)),
+            label: 'Ob-havo',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map_rounded, color: Color(0xFF1A3C2A)),
+            label: 'Xarita',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded, color: Color(0xFF1A3C2A)),
+            label: 'Profil',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardBody(
+    String userName,
+    String headerLocation,
+    String weatherLocationName,
+    String coordsStr,
+  ) {
+    final vehiclesState = ref.watch(vehiclesProvider);
+    final alertsState = ref.watch(alertsProvider);
+    final weatherState = ref.watch(weatherProvider(coordsStr));
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -128,10 +187,6 @@ class HomeScreen extends ConsumerWidget {
               ref.read(alertsProvider.notifier).fetchAlerts();
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.account_circle_rounded),
-            onPressed: () => _navigateTo(context, const ProfileScreen()),
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -146,7 +201,7 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Weather Widget
-              _buildWeatherCard(context, ref, weatherState, weatherLocationName, coordsStr),
+              _buildWeatherCard(weatherState, weatherLocationName, coordsStr),
               const SizedBox(height: 20),
 
               // 2. Quick navigation grid
@@ -155,7 +210,7 @@ class HomeScreen extends ConsumerWidget {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
               ),
               const SizedBox(height: 10),
-              _buildNavigationGrid(context),
+              _buildNavigationGrid(),
               const SizedBox(height: 25),
 
               // 3. Vehicles summary card
@@ -195,7 +250,7 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              _buildAlertsFeed(context, ref, alertsState),
+              _buildAlertsFeed(alertsState),
             ],
           ),
         ),
@@ -204,8 +259,6 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildWeatherCard(
-    BuildContext context,
-    WidgetRef ref,
     AsyncValue<Map<String, dynamic>> weatherState,
     String region,
     String coordsStr,
@@ -214,7 +267,7 @@ class HomeScreen extends ConsumerWidget {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => _navigateTo(context, WeatherForecastScreen(region: region, coordsStr: coordsStr)),
+        onTap: () => _navigateToTab(1), // Switch to Weather Tab
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
@@ -319,7 +372,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNavigationGrid(BuildContext context) {
+  Widget _buildNavigationGrid() {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -328,15 +381,13 @@ class HomeScreen extends ConsumerWidget {
       mainAxisSpacing: 12,
       childAspectRatio: 1.6,
       children: [
-        _buildNavCard(
-          context,
+        _buildNavTabCard(
           'GPS Xarita',
           Icons.map_rounded,
           Colors.blue[700]!,
-          const GpsMapScreen(),
+          2, // Tab Index for map
         ),
-        _buildNavCard(
-          context,
+        _buildNavScreenCard(
           'Tuproq AI',
           Icons.science_rounded,
           Colors.orange[800]!,
@@ -346,8 +397,37 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNavCard(
-    BuildContext context,
+  Widget _buildNavTabCard(
+    String title,
+    IconData icon,
+    Color color,
+    int tabIndex,
+  ) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => _navigateToTab(tabIndex),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color, size: 28),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavScreenCard(
     String title,
     IconData icon,
     Color color,
@@ -357,7 +437,7 @@ class HomeScreen extends ConsumerWidget {
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () => _navigateTo(context, targetScreen),
+        onTap: () => _navigateTo(targetScreen),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(14.0),
@@ -431,11 +511,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAlertsFeed(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<dynamic>> alertsState,
-  ) {
+  Widget _buildAlertsFeed(AsyncValue<List<dynamic>> alertsState) {
     return alertsState.when(
       data: (alerts) {
         if (alerts.isEmpty) {

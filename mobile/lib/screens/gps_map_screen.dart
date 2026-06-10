@@ -22,8 +22,7 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
   bool _isLoadingHistory = false;
   bool _isLoadingLocation = false;
   String? _errorMessage;
-  String _selectedMapLayer = 'standard';
-  bool _showLayerSelector = false;
+  final String _selectedMapLayer = 'satellite';
   bool _isFirstFetch = true;
 
   final MapController _mapController = MapController();
@@ -194,7 +193,6 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
       _errorMessage = null;
       _markers.clear();
       _polylines.clear();
-      _showLayerSelector = false;
       _isFirstFetch = true;
     });
     _fetchLocation(id);
@@ -240,12 +238,6 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                       // Live Floating Telemetry Card
                       if (_currentLocation != null)
                         _buildFloatingTelemetryCard(),
-
-                      // Floating Layer Toggle Button
-                      _buildLayersToggleButton(),
-
-                      // Floating Layer Selector Panel
-                      _buildLayersSelectorPanel(),
                     ],
                   ),
           ),
@@ -423,134 +415,6 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
     );
   }
 
-  Widget _buildLayersToggleButton() {
-    return Positioned(
-      top: 16,
-      right: 16,
-      child: Container(
-        decoration: const BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black38,
-              blurRadius: 6,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Material(
-          color: const Color(0xFF1E293B).withOpacity(0.95), // Slate Dark
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () {
-              setState(() {
-                _showLayerSelector = !_showLayerSelector;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Icon(
-                Icons.layers_rounded,
-                color: _showLayerSelector ? const Color(0xFF34D399) : Colors.white,
-                size: 24,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLayersSelectorPanel() {
-    if (!_showLayerSelector) return const SizedBox.shrink();
-
-    return Positioned(
-      top: 16,
-      right: 76,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B).withOpacity(0.95), // Slate Dark Glassmorphism
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black38,
-              blurRadius: 10,
-              offset: Offset(0, 5),
-            ),
-          ],
-          border: Border.all(
-            color: Colors.white.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildLayerOptionItem(
-              'standard',
-              'Standart',
-              Icons.map_rounded,
-            ),
-            const SizedBox(width: 8),
-            _buildLayerOptionItem(
-              'satellite',
-              'Yo\'ldosh',
-              Icons.satellite_alt_rounded,
-            ),
-            const SizedBox(width: 8),
-            _buildLayerOptionItem(
-              'terrain',
-              'Relyef',
-              Icons.terrain_rounded,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLayerOptionItem(String id, String label, IconData icon) {
-    final isSelected = _selectedMapLayer == id;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedMapLayer = id;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1A3C2A).withOpacity(0.4) : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF34D399).withOpacity(0.5) : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF34D399) : Colors.white70,
-              size: 20,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white70,
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildFloatingTelemetryCard() {
     if (_currentLocation == null) return const SizedBox.shrink();
