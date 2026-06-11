@@ -489,3 +489,8 @@ Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request)
         return 'Error: ' . $e->getMessage();
     }
 });
+
+// Maxfiylik Siyosati (Privacy Policy) Google Play Market uchun
+Route::get('/privacy-policy', function () {
+    return view('privacy_policy');
+});
