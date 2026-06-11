@@ -48,161 +48,218 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
     final priceController = TextEditingController();
     final phoneController = TextEditingController(text: currentUser?['phone'] ?? '');
     String selectedType = 'Traktor';
+    String? modalErrorMessage;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Yangi E\'lon Joylashtirish',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Yangi E\'lon Joylashtirish',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'Texnika/Uskuna turi',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      items: _categories
+                          .where((cat) => cat != 'Barchasi')
+                          .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            selectedType = val;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'E\'lon sarlavhasi',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.title_rounded),
+                        hintText: 'Masalan: Chizel ijaraga beriladi',
+                      ),
+                      onChanged: (_) {
+                        if (modalErrorMessage != null) {
+                          setModalState(() {
+                            modalErrorMessage = null;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: priceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ijara narxi',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.payments_outlined),
+                        hintText: 'Masalan: 150 000 so\'m/kun yoki Kelishuv asosida',
+                      ),
+                      onChanged: (_) {
+                        if (modalErrorMessage != null) {
+                          setModalState(() {
+                            modalErrorMessage = null;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Bog\'lanish uchun telefon',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone_rounded),
+                        hintText: '998901234567',
+                      ),
+                      onChanged: (_) {
+                        if (modalErrorMessage != null) {
+                          setModalState(() {
+                            modalErrorMessage = null;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descriptionController,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Batafsil tavsif',
+                        border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
+                        hintText: 'Texnika holati, yetkazib berish shartlari va boshqa ma\'lumotlarni kiriting...',
+                      ),
+                      onChanged: (_) {
+                        if (modalErrorMessage != null) {
+                          setModalState(() {
+                            modalErrorMessage = null;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 15),
+                    if (modalErrorMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                modalErrorMessage!,
+                                style: const TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                    ],
+                    ElevatedButton(
+                      onPressed: () async {
+                        final title = titleController.text.trim();
+                        final price = priceController.text.trim();
+                        final phone = phoneController.text.trim();
+                        final description = descriptionController.text.trim();
+    
+                        if (title.isEmpty || price.isEmpty || phone.isEmpty || description.isEmpty) {
+                          setModalState(() {
+                            modalErrorMessage = 'Iltimos, barcha maydonlarni to\'ldiring.';
+                          });
+                          return;
+                        }
+    
+                        Navigator.pop(context);
+                        
+                        final success = await ref.read(listingsProvider.notifier).addListing(
+                              title: title,
+                              description: description,
+                              equipmentType: selectedType,
+                              price: price,
+                              contactPhone: phone,
+                            );
+    
+                        if (success) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('E\'lon muvaffaqiyatli qo\'shildi!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('E\'lon qo\'shishda xatolik yuz berdi.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1A3C2A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('E\'lonni chop etish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 15),
-                DropdownButtonFormField<String>(
-                  value: selectedType,
-                  decoration: const InputDecoration(
-                    labelText: 'Texnika/Uskuna turi',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                  items: _categories
-                      .where((cat) => cat != 'Barchasi')
-                      .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) selectedType = val;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'E\'lon sarlavhasi',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.title_rounded),
-                    hintText: 'Masalan: Chizel ijaraga beriladi',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: priceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Ijara narxi',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.payments_outlined),
-                    hintText: 'Masalan: 150 000 so\'m/kun yoki Kelishuv asosida',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Bog\'lanish uchun telefon',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone_rounded),
-                    hintText: '998901234567',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Batafsil tavsif',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                    hintText: 'Texnika holati, yetkazib berish shartlari va boshqa ma\'lumotlarni kiriting...',
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () async {
-                    final title = titleController.text.trim();
-                    final price = priceController.text.trim();
-                    final phone = phoneController.text.trim();
-                    final description = descriptionController.text.trim();
-
-                    if (title.isEmpty || price.isEmpty || phone.isEmpty || description.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Iltimos, barcha maydonlarni to\'ldiring.'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                      return;
-                    }
-
-                    Navigator.pop(context);
-                    
-                    final success = await ref.read(listingsProvider.notifier).addListing(
-                          title: title,
-                          description: description,
-                          equipmentType: selectedType,
-                          price: price,
-                          contactPhone: phone,
-                        );
-
-                    if (success) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('E\'lon muvaffaqiyatli qo\'shildi!'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    } else {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('E\'lon qo\'shishda xatolik yuz berdi.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A3C2A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('E\'lonni chop etish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

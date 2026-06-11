@@ -21,7 +21,7 @@ class SimulateGpsCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Simulate GPS coordinates movement for all vehicles every 15 seconds';
+    protected $description = 'Simulate GPS coordinates movement for all vehicles every 5 seconds';
 
     protected $gpsService;
 
@@ -40,19 +40,19 @@ class SimulateGpsCommand extends Command
         
         $seconds = 0;
         
-        // Laravel Scheduler har daqiqada ishga tushiradi. Biz sub-minute (15s) simulyatsiya 
-        // qilish uchun 1 daqiqa davomida loopda ishlatamiz va har 15 soniyada sleep qilamiz.
+        // Laravel Scheduler har daqiqada ishga tushiradi. Biz sub-minute (5s) simulyatsiya 
+        // qilish uchun 1 daqiqa davomida loopda ishlatamiz va har 5 soniyada sleep qilamiz.
         while ($seconds < 60) {
             $startTime = microtime(true);
             
             $this->runSimulationIteration();
             
             $elapsed = microtime(true) - $startTime;
-            $sleepTime = max(1, 15 - (int)$elapsed);
+            $sleepTime = max(1, 5 - (int)$elapsed);
             
             $this->info("Iteration complete. Sleeping for {$sleepTime} seconds...");
             sleep($sleepTime);
-            $seconds += 15;
+            $seconds += 5;
         }
 
         $this->info("GPS simulation cycle finished.");

@@ -170,12 +170,12 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
     // 1. Add real days from API (usually 16 days)
     for (int i = 0; i < times.length; i++) {
       result.add({
-        'date': DateTime.parse(times[i] as String),
-        'code': codes[i] as int,
-        'tempMax': tempsMax[i] as double,
-        'tempMin': tempsMin[i] as double,
-        'precip': precips[i] as int,
-        'wind': winds[i] as double,
+        'date': DateTime.tryParse(times[i]?.toString() ?? '') ?? DateTime.now(),
+        'code': (codes[i] as num?)?.toInt() ?? 0,
+        'tempMax': (tempsMax[i] as num?)?.toDouble() ?? 0.0,
+        'tempMin': (tempsMin[i] as num?)?.toDouble() ?? 0.0,
+        'precip': (precips[i] as num?)?.toInt() ?? 0,
+        'wind': (winds[i] as num?)?.toDouble() ?? 0.0,
         'isSimulated': false,
       });
     }
@@ -238,28 +238,29 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
       backgroundColor: const Color(0xFF0F172A),
       body: weatherState.when(
         data: (data) {
-          final current = data['current'];
+          final current = data['current'] ?? {};
           final temp = current['temperature_2m'];
-          final code = current['weather_code'];
+          final code = (current['weather_code'] as num?)?.toInt() ?? 0;
           final currentCondition = _getWeatherCondition(code);
 
           // Hourly mapping
-          final hourly = data['hourly'];
-          final hourlyTimes = hourly['time'] as List<dynamic>;
+          final hourly = data['hourly'] ?? {};
+          final hourlyTimes = (hourly['time'] as List<dynamic>?) ?? [];
           
           // Find current hour index
           int currentHourIndex = 0;
           final now = DateTime.now();
           for (int i = 0; i < hourlyTimes.length; i++) {
-            final dt = DateTime.parse(hourlyTimes[i] as String);
-            if (dt.year == now.year && dt.month == now.month && dt.day == now.day && dt.hour == now.hour) {
+            final timeStr = hourlyTimes[i]?.toString() ?? '';
+            final dt = DateTime.tryParse(timeStr);
+            if (dt != null && dt.year == now.year && dt.month == now.month && dt.day == now.day && dt.hour == now.hour) {
               currentHourIndex = i;
               break;
             }
           }
 
           // Next 6 hours
-          final next6Temps = (hourly['temperature_2m'] as List<dynamic>)
+          final next6Temps = ((hourly['temperature_2m'] as List<dynamic>?) ?? [])
               .skip(currentHourIndex)
               .take(6)
               .map((e) => double.tryParse('$e') ?? 0.0)
@@ -270,27 +271,27 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
               .take(6)
               .toList();
 
-          final next6Codes = (hourly['weather_code'] as List<dynamic>)
+          final next6Codes = ((hourly['weather_code'] as List<dynamic>?) ?? [])
               .skip(currentHourIndex)
               .take(6)
-              .map((e) => e as int)
+              .map((e) => (e as num?)?.toInt() ?? 0)
               .toList();
 
-          final next6Probs = (hourly['precipitation_probability'] as List<dynamic>)
+          final next6Probs = ((hourly['precipitation_probability'] as List<dynamic>?) ?? [])
               .skip(currentHourIndex)
               .take(6)
-              .map((e) => e as int)
+              .map((e) => (e as num?)?.toInt() ?? 0)
               .toList();
 
           // Daily mapping & generation
-          final daily = data['daily'];
+          final daily = data['daily'] ?? {};
           final dailyForecast = _generate30DayForecast(
-            daily['time'] as List<dynamic>,
-            daily['weather_code'] as List<dynamic>,
-            daily['temperature_2m_max'] as List<dynamic>,
-            daily['temperature_2m_min'] as List<dynamic>,
-            daily['precipitation_probability_max'] as List<dynamic>,
-            daily['wind_speed_10m_max'] as List<dynamic>,
+            (daily['time'] as List<dynamic>?) ?? [],
+            (daily['weather_code'] as List<dynamic>?) ?? [],
+            (daily['temperature_2m_max'] as List<dynamic>?) ?? [],
+            (daily['temperature_2m_min'] as List<dynamic>?) ?? [],
+            (daily['precipitation_probability_max'] as List<dynamic>?) ?? [],
+            (daily['wind_speed_10m_max'] as List<dynamic>?) ?? [],
           );
 
           return Container(
@@ -436,9 +437,17 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
     WeatherConditionInfo currentCondition,
     Map<String, dynamic> data,
   ) {
-    final daily = data['daily'];
-    final tempMax = (daily['temperature_2m_max'] as List<dynamic>)[0];
-    final tempMin = (daily['temperature_2m_min'] as List<dynamic>)[0];
+    final daily = data['daily'] ?? {};
+    final dailyMax = daily['temperature_2m_max'] as List<dynamic>?;
+    final dailyMin = daily['temperature_2m_min'] as List<dynamic>?;
+    
+    final double tempMaxVal = (dailyMax != null && dailyMax.isNotEmpty)
+        ? ((dailyMax[0] as num?)?.toDouble() ?? 0.0)
+        : 0.0;
+    final double tempMinVal = (dailyMin != null && dailyMin.isNotEmpty)
+        ? ((dailyMin[0] as num?)?.toDouble() ?? 0.0)
+        : 0.0;
+    final double tempVal = (temp as num?)?.toDouble() ?? 0.0;
 
     return SizedBox(
       height: 280,
@@ -461,7 +470,7 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
             child: Column(
               children: [
                 Text(
-                  '+${temp.toStringAsFixed(0)}°',
+                  '${tempVal >= 0 ? '+' : ''}${tempVal.toStringAsFixed(0)}°',
                   style: const TextStyle(
                     fontSize: 76,
                     fontWeight: FontWeight.w200,
@@ -480,7 +489,7 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Yuqoriga: +${tempMax.toStringAsFixed(0)}°  •  Pastga: +${tempMin.toStringAsFixed(0)}°',
+                  'Yuqoriga: ${tempMaxVal >= 0 ? '+' : ''}${tempMaxVal.toStringAsFixed(0)}°  •  Pastga: ${tempMinVal >= 0 ? '+' : ''}${tempMinVal.toStringAsFixed(0)}°',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.white.withOpacity(0.75),
@@ -738,6 +747,9 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
     List<int> codes,
     List<int> probs,
   ) {
+    final int itemsCount = [temps.length, times.length, codes.length, probs.length].reduce((a, b) => a < b ? a : b);
+    final int displayCount = itemsCount < 6 ? itemsCount : 6;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
       decoration: BoxDecoration(
@@ -763,9 +775,9 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
           // Horizontal Hourly Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(6, (index) {
+            children: List.generate(displayCount, (index) {
               final hourStr = times[index] as String;
-              final dt = DateTime.parse(hourStr);
+              final dt = DateTime.tryParse(hourStr) ?? DateTime.now();
               final code = codes[index];
               final condition = _getWeatherCondition(code);
               final formattedHour = '${dt.hour}:00';
@@ -791,7 +803,7 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
             child: SizedBox(
               height: 70,
               child: CustomPaint(
-                painter: HourlyTempGraphPainter(temps),
+                painter: HourlyTempGraphPainter(temps.take(displayCount).toList()),
               ),
             ),
           ),
@@ -811,18 +823,20 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
           const SizedBox(height: 16),
 
           // Hourly Precipitation Bar Chart
-          _buildPrecipitationBars(times, probs),
+          _buildPrecipitationBars(times.take(displayCount).toList(), probs.take(displayCount).toList()),
         ],
       ),
     );
   }
 
   Widget _buildPrecipitationBars(List<dynamic> hours, List<int> probs) {
+    final int itemsCount = hours.length < probs.length ? hours.length : probs.length;
+    final int displayCount = itemsCount < 6 ? itemsCount : 6;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: List.generate(6, (index) {
+      children: List.generate(displayCount, (index) {
         final hourStr = hours[index] as String;
-        final time = DateTime.parse(hourStr);
+        final time = DateTime.tryParse(hourStr) ?? DateTime.now();
         final prob = probs[index];
         final formattedHour = '${time.hour}:00';
 
@@ -927,13 +941,13 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
       itemCount: list.length,
       itemBuilder: (context, index) {
         final day = list[index];
-        final date = day['date'] as DateTime;
-        final code = day['code'] as int;
-        final maxTemp = day['tempMax'] as double;
-        final minTemp = day['tempMin'] as double;
-        final dayPrecip = day['precip'] as int;
-        final dayWind = day['wind'] as double;
-        final isSimulated = day['isSimulated'] as bool;
+        final date = day['date'] as DateTime? ?? DateTime.now();
+        final code = (day['code'] as num?)?.toInt() ?? 0;
+        final maxTemp = (day['tempMax'] as num?)?.toDouble() ?? 0.0;
+        final minTemp = (day['tempMin'] as num?)?.toDouble() ?? 0.0;
+        final dayPrecip = (day['precip'] as num?)?.toInt() ?? 0;
+        final dayWind = (day['wind'] as num?)?.toDouble() ?? 0.0;
+        final isSimulated = day['isSimulated'] as bool? ?? false;
 
         final condition = _getWeatherCondition(code);
         final dayName = _getUzbekDayName(date, index);
@@ -991,7 +1005,7 @@ class _WeatherForecastScreenState extends ConsumerState<WeatherForecastScreen> w
                 ),
               ),
               trailing: Text(
-                '+${minTemp.toStringAsFixed(0)}° / +${maxTemp.toStringAsFixed(0)}°C',
+                '${minTemp >= 0 ? '+' : ''}${minTemp.toStringAsFixed(0)}° / ${maxTemp >= 0 ? '+' : ''}${maxTemp.toStringAsFixed(0)}°C',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

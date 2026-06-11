@@ -47,11 +47,11 @@ class VehicleController extends Controller
 
         if ($user->isAdmin() || $user->isMonitor()) {
             // Admin va Monitorlar istalgan texnika joriy joylashuvini ko'radi
-            $vehicle = Vehicle::find($id);
+            $vehicle = Vehicle::with(['farm.geofences'])->find($id);
         } else {
             // Fermer faqat o'zining texnikasini ko'radi
             $farmIds = $user->farms()->pluck('id');
-            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->with(['farm.geofences'])->find($id);
         }
 
         if (!$vehicle) {
@@ -85,6 +85,15 @@ class VehicleController extends Controller
             'vehicle_name' => $vehicle->name,
             'plate_number' => $vehicle->plate_number,
             'status_label' => $vehicle->status,
+            'geofences' => $vehicle->farm ? $vehicle->farm->geofences : [],
+            'debug_geofences_raw' => $vehicle->farm ? $vehicle->farm->geofences->map(function($g) {
+                return [
+                    'id' => $g->id,
+                    'name' => $g->name,
+                    'coordinates_type' => gettype($g->coordinates),
+                    'coordinates_val' => $g->coordinates,
+                ];
+            }) : null,
         ]);
     }
 

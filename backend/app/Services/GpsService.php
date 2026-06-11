@@ -90,23 +90,34 @@ class GpsService
     {
         $vehicle = $track->vehicle;
         $farm = $vehicle->farm;
-        $geofence = $farm->geofences()->first(); // Hozircha bitta farmda bitta geofence bor deb hisoblaymiz
+        $geofences = $farm->geofences;
 
-        if (!$geofence) {
+        if ($geofences->isEmpty()) {
             return;
         }
 
-        $coordinates = $geofence->coordinates; // Format: [[lat, lng], [lat, lng], ...]
-        $inside = $this->isPointInPolygon($track->latitude, $track->longitude, $coordinates);
+        $inside = false;
+        foreach ($geofences as $geofence) {
+            $coordinates = $geofence->coordinates; // Format: [[lat, lng], [lat, lng], ...]
+            
+            // Normalize coordinates array if it is nested as 3D array
+            if (isset($coordinates[0]) && is_array($coordinates[0]) && isset($coordinates[0][0]) && is_array($coordinates[0][0])) {
+                $coordinates = $coordinates[0];
+            }
 
-        $activeAlert = Alert::where('vehicle_id', $vehicle->id)
+            if ($coordinates && $this->isPointInPolygon($track->latitude, $track->longitude, $coordinates)) {
+                $inside = true;
+                break;
+            }
+        }
+
+        $activeAlertsQuery = Alert::where('vehicle_id', $vehicle->id)
             ->where('type', 'geofence_breach')
-            ->where('status', 'active')
-            ->first();
+            ->where('status', 'active');
 
         if (!$inside) {
             // Agar tashqarida bo'lsa va hali ogohlantirish berilmagan bo'lsa
-            if (!$activeAlert) {
+            if (!$activeAlertsQuery->exists()) {
                 Alert::create([
                     'vehicle_id' => $vehicle->id,
                     'farm_id' => $farm->id,
@@ -121,13 +132,13 @@ class GpsService
                 Log::warning("Geofence breach alert triggered for Vehicle ID: {$vehicle->id}");
             }
         } else {
-            // Agar ichkarida bo'lsa va faol ogohlantirish bo'lsa - uni hal qilamiz (resolve)
-            if ($activeAlert) {
-                $activeAlert->update([
+            // Agar ichkarida bo'lsa va faol ogohlantirishlar bo'lsa - barchasini hal qilamiz (resolve)
+            if ($activeAlertsQuery->exists()) {
+                $activeAlertsQuery->update([
                     'status' => 'resolved',
                     'resolved_at' => Carbon::now(),
                 ]);
-                Log::info("Geofence breach alert resolved for Vehicle ID: {$vehicle->id}");
+                Log::info("Geofence breach alerts resolved for Vehicle ID: {$vehicle->id}");
             }
         }
     }
@@ -173,6 +184,11 @@ class GpsService
      */
     protected function isPointInPolygon(float $lat, float $lng, array $polygon): bool
     {
+        // Normalize coordinates array if it is nested as 3D array
+        if (isset($polygon[0]) && is_array($polygon[0]) && isset($polygon[0][0]) && is_array($polygon[0][0])) {
+            $polygon = $polygon[0];
+        }
+
         $inside = false;
         $n = count($polygon);
         

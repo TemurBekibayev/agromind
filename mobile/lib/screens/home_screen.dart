@@ -137,7 +137,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           NavigationDestination(
             icon: Icon(Icons.storefront_outlined),
             selectedIcon: Icon(Icons.storefront_rounded, color: Color(0xFF1A3C2A)),
-            label: 'Ijara bozori',
+            label: 'Ijara',
           ),
           NavigationDestination(
             icon: Icon(Icons.map_outlined),
@@ -295,10 +295,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           padding: const EdgeInsets.all(20),
           child: weatherState.when(
             data: (data) {
-              final current = data['current'];
-              final temp = current['temperature_2m'];
-              final code = current['weather_code'];
-              final precip = current['precipitation'];
+              final current = data['current'] ?? {};
+              final double tempVal = (current['temperature_2m'] as num?)?.toDouble() ?? 0.0;
+              final int codeVal = (current['weather_code'] as num?)?.toInt() ?? 0;
+              final double precipVal = (current['precipitation'] as num?)?.toDouble() ?? 0.0;
               
               final conditions = {
                 0: {'name': 'Quyoshli', 'icon': Icons.wb_sunny_rounded, 'color': Colors.orange},
@@ -312,7 +312,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 99: {'name': 'Momaqaldiroq', 'icon': Icons.thunderstorm_rounded, 'color': Colors.purple[200]},
               };
               
-              final cond = conditions[code] ?? {'name': 'Yomg\'irli', 'icon': Icons.grain_rounded, 'color': Colors.blue[300]};
+              final cond = conditions[codeVal] ?? {'name': 'Yomg\'irli', 'icon': Icons.grain_rounded, 'color': Colors.blue[300]};
               
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -327,12 +327,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '+${temp.toStringAsFixed(0)}°C',
+                          '${tempVal >= 0 ? '+' : ''}${tempVal.toStringAsFixed(0)}°C',
                           style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Yog\'in miqdori: ${precip}mm | $region • Batafsil...',
+                          'Yog\'in miqdori: ${precipVal}mm | $region • Batafsil...',
                           style: const TextStyle(color: Colors.white60, fontSize: 11),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

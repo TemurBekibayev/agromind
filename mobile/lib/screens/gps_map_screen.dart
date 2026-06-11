@@ -24,10 +24,12 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
   String? _errorMessage;
   final String _selectedMapLayer = 'satellite';
   bool _isFirstFetch = true;
+  bool _isCardCollapsed = false;
 
   final MapController _mapController = MapController();
   final List<Marker> _markers = [];
   final List<Polyline> _polylines = [];
+  final List<Polygon> _polygons = [];
 
   String get _currentMapUrl {
     switch (_selectedMapLayer) {
@@ -44,8 +46,8 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
   @override
   void initState() {
     super.initState();
-    // Har 10 soniyada transport koordinatalarini yangilab turamiz
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Har 5 soniyada transport koordinatalarini yangilab turamiz
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (_selectedVehicleId != null) {
         _fetchLocation(_selectedVehicleId!);
       }
@@ -100,12 +102,48 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
               ),
             ),
           );
+
+          _polygons.clear();
+          if (res.data['geofences'] != null) {
+            final gfs = res.data['geofences'] as List<dynamic>;
+            for (var gf in gfs) {
+              var coords = gf['coordinates'];
+              if (coords != null && coords is List) {
+                // Normalize 3D coordinates arrays to 2D
+                if (coords.isNotEmpty && coords[0] is List && coords[0].isNotEmpty && coords[0][0] is List) {
+                  coords = coords[0];
+                }
+
+                final List<LatLng> polygonPoints = [];
+                for (var coord in coords) {
+                  if (coord is List && coord.length >= 2) {
+                    final pLat = double.tryParse('${coord[0]}');
+                    final pLng = double.tryParse('${coord[1]}');
+                    if (pLat != null && pLng != null) {
+                      polygonPoints.add(LatLng(pLat, pLng));
+                    }
+                  }
+                }
+                if (polygonPoints.isNotEmpty) {
+                  _polygons.add(
+                    Polygon(
+                      points: polygonPoints,
+                      color: const Color(0x3310B981),
+                      borderColor: const Color(0xFF10B981),
+                      borderStrokeWidth: 2.5,
+                    ),
+                  );
+                }
+              }
+            }
+          }
         });
 
         try {
-          final double currentZoom = _isFirstFetch ? 15.0 : _mapController.camera.zoom;
-          _mapController.move(LatLng(lat, lng), currentZoom);
-          _isFirstFetch = false;
+          if (_isFirstFetch) {
+            _mapController.move(LatLng(lat, lng), 15.0);
+            _isFirstFetch = false;
+          }
         } catch (_) {}
       } else {
         setState(() {
@@ -193,7 +231,9 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
       _errorMessage = null;
       _markers.clear();
       _polylines.clear();
+      _polygons.clear();
       _isFirstFetch = true;
+      _isCardCollapsed = false;
     });
     _fetchLocation(id);
     _fetchHistory(id);
@@ -222,6 +262,60 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                     children: [
                       // Map Background
                       _buildMapFallbackView(),
+
+                      // Map Controls Column (Recenter, Zoom In, Zoom Out)
+                      if (_currentLocation != null)
+                        Positioned(
+                          top: 16,
+                          right: 16,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              FloatingActionButton.small(
+                                heroTag: 'recenter_gps_btn',
+                                backgroundColor: const Color(0xFF1A3C2A),
+                                foregroundColor: Colors.white,
+                                onPressed: () {
+                                  final loc = _currentLocation!['location'];
+                                  if (loc != null) {
+                                    final lat = double.tryParse('${loc['latitude']}') ?? 41.38;
+                                    final lng = double.tryParse('${loc['longitude']}') ?? 69.45;
+                                    _mapController.move(LatLng(lat, lng), _mapController.camera.zoom);
+                                  }
+                                },
+                                child: const Icon(Icons.my_location_rounded),
+                              ),
+                              const SizedBox(height: 12),
+                              FloatingActionButton.small(
+                                heroTag: 'zoom_in_btn',
+                                backgroundColor: const Color(0xFF1A3C2A),
+                                foregroundColor: Colors.white,
+                                onPressed: () {
+                                  try {
+                                    final double currentZoom = _mapController.camera.zoom;
+                                    final double newZoom = (currentZoom + 1.0).clamp(3.0, 18.0);
+                                    _mapController.move(_mapController.camera.center, newZoom);
+                                  } catch (_) {}
+                                },
+                                child: const Icon(Icons.add_rounded),
+                              ),
+                              const SizedBox(height: 12),
+                              FloatingActionButton.small(
+                                heroTag: 'zoom_out_btn',
+                                backgroundColor: const Color(0xFF1A3C2A),
+                                foregroundColor: Colors.white,
+                                onPressed: () {
+                                  try {
+                                    final double currentZoom = _mapController.camera.zoom;
+                                    final double newZoom = (currentZoom - 1.0).clamp(3.0, 18.0);
+                                    _mapController.move(_mapController.camera.center, newZoom);
+                                  } catch (_) {}
+                                },
+                                child: const Icon(Icons.remove_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
 
                       // Loading indicator overlay (only when there's no data yet)
                       if (_isLoadingLocation && _currentLocation == null)
@@ -356,6 +450,9 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
         PolylineLayer(
           polylines: _polylines,
         ),
+        PolygonLayer(
+          polygons: _polygons,
+        ),
         MarkerLayer(
           markers: _markers,
         ),
@@ -427,6 +524,87 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
     final fuel = loc['fuel_level'] ?? 0;
     final lat = loc['latitude'] ?? 0.0;
     final lng = loc['longitude'] ?? 0.0;
+
+    if (_isCardCollapsed) {
+      return Positioned(
+        left: 16,
+        right: 16,
+        bottom: 16,
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              _isCardCollapsed = false;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.agriculture_rounded, color: Colors.greenAccent, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '$vehicleName ($plateNumber)',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF34D399),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$speed km/h',
+                      style: const TextStyle(
+                        color: Color(0xFF34D399),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white70),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Positioned(
       left: 16,
@@ -510,35 +688,51 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF34D399),
-                          shape: BoxShape.circle,
-                        ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
                       ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Online',
-                        style: TextStyle(
-                          color: Color(0xFF34D399),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF34D399),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Online',
+                            style: TextStyle(
+                              color: Color(0xFF34D399),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
+                      onPressed: () {
+                        setState(() {
+                          _isCardCollapsed = true;
+                        });
+                      },
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                 ),
               ],
             ),
