@@ -256,6 +256,18 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
     final authState = ref.watch(authProvider);
     final currentUser = authState.user;
 
+    ref.listen<bool>(shouldShowAddListingProvider, (previous, next) {
+      if (next) {
+        ref.read(shouldShowAddListingProvider.notifier).state = false;
+        // Kichik kechikish bilan ko'rsatamiz, ekran to'liq ochilib olishi uchun
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _showAddListingBottomSheet(context, currentUser);
+          }
+        });
+      }
+    });
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(

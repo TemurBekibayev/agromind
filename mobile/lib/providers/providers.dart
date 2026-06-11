@@ -384,3 +384,6 @@ final listingsProvider = StateNotifierProvider<ListingsNotifier, AsyncValue<List
   final api = ref.watch(apiServiceProvider);
   return ListingsNotifier(api);
 });
+
+// --- UI Helpers / Navigation Providers ---
+final shouldShowAddListingProvider = StateProvider<bool>((ref) => false);

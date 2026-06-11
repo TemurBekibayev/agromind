@@ -137,7 +137,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           NavigationDestination(
             icon: Icon(Icons.storefront_outlined),
             selectedIcon: Icon(Icons.storefront_rounded, color: Color(0xFF1A3C2A)),
-            label: 'E\'lonlar',
+            label: 'Ijara bozori',
           ),
           NavigationDestination(
             icon: Icon(Icons.map_outlined),
@@ -407,7 +407,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Colors.orange[800]!,
           const SoilAnalysisScreen(),
         ),
+        _buildNavTabCard(
+          'Ijaraga olish',
+          Icons.construction_rounded,
+          const Color(0xFF2E6F40),
+          3, // Tab Index for listings
+        ),
+        _buildNavActionCard(
+          'Ijaraga berish',
+          Icons.add_business_rounded,
+          const Color(0xFFE65C00),
+          () {
+            ref.read(shouldShowAddListingProvider.notifier).state = true;
+            _navigateToTab(3);
+          },
+        ),
       ],
+    );
+  }
+
+  Widget _buildNavActionCard(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color, size: 28),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+              )
+            ],
+          ),
+        ),
+      ),
     );
   }
 
