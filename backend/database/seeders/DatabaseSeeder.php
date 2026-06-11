@@ -160,5 +160,42 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(PredefinedFarmSeeder::class);
+
+        // 9. Create Chat Messages
+        \App\Models\ChatMessage::create([
+            'user_id' => $farmer->id,
+            'message' => 'Salom hammaga! Pomidor maydonimda tuproq sho‘rlanishi kuzatilyapti. Kimda qanday tajriba bor?',
+        ]);
+
+        \App\Models\ChatMessage::create([
+            'user_id' => $monitor->id,
+            'message' => 'Assalomu alaykum Sherzod aka! Tuproq AI yordamida tahlil o‘tkazing. O‘g‘itlash rejasini tuzib beradi.',
+        ]);
+
+        \App\Models\ChatMessage::create([
+            'user_id' => $farmer->id,
+            'message' => 'Rahmat, hozir tahlil natijasini oldim. Juda foydali maslahatlar berdi. Tavsiya qilaman!',
+        ]);
+
+        // 10. Create Listings for Agricultural Equipment Sharing
+        \App\Models\Listing::create([
+            'user_id' => $farmer->id,
+            'title' => 'Chizel kultivatori vaqtincha foydalanishga beriladi',
+            'description' => 'Yaxshi holatdagi chizel kultivatori bor, hozircha ishlatmayapman. Vaqtincha ijaraga yoki foydalanishga beraman.',
+            'equipment_type' => 'Kultivator',
+            'price' => '100 000 so‘m/kun',
+            'contact_phone' => '998901111111',
+            'status' => 'active',
+        ]);
+
+        \App\Models\Listing::create([
+            'user_id' => $monitor->id,
+            'title' => 'John Deere 4-korpusli plug',
+            'description' => 'John Deere traktorlariga mos keladigan plug. Bo‘sh turibdi, kelishilgan narxda ijaraga beriladi.',
+            'equipment_type' => 'Plug',
+            'price' => 'Kelishuv asosida',
+            'contact_phone' => '998902222222',
+            'status' => 'active',
+        ]);
     }
 }

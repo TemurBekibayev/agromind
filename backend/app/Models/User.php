@@ -67,6 +67,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Foydalanuvchi yuborgan chat xabarlari.
+     */
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
+
+    /**
+     * Foydalanuvchi e'lon qilgan texnikalar ro'yxati.
+     */
+    public function listings(): HasMany
+    {
+        return $this->hasMany(Listing::class);
+    }
+
+    /**
      * Helper: Foydalanuvchi admin ekanligini tekshirish.
      */
     public function isAdmin(): bool

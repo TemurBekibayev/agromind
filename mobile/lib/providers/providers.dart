@@ -278,3 +278,109 @@ final geocodeProvider = FutureProvider.family<Map<String, String>, String>((ref,
   } catch (_) {}
   return {'region': '', 'district': ''};
 });
+
+// --- Chat Messages State ---
+class ChatMessagesNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
+  final ApiService _apiService;
+
+  ChatMessagesNotifier(this._apiService) : super(const AsyncValue.loading()) {
+    fetchMessages();
+  }
+
+  Future<void> fetchMessages() async {
+    try {
+      final res = await _apiService.getChatMessages();
+      if (res.data['status'] == 'success') {
+        state = AsyncValue.data(res.data['messages'] as List<dynamic>);
+      } else {
+        state = AsyncValue.error('Xabarlarni yuklab bo\'lmadi', StackTrace.current);
+      }
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+
+  Future<bool> sendMessage(String message) async {
+    try {
+      final res = await _apiService.sendChatMessage(message);
+      if (res.data['status'] == 'success') {
+        final newMsg = res.data['message'];
+        state.whenData((currentList) {
+          state = AsyncValue.data([...currentList, newMsg]);
+        });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+}
+
+final chatMessagesProvider = StateNotifierProvider<ChatMessagesNotifier, AsyncValue<List<dynamic>>>((ref) {
+  final api = ref.watch(apiServiceProvider);
+  return ChatMessagesNotifier(api);
+});
+
+// --- Listings State ---
+class ListingsNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
+  final ApiService _apiService;
+
+  ListingsNotifier(this._apiService) : super(const AsyncValue.loading()) {
+    fetchListings();
+  }
+
+  Future<void> fetchListings() async {
+    try {
+      final res = await _apiService.getListings();
+      if (res.data['status'] == 'success') {
+        state = AsyncValue.data(res.data['listings'] as List<dynamic>);
+      } else {
+        state = AsyncValue.error('E\'lonlarni yuklab bo\'lmadi', StackTrace.current);
+      }
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+
+  Future<bool> addListing({
+    required String title,
+    required String description,
+    required String equipmentType,
+    required String price,
+    required String contactPhone,
+  }) async {
+    try {
+      final res = await _apiService.createListing(
+        title: title,
+        description: description,
+        equipmentType: equipmentType,
+        price: price,
+        contactPhone: contactPhone,
+      );
+      if (res.data['status'] == 'success') {
+        fetchListings();
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> delete(int listingId) async {
+    try {
+      final res = await _apiService.deleteListing(listingId);
+      if (res.data['status'] == 'success') {
+        state.whenData((currentList) {
+          state = AsyncValue.data(
+            currentList.where((l) => l['id'] != listingId).toList(),
+          );
+        });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+}
+
+final listingsProvider = StateNotifierProvider<ListingsNotifier, AsyncValue<List<dynamic>>>((ref) {
+  final api = ref.watch(apiServiceProvider);
+  return ListingsNotifier(api);
+});

@@ -237,4 +237,47 @@ class ApiService {
       if (history != null) 'history': history,
     });
   }
+
+  // --- Dehqonlar Suhbat (Chat) API ---
+
+  /// Oxirgi chat xabarlarini olish
+  Future<Response> getChatMessages() async {
+    return await _dio.get('/chat/messages');
+  }
+
+  /// Yangi chat xabarini yuborish
+  Future<Response> sendChatMessage(String message) async {
+    return await _dio.post('/chat/messages', data: {
+      'message': message,
+    });
+  }
+
+  // --- Texnika va Uskunalar Ijarasi (Listings) API ---
+
+  /// Barcha faol ijaraga beriladigan texnika e'lonlarini olish
+  Future<Response> getListings() async {
+    return await _dio.get('/listings');
+  }
+
+  /// Yangi ijara e'lonini yaratish
+  Future<Response> createListing({
+    required String title,
+    required String description,
+    required String equipmentType,
+    required String price,
+    required String contactPhone,
+  }) async {
+    return await _dio.post('/listings', data: {
+      'title': title,
+      'description': description,
+      'equipment_type': equipmentType,
+      'price': price,
+      'contact_phone': contactPhone,
+    });
+  }
+
+  /// E'lonni o'chirish
+  Future<Response> deleteListing(int listingId) async {
+    return await _dio.delete('/listings/$listingId');
+  }
 }

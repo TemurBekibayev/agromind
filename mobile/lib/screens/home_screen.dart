@@ -5,6 +5,8 @@ import 'gps_map_screen.dart';
 import 'soil_analysis_screen.dart';
 import 'profile_screen.dart';
 import 'weather_forecast_screen.dart';
+import 'chat_screen.dart';
+import 'listings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -101,6 +103,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final List<Widget> pages = [
       _buildDashboardBody(userName, headerLocation, weatherLocationName, coordsStr),
       WeatherForecastScreen(region: weatherLocationName, coordsStr: coordsStr, showBackButton: false),
+      const ChatScreen(),
+      const ListingsScreen(),
       const GpsMapScreen(),
       const ProfileScreen(),
     ];
@@ -124,6 +128,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: Icon(Icons.wb_sunny_outlined),
             selectedIcon: Icon(Icons.wb_sunny_rounded, color: Color(0xFF1A3C2A)),
             label: 'Ob-havo',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            selectedIcon: Icon(Icons.chat_bubble_rounded, color: Color(0xFF1A3C2A)),
+            label: 'Muloqot',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront_rounded, color: Color(0xFF1A3C2A)),
+            label: 'E\'lonlar',
           ),
           NavigationDestination(
             icon: Icon(Icons.map_outlined),
@@ -385,7 +399,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           'GPS Xarita',
           Icons.map_rounded,
           Colors.blue[700]!,
-          2, // Tab Index for map
+          4, // Tab Index for map
         ),
         _buildNavScreenCard(
           'Tuproq AI',

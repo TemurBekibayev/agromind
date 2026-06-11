@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\TelemetryController;
 use App\Http\Controllers\Api\AiChatController;
+use App\Http\Controllers\Api\ChatMessageController;
+use App\Http\Controllers\Api\ListingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,4 +50,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Ogohlantirishlar (Alerts)
     Route::get('/alerts', [AlertController::class, 'index']);
     Route::post('/alerts/{id}/resolve', [AlertController::class, 'resolve']);
+
+    // Dehqonlar suhbati (Chat)
+    Route::get('/chat/messages', [ChatMessageController::class, 'index']);
+    Route::post('/chat/messages', [ChatMessageController::class, 'store']);
+
+    // Texnika va uskunalar ijarasi e'lonlari (Listings)
+    Route::get('/listings', [ListingController::class, 'index']);
+    Route::post('/listings', [ListingController::class, 'store']);
+    Route::delete('/listings/{id}', [ListingController::class, 'destroy']);
 });
