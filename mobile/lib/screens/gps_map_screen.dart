@@ -596,7 +596,14 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white70),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(6),
+                      child: const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white, size: 22),
+                    ),
                   ],
                 ),
               ],
@@ -660,81 +667,114 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
               ),
             ],
 
-            // Vehicle Name and Status Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        vehicleName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        plateNumber,
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 12,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            // Tap Header to Collapse (Grab Handle + Header Row)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isCardCollapsed = true;
+                });
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Top Grab Handle to signal swipe/collapse usability
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      width: 36,
+                      height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      child: Row(
+                    ),
+                  ),
+                  // Vehicle Name and Status Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              vehicleName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              plateNumber,
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF34D399),
-                              shape: BoxShape.circle,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF34D399),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Online',
+                                  style: TextStyle(
+                                    color: Color(0xFF34D399),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Online',
-                            style: TextStyle(
-                              color: Color(0xFF34D399),
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          // Styled circular chevron collapse button
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 22),
+                              onPressed: () {
+                                setState(() {
+                                  _isCardCollapsed = true;
+                                });
+                              },
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(6),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
-                      onPressed: () {
-                        setState(() {
-                          _isCardCollapsed = true;
-                        });
-                      },
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
             const Divider(color: Colors.white12, height: 20),
 
