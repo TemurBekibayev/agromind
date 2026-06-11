@@ -597,12 +597,27 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                     ),
                     const SizedBox(width: 12),
                     Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
-                      padding: const EdgeInsets.all(6),
-                      child: const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white, size: 22),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Batafsil',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(Icons.keyboard_double_arrow_up_rounded, color: Colors.white, size: 16),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -678,15 +693,35 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Top Grab Handle to signal swipe/collapse usability
+                  // Top Grab Handle to signal swipe/collapse usability (prominent Yig'ish pill badge)
                   Center(
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
-                      width: 36,
-                      height: 4,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2),
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.keyboard_double_arrow_down_rounded,
+                            color: Colors.white70,
+                            size: 14,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Yig\'ish',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -752,14 +787,15 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Styled circular chevron collapse button
+                          // Styled circular chevron collapse button (more prominent double chevron)
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withOpacity(0.12),
                               shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 22),
+                              icon: const Icon(Icons.keyboard_double_arrow_down_rounded, color: Colors.white, size: 22),
                               onPressed: () {
                                 setState(() {
                                   _isCardCollapsed = true;
