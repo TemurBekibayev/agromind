@@ -5,8 +5,7 @@ import 'dart:developer' as dev;
 class ApiService {
   // Mahalliy Docker yoki Laravel dev server uchun IP manzil (localhost yoki emulator IP)
   // Android emulyatorlari uchun 10.0.2.2 Laravel backend portiga ishora qiladi
-  static const String _defaultBaseUrl = 'https://agromind.uz.lazzatkafe.uz/api'
-      '';
+  static const String _defaultBaseUrl = 'https://uzagromind.uz/api';
   
   final Dio _dio;
   final FlutterSecureStorage _storage;
@@ -215,6 +214,13 @@ class ApiService {
   /// Texnikaning 24 soatlik GPS harakat tarixi
   Future<Response> getVehicleHistory(int vehicleId) async {
     return await _dio.get('/vehicles/$vehicleId/history');
+  }
+
+  /// Texnika dvigatelini boshqarish (o'chirish yoki yoqish)
+  Future<Response> controlVehicle(int vehicleId, String action) async {
+    return await _dio.post('/vehicles/$vehicleId/control', data: {
+      'action': action,
+    });
   }
 
   /// Ogohlantirishlarni olish

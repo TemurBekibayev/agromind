@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vehicles', [VehicleController::class, 'index']);
     Route::get('/vehicles/{id}/location', [VehicleController::class, 'location']);
     Route::get('/vehicles/{id}/history', [VehicleController::class, 'history']);
+    Route::post('/vehicles/{id}/control', [VehicleController::class, 'control']);
 
     // Ogohlantirishlar (Alerts)
     Route::get('/alerts', [AlertController::class, 'index']);

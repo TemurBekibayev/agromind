@@ -211,6 +211,17 @@ class GpsTcpServerCommand extends Command
                     @socket_write($clientSocket, $ack, strlen($ack));
                     $this->info("[➔ ACK Sent] Info paketi (0x94) tasdiqlandi.");
                 }
+
+                // Kutilayotgan buyruq bormi cache da?
+                if ($deviceIMEI) {
+                    $pendingCommand = \Illuminate\Support\Facades\Cache::pull("gps_command_{$deviceIMEI}");
+                    if ($pendingCommand) {
+                        $this->info("[📡 Command] Kutilayotgan buyruq topildi: $pendingCommand. Qurilmaga yuborilmoqda...");
+                        $cmdPacket = $this->buildCommandPacket($pendingCommand, $serialNo);
+                        @socket_write($clientSocket, $cmdPacket, strlen($cmdPacket));
+                        $this->info("[➔ Command Sent] Hex: " . strtoupper(bin2hex($cmdPacket)));
+                    }
+                }
             }
 
             @socket_close($clientSocket);
@@ -285,5 +296,30 @@ class GpsTcpServerCommand extends Command
             $footer = pack('C*', 0x0D, 0x0A);
             return $header . $length . $protocol . $serial . $crc . $footer;
         }
+    }
+
+    /**
+     * GT06 protokoli bo'yicha onlayn buyruq (0x80) paketini yaratish.
+     */
+    protected function buildCommandPacket(string $command, array $serialNo): string
+    {
+        $protocol = 0x80;
+        $cmdLength = 4 + strlen($command); // 4 bayt server flag + buyruq uzunligi
+        $serverFlag = pack('N', 0); // 4 bayt 0x00
+        
+        $body = pack('C', $protocol) . pack('C', $cmdLength) . $serverFlag . $command . pack('C*', ...$serialNo);
+        
+        $lengthVal = strlen($body) + 2; // protocol + content + serial + crc
+        $length = pack('C', $lengthVal);
+        
+        $header = pack('C*', 0x78, 0x78);
+        
+        $crcData = $length . $body;
+        $crcVal = $this->getCRC16($crcData);
+        $crc = pack('n', $crcVal);
+        
+        $footer = pack('C*', 0x0D, 0x0A);
+        
+        return $header . $length . $body . $crc . $footer;
     }
 }

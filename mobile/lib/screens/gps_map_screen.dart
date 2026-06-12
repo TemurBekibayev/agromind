@@ -25,6 +25,7 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
   final String _selectedMapLayer = 'satellite';
   bool _isFirstFetch = true;
   bool _isCardCollapsed = false;
+  bool _isControllingVehicle = false;
 
   final MapController _mapController = MapController();
   final List<Marker> _markers = [];
@@ -175,6 +176,109 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
         });
       }
     }
+  }
+
+  Future<void> _controlVehicle(int id, String action) async {
+    setState(() {
+      _isControllingVehicle = true;
+    });
+    try {
+      final api = ref.read(apiServiceProvider);
+      final res = await api.controlVehicle(id, action);
+      if (!mounted) return;
+      if (res.data['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res.data['message'] ?? 'Buyruq yuborildi'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _fetchLocation(id);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res.data['message'] ?? 'Xatolik yuz berdi'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      String msg = 'Ulanish xatoligi yuz berdi';
+      if (e is DioException && e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map && data.containsKey('message')) {
+          msg = data['message'];
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isControllingVehicle = false;
+        });
+      }
+    }
+  }
+
+  void _showControlConfirmationDialog(bool isCurrentlyBlocked) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: Row(
+            children: [
+              Icon(
+                isCurrentlyBlocked ? Icons.lock_open_rounded : Icons.lock_rounded,
+                color: isCurrentlyBlocked ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isCurrentlyBlocked ? 'Dvigatelni yoqish' : 'Dvigatelni o\'chirish',
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text(
+            isCurrentlyBlocked
+                ? 'Haqiqatan ham dvigatelni blokdan chiqarmoqchimisiz? Bu texnikani qayta ishga tushirish imkonini beradi.'
+                : 'Haqiqatan ham ushbu texnika dvigatelini masofadan o\'chirmoqchimisiz? Bu texnikaning harakatini butunlay to\'xtatadi.',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Bekor qilish', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isCurrentlyBlocked ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                if (_selectedVehicleId != null) {
+                  _controlVehicle(
+                    _selectedVehicleId!,
+                    isCurrentlyBlocked ? 'restore' : 'cut_off',
+                  );
+                }
+              },
+              child: const Text('Tasdiqlash'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _fetchHistory(int id) async {
@@ -756,6 +860,32 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (_currentLocation != null && _currentLocation!['is_blocked'] == true) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.lock_rounded, color: Color(0xFFFCA5A5), size: 12),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Bloklangan',
+                                    style: TextStyle(
+                                      color: Color(0xFFFCA5A5),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
@@ -866,9 +996,51 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                     icon: const Icon(Icons.history_rounded, size: 18),
                     label: const Text(
                       'Yo\'nalish tarixi (24s)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _isControllingVehicle
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _currentLocation != null && _currentLocation!['is_blocked'] == true
+                                ? const Color(0xFF10B981) // Green for restore
+                                : const Color(0xFFEF4444), // Red for block
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () {
+                            final isBlocked = _currentLocation != null && _currentLocation!['is_blocked'] == true;
+                            _showControlConfirmationDialog(isBlocked);
+                          },
+                          icon: Icon(
+                            _currentLocation != null && _currentLocation!['is_blocked'] == true
+                                ? Icons.lock_open_rounded
+                                : Icons.lock_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            _currentLocation != null && _currentLocation!['is_blocked'] == true
+                                ? 'Blokdan ochish'
+                                : 'Dvigatelni o\'chirish',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
                 ),
               ],
             ),

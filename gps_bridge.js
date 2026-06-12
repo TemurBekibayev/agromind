@@ -16,7 +16,7 @@ import axios from 'axios';
 
 // SOZLAMALAR
 const PORT = 5000; // GPS trekker ulanadigan port
-const LARAVEL_API_URL = 'https://agromind.uz.lazzatkafe.uz/api/telemetry'; // Laravel API manzili
+const LARAVEL_API_URL = 'https://uzagromind.uz/api/telemetry'; // Laravel API manzili
 
 // CRC-16/X-25 (CRC16) hisoblash funksiyasi (GT06 protokoli uchun zarur)
 function getCRC16(buffer) {
@@ -61,6 +61,36 @@ function buildACK(protocolNumber, serialNo) {
     const footer = Buffer.from([0x0D, 0x0A]);
 
     return Buffer.concat([header, length, protocol, serial, crc, footer]);
+}
+
+// Buyruq (0x80) paketini tayyorlash
+function buildCommandPacket(command, serialNo) {
+    const header = Buffer.from([0x78, 0x78]);
+    const protocol = 0x80;
+    const cmdBuffer = Buffer.from(command, 'ascii');
+    const cmdLength = 4 + cmdBuffer.length; // 4 bayt server flag + buyruq uzunligi
+    const serverFlag = Buffer.from([0x00, 0x00, 0x00, 0x00]);
+    const serial = Buffer.from(serialNo);
+    
+    const body = Buffer.concat([
+        Buffer.from([protocol, cmdLength]),
+        serverFlag,
+        cmdBuffer,
+        serial
+    ]);
+    
+    const lengthVal = body.length + 2; // + 2 bayt CRC uchun
+    const length = Buffer.from([lengthVal]);
+    
+    // CRC hisoblash (length + body)
+    const crcData = Buffer.concat([length, body]);
+    const crcVal = getCRC16(crcData);
+    const crc = Buffer.alloc(2);
+    crc.writeUInt16BE(crcVal, 0);
+
+    const footer = Buffer.from([0x0D, 0x0A]);
+
+    return Buffer.concat([header, length, body, crc, footer]);
 }
 
 const server = net.createServer((socket) => {
@@ -140,6 +170,15 @@ const server = net.createServer((socket) => {
                     signal_strength: 90
                 });
                 console.log(`[➔ Laravel API] Javob:`, response.data);
+
+                // Kutilayotgan buyruq qaytsa, uni qurilmaga jo'natamiz
+                if (response.data && response.data.command) {
+                    const command = response.data.command;
+                    console.log(`[📡 Command] Kutilayotgan buyruq topildi: ${command}. Qurilmaga yuborilmoqda...`);
+                    const cmdPacket = buildCommandPacket(command, serialNo);
+                    socket.write(cmdPacket);
+                    console.log(`[➔ Command Sent] Hex: ${cmdPacket.toString('hex').toUpperCase()}`);
+                }
             } catch (err) {
                 console.error(`[❌ Laravel API Xatolik]:`, err.message);
             }

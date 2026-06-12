@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class VehicleController extends Controller
 {
@@ -85,6 +86,7 @@ class VehicleController extends Controller
             'vehicle_name' => $vehicle->name,
             'plate_number' => $vehicle->plate_number,
             'status_label' => $vehicle->status,
+            'is_blocked' => (bool) $vehicle->is_blocked,
             'geofences' => $vehicle->farm ? $vehicle->farm->geofences : [],
             'debug_geofences_raw' => $vehicle->farm ? $vehicle->farm->geofences->map(function($g) {
                 return [
@@ -128,6 +130,59 @@ class VehicleController extends Controller
         return response()->json([
             'status' => 'success',
             'history' => $history
+        ]);
+    }
+
+    /**
+     * Texnika dvigatelini bloklash yoki blokdan ochish.
+     */
+    public function control(Request $request, $id)
+    {
+        $request->validate([
+            'action' => 'required|string|in:cut_off,restore,stop,resume,1,0'
+        ]);
+
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $vehicle = Vehicle::find($id);
+        } else {
+            $farmIds = $user->farms()->pluck('id');
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        }
+
+        if (!$vehicle) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Texnika topilmadi yoki sizga tegishli emas.'
+            ], 404);
+        }
+
+        if (!$vehicle->gps_device_id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Ushbu texnikada GPS qurilmasi o\'rnatilmagan.'
+            ], 422);
+        }
+
+        $action = $request->action;
+        $isCutOff = in_array($action, ['cut_off', 'stop', '1']);
+        
+        $command = $isCutOff ? 'RELAY,1#' : 'RELAY,0#';
+        
+        // Bazada holatni yangilaymiz (istalgan holatni)
+        $vehicle->is_blocked = $isCutOff;
+        $vehicle->save();
+
+        // Buyruqni cache ga yozamiz (60 soniya davomida faol bo'ladi)
+        Cache::put("gps_command_{$vehicle->gps_device_id}", $command, 60);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $isCutOff 
+                ? 'Dvigatelni o\'chirish buyrug\'i yuborildi. Qurilma ulanishi kutilmoqda.' 
+                : 'Dvigatelni yoqish (blokdan ochish) buyrug\'i yuborildi. Qurilma ulanishi kutilmoqda.',
+            'is_blocked' => $isCutOff
         ]);
     }
 }
