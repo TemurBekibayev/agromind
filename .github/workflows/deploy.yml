@@ -1,10 +1,10 @@
-name: Deploy Laravel Backend to cPanel (Optimized Clean FTP)
+name: Deploy Laravel Backend to VPS (Docker & SSH)
 
 on:
   push:
     branches:
       - main
-      - master # Triggers deployment when pushing to main or master
+      - master
 
 jobs:
   build-and-deploy:
@@ -14,58 +14,71 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Setup PHP Environment
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4' # Matches your cPanel PHP 8.4
-          extensions: mbstring, xml, ctype, iconv, mysql, zip
-
-      # 2. Setup Node.js Environment (needed for compiling frontend assets)
+      # 1. Setup Node.js Environment (needed for compiling frontend assets)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. Install Composer Dependencies locally to generate bootstrap files
-      - name: Install Composer Dependencies
-        run: |
-          cd backend
-          composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-
-      # 4. Install NPM Dependencies & Build Production Assets (Vite)
+      # 2. Install NPM Dependencies & Build Production Assets (Vite)
       - name: Install NPM & Build Production Assets
         run: |
           cd backend
           npm install --no-audit --no-fund
           npm run build
 
-      # 5. Clean up local dev files to avoid uploading them
-      - name: Prepare deployment package
-        run: |
-          cd backend
-          rm -rf node_modules
-          rm -rf tests
-          rm -rf .env.example
-          rm -rf phpunit.xml
-          rm -rf vite.config.js
-          rm -rf package-lock.json
-          rm -rf tailwind.config.js
-          rm -rf postcss.config.js
-
-      # 6. Deploy clean backend source code to cPanel (EXCLUDING vendor)
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      # 3. Setup SSH key for deployment
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: ${{ secrets.FTP_DIR || '/' }}
-          local-dir: ./backend/
-          timeout: 60000
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/vendor/**
-            .env
+          key: ${{ secrets.VPS_SSH_KEY }}
+          known_hosts: 'placeholder'
+          if_key_exists: replace
+
+      # 4. Add VPS to known_hosts to prevent interactive prompts
+      - name: Adding Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      # 5. Deploy files using rsync to the VPS
+      - name: Deploy files to VPS via rsync
+        run: |
+          rsync -avz --delete \
+            --exclude='node_modules/' \
+            --exclude='vendor/' \
+            --exclude='.env' \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='storage/logs/' \
+            --exclude='storage/framework/cache/data/' \
+            --exclude='storage/framework/sessions/' \
+            --exclude='storage/framework/views/' \
+            --exclude='bootstrap/cache/' \
+            --exclude='mobile/' \
+            --exclude='scratch/' \
+            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/agromind/
+
+      # 6. Execute remote commands on the VPS over SSH
+      - name: Execute remote post-deployment commands
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+            # Recreate missing storage and bootstrap directories
+            mkdir -p /var/www/agromind/backend/storage/logs
+            mkdir -p /var/www/agromind/backend/storage/framework/{cache/data,sessions,views}
+            mkdir -p /var/www/agromind/backend/bootstrap/cache
+            chmod -R 775 /var/www/agromind/backend/storage /var/www/agromind/backend/bootstrap/cache
+
+            # Run composer install inside the Laravel Docker container
+            docker exec agromind-laravel.test-1 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+            # Run database migrations
+            docker exec agromind-laravel.test-1 php artisan migrate --force
+
+            # Optimize Laravel application (config, route, views cache)
+            docker exec agromind-laravel.test-1 php artisan optimize:clear
+            docker exec agromind-laravel.test-1 php artisan optimize
+
+            # Restart Standalone GPS Bridge Service on the host VPS
+            systemctl restart gps-bridge
+          "
