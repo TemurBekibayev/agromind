@@ -175,8 +175,8 @@ class VehicleController extends Controller
         $vehicle->is_blocked = $isCutOff;
         $vehicle->save();
 
-        // 1. Buyruqni cache ga yozamiz (Polling fallback - 60 soniya davomida faol bo'ladi)
-        Cache::put("gps_command_{$gpsDeviceId}", $command, 60);
+        // 1. Buyruqni cache ga yozamiz (Polling fallback - 1 soat davomida faol bo'ladi)
+        Cache::put("gps_command_{$gpsDeviceId}", $command, 3600);
 
         // 2. Node.js TCP server HTTP API-siga so'rov jo'natishga urinib ko'ramiz (Real-time instant delivery)
         try {
