@@ -130,4 +130,76 @@ class VehicleController extends Controller
             'history' => $history
         ]);
     }
+
+    /**
+     * Texnika uchun rele buyrug'ini yuborish (o'chirish yoki yoqish).
+     */
+    public function controlRelay(Request $request, $id)
+    {
+        $request->validate([
+            'action' => 'required|in:cutoff,restore'
+        ]);
+
+        $user = $request->user();
+        $action = $request->action;
+
+        if ($user->isAdmin()) {
+            $vehicle = Vehicle::find($id);
+        } else {
+            // Fermer faqat o'zining texnikasini boshqara oladi
+            $farmIds = $user->farms()->pluck('id');
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        }
+
+        if (!$vehicle) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Texnika topilmadi yoki sizga tegishli emas.'
+            ], 404);
+        }
+
+        $gpsDeviceId = $vehicle->gps_device_id;
+
+        if (!$gpsDeviceId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Texnika uchun GPS qurilma ID biriktirilmagan.'
+            ], 400);
+        }
+
+        // Node.js TCP server HTTP API-siga so'rov jo'natish
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post('http://host.docker.internal:5001/send-command', [
+                'json' => [
+                    'imei' => $gpsDeviceId,
+                    'action' => $action
+                ],
+                'connect_timeout' => 5,
+                'timeout' => 15
+            ]);
+
+            $result = json_decode($response->getBody()->getContents(), true);
+
+            if (isset($result['success']) && $result['success']) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => $action === 'cutoff' 
+                        ? 'Dvigatelni o\'chirish buyrug\'i muvaffaqiyatli yuborildi.' 
+                        : 'Dvigatelni yoqish buyrug\'i muvaffaqiyatli yuborildi.',
+                    'response' => $result
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $result['error'] ?? 'Buyruqni yuborishda xatolik yuz berdi.'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'GPS bridge server bilan bog\'lanib bo\'lmadi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -12,7 +12,6 @@ services:
     ports:
       - '${APP_PORT:-80}:80'
       - '${VITE_PORT:-5173}:5173'
-      - '5000:5000' # GPS Tracker TCP Port
     environment:
       WWWUSER: '${WWWUSER:-1000}'
       LARAVEL_SAIL: 1

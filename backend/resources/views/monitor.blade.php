@@ -1079,8 +1079,8 @@
             // Always reload vehicle history and draw trail to update it in real-time
             const select = document.getElementById('historyDateFilter');
             const selectedDate = select ? select.value : '';
-            // Only fit bounds on manual selection, not during periodic updates
-            loadVehicleHistoryAndDrawTrail(vId, selectedDate, !keepCurrentZoom);
+            // Draw trail but do not auto-zoom to the entire trail when focusing a vehicle
+            loadVehicleHistoryAndDrawTrail(vId, selectedDate, false);
             
             if (lat && lng) {
                 const coords = [parseFloat(lat), parseFloat(lng)];

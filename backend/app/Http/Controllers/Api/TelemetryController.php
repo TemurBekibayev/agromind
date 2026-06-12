@@ -67,6 +67,17 @@ class TelemetryController extends Controller
             ], 200);
         }
 
+        // Koordinatalarni O'zbekiston hududiga mosligini tekshirish
+        $lat = (float) $request->latitude;
+        $lng = (float) $request->longitude;
+        if ($lat < 35.0 || $lat > 46.0 || $lng < 50.0 || $lng > 75.0) {
+            Log::warning("Telemetry coordinate out of bounds (Uzbekistan): Lat: {$lat}, Lng: {$lng} for Device: {$request->device_id}");
+            return response()->json([
+                'status' => 'skipped',
+                'message' => 'Kiritilgan koordinatalar O\'zbekiston hududidan tashqarida.'
+            ], 200);
+        }
+
         // Qurilmani gps_device_id (IMEI) bo'yicha bazadan qidiramiz
         $vehicle = Vehicle::where('gps_device_id', $request->device_id)->first();
 
