@@ -40,6 +40,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final ApiService _apiService;
 
   AuthNotifier(this._apiService) : super(AuthState()) {
+    _apiService.onUnauthorized = () {
+      state = AuthState(isAuthenticated: false, isLoading: false);
+    };
     checkAuthStatus();
   }
 

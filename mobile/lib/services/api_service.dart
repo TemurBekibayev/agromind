@@ -10,6 +10,7 @@ class ApiService {
   final Dio _dio;
   final FlutterSecureStorage _storage;
   String _baseUrl;
+  void Function()? onUnauthorized;
 
   ApiService({String? baseUrl}) 
       : _dio = Dio(),
@@ -49,11 +50,14 @@ class ApiService {
           dev.log('API Response: ${response.statusCode} for ${response.requestOptions.path}');
           return handler.next(response);
         },
-        onError: (DioException e, handler) async {
+         onError: (DioException e, handler) async {
           dev.log('API Error: ${e.response?.statusCode} for ${e.requestOptions.path}');
           // Agar token muddati o'tgan bo'lsa yoki xato bo'lsa (401 Unauthorized), tokenni o'chiramiz
           if (e.response?.statusCode == 401) {
             await clearToken();
+            if (onUnauthorized != null) {
+              onUnauthorized!();
+            }
           }
           return handler.next(e);
         },
