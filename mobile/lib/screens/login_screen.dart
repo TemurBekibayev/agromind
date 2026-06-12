@@ -56,6 +56,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final success = await ref.read(authProvider.notifier).login(phone, password);
 
     if (success && mounted) {
+      ref.invalidate(farmsProvider);
+      ref.invalidate(vehiclesProvider);
+      ref.invalidate(alertsProvider);
+      ref.invalidate(chatMessagesProvider);
+      ref.invalidate(listingsProvider);
+
       // Save or clear credentials based on "Remember Me" checkbox
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me', _rememberMe);
