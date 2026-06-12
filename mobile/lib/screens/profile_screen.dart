@@ -82,6 +82,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ElevatedButton.icon(
               onPressed: () {
                 ref.read(authProvider.notifier).logout();
+                ref.invalidate(farmsProvider);
+                ref.invalidate(vehiclesProvider);
+                ref.invalidate(alertsProvider);
+                ref.invalidate(chatMessagesProvider);
+                ref.invalidate(listingsProvider);
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
                 }

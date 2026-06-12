@@ -6,7 +6,7 @@ void main() async {
   
   try {
     print('Logging in...');
-    final loginRequest = await client.postUrl(Uri.parse('https://agromind.uz.lazzatkafe.uz/api/auth/login'));
+    final loginRequest = await client.postUrl(Uri.parse('https://uzagromind.uz/api/auth/login'));
     loginRequest.headers.set('Content-Type', 'application/json');
     loginRequest.headers.set('Accept', 'application/json');
     loginRequest.add(utf8.encode(jsonEncode({
@@ -27,7 +27,7 @@ void main() async {
     final token = loginData['token'];
     print('Login successful! Fetching vehicles...');
     
-    final vehiclesRequest = await client.getUrl(Uri.parse('https://agromind.uz.lazzatkafe.uz/api/vehicles'));
+    final vehiclesRequest = await client.getUrl(Uri.parse('https://uzagromind.uz/api/vehicles'));
     vehiclesRequest.headers.set('Accept', 'application/json');
     vehiclesRequest.headers.set('Authorization', 'Bearer $token');
     
@@ -43,7 +43,7 @@ void main() async {
       final name = v['name'];
       print('\nFetching location for vehicle ID $id ($name):');
       
-      final locRequest = await client.getUrl(Uri.parse('https://agromind.uz.lazzatkafe.uz/api/vehicles/$id/location'));
+      final locRequest = await client.getUrl(Uri.parse('https://uzagromind.uz/api/vehicles/$id/location'));
       locRequest.headers.set('Accept', 'application/json');
       locRequest.headers.set('Authorization', 'Bearer $token');
       

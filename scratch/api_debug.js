@@ -1,5 +1,5 @@
-const loginUrl = 'https://agromind.uz.lazzatkafe.uz/api/auth/login';
-const vehiclesUrl = 'https://agromind.uz.lazzatkafe.uz/api/vehicles';
+const loginUrl = 'https://uzagromind.uz/api/auth/login';
+const vehiclesUrl = 'https://uzagromind.uz/api/vehicles';
 
 async function run() {
   console.log('Logging in...');
@@ -38,7 +38,7 @@ async function run() {
   if (vehiclesData.vehicles && vehiclesData.vehicles.length > 0) {
     for (const v of vehiclesData.vehicles) {
       console.log(`\nFetching location for vehicle ID ${v.id} (${v.name}):`);
-      const locUrl = `https://agromind.uz.lazzatkafe.uz/api/vehicles/${v.id}/location`;
+      const locUrl = `https://uzagromind.uz/api/vehicles/${v.id}/location`;
       const locRes = await fetch(locUrl, {
         headers: {
           'Accept': 'application/json',

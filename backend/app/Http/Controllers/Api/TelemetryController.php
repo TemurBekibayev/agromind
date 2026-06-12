@@ -99,10 +99,13 @@ class TelemetryController extends Controller
             'signal_strength' => $request->signal_strength ?? 100,
         ]);
 
+        $command = \Illuminate\Support\Facades\Cache::pull("gps_command_{$request->device_id}");
+
         return response()->json([
             'status' => 'success',
             'message' => 'Telemetriya muvaffaqiyatli qabul qilindi.',
-            'track_id' => $track->id
+            'track_id' => $track->id,
+            'command' => $command
         ]);
     }
 }

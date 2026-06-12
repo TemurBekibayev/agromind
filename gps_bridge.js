@@ -83,8 +83,18 @@ function buildCommandPacket(commandStr, serialNo) {
     ]);
     
     const protocol = Buffer.from([0x80]);
+    
+    // Map serialNo array to 2-byte integer if passed as array
+    let serialInt = 1;
+    if (Array.isArray(serialNo)) {
+        const serialBuf = Buffer.from(serialNo);
+        serialInt = serialBuf.readUInt16BE(0);
+    } else {
+        serialInt = Number(serialNo);
+    }
+    
     const serial = Buffer.alloc(2);
-    serial.writeUInt16BE(serialNo, 0);
+    serial.writeUInt16BE(serialInt, 0);
     
     const lengthVal = 1 + cmdInfo.length + 2 + 2; // protocol + cmdInfo + serial + crc
     const length = Buffer.from([lengthVal]);
@@ -184,6 +194,15 @@ const server = net.createServer((socket) => {
                     signal_strength: 90
                 });
                 console.log(`[➔ Laravel API] Javob:`, response.data);
+
+                // Kutilayotgan buyruq qaytsa, uni qurilmaga jo'natamiz (Polling fallback)
+                if (response.data && response.data.command) {
+                    const command = response.data.command;
+                    console.log(`[📡 Command] Kutilayotgan buyruq topildi: ${command}. Qurilmaga yuborilmoqda...`);
+                    const cmdPacket = buildCommandPacket(command, serialNo);
+                    socket.write(cmdPacket);
+                    console.log(`[➔ Command Sent] Hex: ${cmdPacket.toString('hex').toUpperCase()}`);
+                }
             } catch (err) {
                 console.error(`[❌ Laravel API Xatolik]:`, err.message);
             }

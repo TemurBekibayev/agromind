@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class VehicleController extends Controller
 {
@@ -85,6 +86,7 @@ class VehicleController extends Controller
             'vehicle_name' => $vehicle->name,
             'plate_number' => $vehicle->plate_number,
             'status_label' => $vehicle->status,
+            'is_blocked' => (bool) $vehicle->is_blocked,
             'geofences' => $vehicle->farm ? $vehicle->farm->geofences : [],
             'debug_geofences_raw' => $vehicle->farm ? $vehicle->farm->geofences->map(function($g) {
                 return [
@@ -132,18 +134,21 @@ class VehicleController extends Controller
     }
 
     /**
-     * Texnika uchun rele buyrug'ini yuborish (o'chirish yoki yoqish).
+     * Texnika dvigatelini bloklash yoki blokdan ochish (o'chirish yoki yoqish).
      */
-    public function controlRelay(Request $request, $id)
+    public function control(Request $request, $id)
     {
         $request->validate([
-            'action' => 'required|in:cutoff,restore'
+            'action' => 'required|string|in:cut_off,restore,stop,resume,1,0,cutoff'
         ]);
 
         $user = $request->user();
         $action = $request->action;
+        $isCutOff = in_array($action, ['cut_off', 'stop', '1', 'cutoff']);
+        $bridgeAction = $isCutOff ? 'cutoff' : 'restore';
+        $command = $isCutOff ? 'RELAY,1#' : 'RELAY,0#';
 
-        if ($user->isAdmin()) {
+        if ($user->isAdmin() || $user->isMonitor()) {
             $vehicle = Vehicle::find($id);
         } else {
             // Fermer faqat o'zining texnikasini boshqara oladi
@@ -159,24 +164,30 @@ class VehicleController extends Controller
         }
 
         $gpsDeviceId = $vehicle->gps_device_id;
-
         if (!$gpsDeviceId) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Texnika uchun GPS qurilma ID biriktirilmagan.'
-            ], 400);
+                'message' => 'Ushbu texnikada GPS qurilmasi o\'rnatilmagan.'
+            ], 422);
         }
 
-        // Node.js TCP server HTTP API-siga so'rov jo'natish
+        // Bazada holatni yangilaymiz
+        $vehicle->is_blocked = $isCutOff;
+        $vehicle->save();
+
+        // 1. Buyruqni cache ga yozamiz (Polling fallback - 60 soniya davomida faol bo'ladi)
+        Cache::put("gps_command_{$gpsDeviceId}", $command, 60);
+
+        // 2. Node.js TCP server HTTP API-siga so'rov jo'natishga urinib ko'ramiz (Real-time instant delivery)
         try {
             $client = new \GuzzleHttp\Client();
             $response = $client->post('http://host.docker.internal:5001/send-command', [
                 'json' => [
                     'imei' => $gpsDeviceId,
-                    'action' => $action
+                    'action' => $bridgeAction
                 ],
-                'connect_timeout' => 5,
-                'timeout' => 15
+                'connect_timeout' => 3,
+                'timeout' => 5
             ]);
 
             $result = json_decode($response->getBody()->getContents(), true);
@@ -184,22 +195,25 @@ class VehicleController extends Controller
             if (isset($result['success']) && $result['success']) {
                 return response()->json([
                     'status' => 'success',
-                    'message' => $action === 'cutoff' 
+                    'message' => $isCutOff 
                         ? 'Dvigatelni o\'chirish buyrug\'i muvaffaqiyatli yuborildi.' 
-                        : 'Dvigatelni yoqish buyrug\'i muvaffaqiyatli yuborildi.',
-                    'response' => $result
+                        : 'Dvigatelni yoqish (blokdan ochish) buyrug\'i muvaffaqiyatli yuborildi.',
+                    'is_blocked' => $isCutOff,
+                    'delivery' => 'instant'
                 ]);
-            } else {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $result['error'] ?? 'Buyruqni yuborishda xatolik yuz berdi.'
-                ], 400);
             }
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'GPS bridge server bilan bog\'lanib bo\'lmadi: ' . $e->getMessage()
-            ], 500);
+            // Agar Node.js offline bo'lsa yoki ulanish uzilgan bo'lsa, xatolik qaytarmaymiz.
+            // Chunki buyruq Cache ga yozildi va trekker keyingi safar bog'langanda avtomatik oladi.
         }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $isCutOff 
+                ? 'Dvigatelni o\'chirish buyrug\'i navbatga joylandi. Qurilma ulanishi kutilmoqda.' 
+                : 'Dvigatelni yoqish (blokdan ochish) buyrug\'i navbatga joylandi. Qurilma ulanishi kutilmoqda.',
+            'is_blocked' => $isCutOff,
+            'delivery' => 'queued'
+        ]);
     }
 }

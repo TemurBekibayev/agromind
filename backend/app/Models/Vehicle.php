@@ -16,12 +16,14 @@ class Vehicle extends Model
         'plate_number',
         'gps_device_id',
         'fuel_capacity',
+        'is_blocked',
     ];
 
     protected function casts(): array
     {
         return [
             'fuel_capacity' => 'decimal:2',
+            'is_blocked' => 'boolean',
         ];
     }
 
