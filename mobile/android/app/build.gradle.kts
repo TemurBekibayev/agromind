@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.AMUDARYO_PRO_SOFT.UZAgroMind"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = "26.1.10909125"
 
     compileOptions {
@@ -31,7 +31,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35
         versionCode = flutter.versionCode()
         versionName = flutter.versionName()
     }
