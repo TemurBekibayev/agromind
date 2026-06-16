@@ -350,6 +350,7 @@ class ListingsNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
     required String equipmentType,
     required String price,
     required String contactPhone,
+    String? imagePath,
   }) async {
     try {
       final res = await _apiService.createListing(
@@ -358,6 +359,7 @@ class ListingsNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
         equipmentType: equipmentType,
         price: price,
         contactPhone: contactPhone,
+        imagePath: imagePath,
       );
       if (res.data['status'] == 'success') {
         fetchListings();

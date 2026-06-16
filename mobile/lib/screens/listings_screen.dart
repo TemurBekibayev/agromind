@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
+import '../services/localization_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ListingsScreen extends ConsumerStatefulWidget {
   const ListingsScreen({super.key});
@@ -22,6 +25,36 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
     'Sevalka',
     'Boshqa'
   ];
+
+  String _getCategoryLabel(String category) {
+    switch (category.toLowerCase()) {
+      case 'barchasi':
+        return ref.tr('cat_all');
+      case 'traktor':
+        return ref.tr('cat_tractor');
+      case 'plug':
+        return ref.tr('cat_plow');
+      case 'chizel':
+        return ref.tr('cat_chisel');
+      case 'kombayn':
+        return ref.tr('cat_harvester');
+      case 'kultivator':
+        return ref.tr('cat_cultivator');
+      case 'sevalka':
+      case 'seyalka':
+        return ref.tr('cat_seeder');
+      case 'tirkama':
+        return ref.watch(localeProvider) == 'uz'
+            ? 'Tirkama'
+            : ref.watch(localeProvider) == 'oz'
+                ? 'Тиркама'
+                : 'Прицеп';
+      case 'boshqa':
+        return ref.tr('cat_other');
+      default:
+        return category;
+    }
+  }
 
   IconData _getCategoryIcon(String type) {
     switch (type.toLowerCase()) {
@@ -49,6 +82,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
     final phoneController = TextEditingController(text: currentUser?['phone'] ?? '');
     String selectedType = 'Traktor';
     String? modalErrorMessage;
+    XFile? pickedImage;
 
     showModalBottomSheet(
       context: context,
@@ -79,9 +113,9 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Yangi E\'lon Joylashtirish',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                        Text(
+                          ref.tr('new_listing'),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close_rounded),
@@ -92,14 +126,14 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                     const SizedBox(height: 15),
                     DropdownButtonFormField<String>(
                       value: selectedType,
-                      decoration: const InputDecoration(
-                        labelText: 'Texnika/Uskuna turi',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.category_outlined),
+                      decoration: InputDecoration(
+                        labelText: ref.tr('machinery_type'),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.category_outlined),
                       ),
                       items: _categories
                           .where((cat) => cat != 'Barchasi')
-                          .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                          .map((cat) => DropdownMenuItem(value: cat, child: Text(_getCategoryLabel(cat))))
                           .toList(),
                       onChanged: (val) {
                         if (val != null) {
@@ -112,11 +146,15 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'E\'lon sarlavhasi',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.title_rounded),
-                        hintText: 'Masalan: Chizel ijaraga beriladi',
+                      decoration: InputDecoration(
+                        labelText: ref.tr('listing_title'),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.title_rounded),
+                        hintText: ref.watch(localeProvider) == 'uz'
+                            ? 'Masalan: Chizel ijaraga beriladi'
+                            : ref.watch(localeProvider) == 'oz'
+                                ? 'Масалан: Чизел ижарага берилади'
+                                : 'Например: Сдается чизель в аренду',
                       ),
                       onChanged: (_) {
                         if (modalErrorMessage != null) {
@@ -129,11 +167,15 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: priceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Ijara narxi',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.payments_outlined),
-                        hintText: 'Masalan: 150 000 so\'m/kun yoki Kelishuv asosida',
+                      decoration: InputDecoration(
+                        labelText: ref.tr('rental_price'),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.payments_outlined),
+                        hintText: ref.watch(localeProvider) == 'uz'
+                            ? 'Masalan: 150 000 so\'m/kun yoki Kelishuv'
+                            : ref.watch(localeProvider) == 'oz'
+                                ? 'Масалан: 150 000 сўм/кун ёки Келишув'
+                                : 'Например: 150 000 сум/день или Договорная',
                       ),
                       onChanged: (_) {
                         if (modalErrorMessage != null) {
@@ -147,10 +189,10 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Bog\'lanish uchun telefon',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone_rounded),
+                      decoration: InputDecoration(
+                        labelText: ref.tr('contact_phone'),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.phone_rounded),
                         hintText: '998901234567',
                       ),
                       onChanged: (_) {
@@ -165,11 +207,15 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                     TextField(
                       controller: descriptionController,
                       maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'Batafsil tavsif',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: ref.tr('details_desc'),
+                        border: const OutlineInputBorder(),
                         alignLabelWithHint: true,
-                        hintText: 'Texnika holati, yetkazib berish shartlari va boshqa ma\'lumotlarni kiriting...',
+                        hintText: ref.watch(localeProvider) == 'uz'
+                            ? 'Texnika holati, shartlari va boshqalar...'
+                            : ref.watch(localeProvider) == 'oz'
+                                ? 'Техника ҳолати, шартлари ва бошқалар...'
+                                : 'Введите состояние техники, условия и др...',
                       ),
                       onChanged: (_) {
                         if (modalErrorMessage != null) {
@@ -179,6 +225,79 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                         }
                       },
                     ),
+                    const SizedBox(height: 16),
+                    Text(
+                      ref.tr('machinery_img'),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                    ),
+                    const SizedBox(height: 8),
+                    if (pickedImage != null)
+                      Stack(
+                        children: [
+                          Container(
+                            height: 160,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: FileImage(File(pickedImage!.path)),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.black54,
+                              child: IconButton(
+                                icon: const Icon(Icons.delete_rounded, color: Colors.white),
+                                onPressed: () {
+                                  setModalState(() {
+                                    pickedImage = null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      InkWell(
+                        onTap: () async {
+                          final ImagePicker picker = ImagePicker();
+                          final XFile? image = await picker.pickImage(
+                            source: ImageSource.gallery,
+                            imageQuality: 85,
+                            maxWidth: 1024,
+                          );
+                          if (image != null) {
+                            setModalState(() {
+                              pickedImage = image;
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_photo_alternate_rounded, size: 36, color: Colors.grey[600]),
+                              const SizedBox(height: 8),
+                              Text(
+                                ref.tr('choose_gallery'),
+                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 15),
                     if (modalErrorMessage != null) ...[
                       Container(
@@ -209,29 +328,30 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                         final price = priceController.text.trim();
                         final phone = phoneController.text.trim();
                         final description = descriptionController.text.trim();
-    
+
                         if (title.isEmpty || price.isEmpty || phone.isEmpty || description.isEmpty) {
                           setModalState(() {
-                            modalErrorMessage = 'Iltimos, barcha maydonlarni to\'ldiring.';
+                            modalErrorMessage = ref.tr('field_required');
                           });
                           return;
                         }
-    
+
                         Navigator.pop(context);
-                        
+
                         final success = await ref.read(listingsProvider.notifier).addListing(
                               title: title,
                               description: description,
                               equipmentType: selectedType,
                               price: price,
                               contactPhone: phone,
+                              imagePath: pickedImage?.path,
                             );
-    
+
                         if (success) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('E\'lon muvaffaqiyatli qo\'shildi!'),
+                              SnackBar(
+                                content: Text(ref.tr('add_success')),
                                 backgroundColor: Colors.green,
                               ),
                             );
@@ -239,8 +359,8 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                         } else {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('E\'lon qo\'shishda xatolik yuz berdi.'),
+                              SnackBar(
+                                content: Text(ref.tr('add_error')),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -253,7 +373,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('E\'lonni chop etish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(ref.tr('publish_btn'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -331,16 +451,16 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
         backgroundColor: const Color(0xFF1A3C2A),
         foregroundColor: Colors.white,
         elevation: 1,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Texnika va Uskunalar Hamkorligi',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ref.tr('rental_listings'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Bo\'sh turgan jihozlarni ijaraga berish va olish',
-              style: TextStyle(fontSize: 11, color: Colors.white70),
+              ref.tr('listings_subtitle'),
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
             ),
           ],
         ),
@@ -367,7 +487,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: ChoiceChip(
-                    label: Text(category),
+                    label: Text(_getCategoryLabel(category)),
                     selected: isSelected,
                     onSelected: (val) {
                       if (val) {
@@ -411,15 +531,15 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                         children: [
                           Icon(Icons.engineering_outlined, size: 64, color: Colors.grey[400]),
                           const SizedBox(height: 16),
-                          const Text(
-                            'E\'lonlar mavjud emas',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54),
+                          Text(
+                            ref.tr('no_listings'),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             _selectedCategory == 'Barchasi'
-                                ? 'Hozircha hech kim e\'lon joylashtirmagan.'
-                                : 'Ushbu turdagi texnikalar bo\'yicha e\'lonlar topilmadi.',
+                                ? ref.tr('no_listings_desc')
+                                : ref.tr('no_category_listings'),
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 13, color: Colors.black38),
                           ),
@@ -444,7 +564,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                       final regionName = owner['region']?['name'] ?? '';
                       final district = owner['district'] ?? '';
                       
-                      String location = 'Hudud ko\'rsatilmagan';
+                      String location = ref.tr('location_not_specified');
                       if (regionName.isNotEmpty) {
                         location = regionName;
                         if (district.isNotEmpty) {
@@ -482,7 +602,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'E\'lon beruvchi: $ownerName • $location',
+                                          '${ref.tr('posted_by')}: $ownerName • $location',
                                           style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                                         ),
                                       ],
@@ -495,16 +615,16 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                         final deleteConfirm = await showDialog<bool>(
                                           context: context,
                                           builder: (context) => AlertDialog(
-                                            title: const Text('E\'lonni o\'chirish'),
-                                            content: const Text('Haqiqatdan ham ushbu e\'lonni o\'chirmoqchimisiz?'),
+                                            title: Text(ref.tr('delete_confirm_title')),
+                                            content: Text(ref.tr('delete_confirm_msg')),
                                             actions: [
                                               TextButton(
                                                 onPressed: () => Navigator.pop(context, false),
-                                                child: const Text('Yo\'q', style: TextStyle(color: Colors.grey)),
+                                                child: Text(ref.tr('delete_no'), style: const TextStyle(color: Colors.grey)),
                                               ),
                                               TextButton(
                                                 onPressed: () => Navigator.pop(context, true),
-                                                child: const Text('Ha, o\'chirish', style: TextStyle(color: Colors.red)),
+                                                child: Text(ref.tr('delete_yes'), style: const TextStyle(color: Colors.red)),
                                               ),
                                             ],
                                           ),
@@ -514,8 +634,8 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                           final done = await ref.read(listingsProvider.notifier).delete(item['id']);
                                           if (done && context.mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('E\'lon muvaffaqiyatli o\'chirildi.'),
+                                              SnackBar(
+                                                content: Text(ref.tr('delete_success')),
                                                 backgroundColor: Colors.green,
                                               ),
                                             );
@@ -530,6 +650,19 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                 item['description'] ?? '',
                                 style: const TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
                               ),
+                              if (item['image_path'] != null && item['image_path'].toString().isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    item['image_path'].toString(),
+                                    height: 180,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 14),
                               const Divider(height: 1, thickness: 0.5),
                               const SizedBox(height: 12),
@@ -540,7 +673,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Ijara narxi:',
+                                        '${ref.tr('rental_price')}:',
                                         style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                                       ),
                                       const SizedBox(height: 2),
@@ -551,7 +684,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          item['price'] ?? 'Kelishuv asosida',
+                                          item['price'] ?? ref.tr('agreement_price'),
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
@@ -564,7 +697,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                   ElevatedButton.icon(
                                     onPressed: () => _contactSeller(context, phone, ownerName),
                                     icon: const Icon(Icons.phone_rounded, size: 16),
-                                    label: const Text('Bog\'lanish'),
+                                    label: Text(ref.tr('contact_btn')),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF1A3C2A),
                                       foregroundColor: Colors.white,
@@ -589,15 +722,15 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'E\'lonlarni yuklashda xatolik yuz berdi.',
+                      Text(
+                        ref.tr('load_error'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.red),
+                        style: const TextStyle(color: Colors.red),
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton(
                         onPressed: () => ref.read(listingsProvider.notifier).fetchListings(),
-                        child: const Text('Qayta urinish'),
+                        child: Text(ref.tr('retry')),
                       ),
                     ],
                   ),
@@ -617,7 +750,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
         backgroundColor: const Color(0xFF1A3C2A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('E\'lon berish', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: Text(ref.tr('post_listing_btn'), style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }

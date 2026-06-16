@@ -215,9 +215,12 @@ class ApiService {
     return await _dio.get('/vehicles/$vehicleId/location');
   }
 
-  /// Texnikaning 24 soatlik GPS harakat tarixi
-  Future<Response> getVehicleHistory(int vehicleId) async {
-    return await _dio.get('/vehicles/$vehicleId/history');
+  /// Texnikaning GPS harakat tarixi (days = so'raladigan kunlar soni)
+  Future<Response> getVehicleHistory(int vehicleId, {int days = 3}) async {
+    return await _dio.get(
+      '/vehicles/$vehicleId/history',
+      queryParameters: {'days': days},
+    );
   }
 
   /// Texnika dvigatelini boshqarish (o'chirish yoki yoqish)
@@ -269,21 +272,32 @@ class ApiService {
     return await _dio.get('/listings');
   }
 
-  /// Yangi ijara e'lonini yaratish
+  /// Yangi ijara e'lonini yaratish (rasm bilan birga)
   Future<Response> createListing({
     required String title,
     required String description,
     required String equipmentType,
     required String price,
     required String contactPhone,
+    String? imagePath,
   }) async {
-    return await _dio.post('/listings', data: {
+    final Map<String, dynamic> dataMap = {
       'title': title,
       'description': description,
       'equipment_type': equipmentType,
       'price': price,
       'contact_phone': contactPhone,
-    });
+    };
+
+    if (imagePath != null && imagePath.isNotEmpty) {
+      dataMap['image'] = await MultipartFile.fromFile(
+        imagePath,
+        filename: imagePath.split('/').last,
+      );
+    }
+
+    final formData = FormData.fromMap(dataMap);
+    return await _dio.post('/listings', data: formData);
   }
 
   /// E'lonni o'chirish

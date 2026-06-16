@@ -7,6 +7,7 @@ import 'profile_screen.dart';
 import 'weather_forecast_screen.dart';
 import 'chat_screen.dart';
 import 'listings_screen.dart';
+import '../services/localization_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -118,36 +119,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         selectedIndex: _currentIndex,
         onDestinationSelected: _navigateToTab,
         indicatorColor: const Color(0xFF1A3C2A).withOpacity(0.15),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF1A3C2A)),
-            label: 'Asosiy',
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded, color: Color(0xFF1A3C2A)),
+            label: ref.tr('home'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.wb_sunny_outlined),
-            selectedIcon: Icon(Icons.wb_sunny_rounded, color: Color(0xFF1A3C2A)),
-            label: 'Ob-havo',
+            icon: const Icon(Icons.wb_sunny_outlined),
+            selectedIcon: const Icon(Icons.wb_sunny_rounded, color: Color(0xFF1A3C2A)),
+            label: ref.tr('weather_nav'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline_rounded),
-            selectedIcon: Icon(Icons.chat_bubble_rounded, color: Color(0xFF1A3C2A)),
-            label: 'Muloqot',
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            selectedIcon: const Icon(Icons.chat_bubble_rounded, color: Color(0xFF1A3C2A)),
+            label: ref.tr('chat_nav'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.storefront_outlined),
-            selectedIcon: Icon(Icons.storefront_rounded, color: Color(0xFF1A3C2A)),
-            label: 'Ijara',
+            icon: const Icon(Icons.storefront_outlined),
+            selectedIcon: const Icon(Icons.storefront_rounded, color: Color(0xFF1A3C2A)),
+            label: ref.tr('listings_nav'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map_rounded, color: Color(0xFF1A3C2A)),
-            label: 'Xarita',
+            icon: const Icon(Icons.map_outlined),
+            selectedIcon: const Icon(Icons.map_rounded, color: Color(0xFF1A3C2A)),
+            label: ref.tr('map_nav'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded, color: Color(0xFF1A3C2A)),
-            label: 'Profil',
+            icon: const Icon(Icons.person_outline_rounded),
+            selectedIcon: const Icon(Icons.person_rounded, color: Color(0xFF1A3C2A)),
+            label: ref.tr('profile_nav'),
           ),
         ],
       ),
@@ -396,25 +397,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       childAspectRatio: 1.6,
       children: [
         _buildNavTabCard(
-          'GPS Xarita',
+          ref.tr('field_map'),
           Icons.map_rounded,
           Colors.blue[700]!,
           4, // Tab Index for map
         ),
         _buildNavScreenCard(
-          'Tuproq AI',
+          ref.tr('soil_card'),
           Icons.science_rounded,
           Colors.orange[800]!,
           const SoilAnalysisScreen(),
         ),
         _buildNavTabCard(
-          'Ijaraga olish',
+          ref.tr('listings_card'),
           Icons.construction_rounded,
           const Color(0xFF2E6F40),
           3, // Tab Index for listings
         ),
         _buildNavActionCard(
-          'Ijaraga berish',
+          ref.tr('new_listing'),
           Icons.add_business_rounded,
           const Color(0xFFE65C00),
           () {
