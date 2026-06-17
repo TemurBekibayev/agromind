@@ -117,6 +117,13 @@
                     Ogohlantirishlar
                 </a>
 
+                <a href="/admin/commands" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('admin/commands*') ? 'bg-forest-700 text-white' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                    <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                    </svg>
+                    Kutilayotgan Buyruqlar
+                </a>
+
                 <a href="/admin/regions" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('admin/regions*') ? 'bg-forest-700 text-white' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />

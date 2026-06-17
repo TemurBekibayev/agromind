@@ -222,10 +222,10 @@ const server = net.createServer((socket) => {
         }
     });
 
-    // Socket faolsizlik taymauti (3 daqiqa) - aloqa uzilganini aniqlash uchun
-    socket.setTimeout(180000);
+    // Socket faolsizlik taymauti (10 daqiqa) - aloqa uzilganini aniqlash uchun
+    socket.setTimeout(600000);
     socket.on('timeout', () => {
-        console.log(`[-] Soket taymauti (3 daqiqa faolsizlik): ${socket.remoteAddress}`);
+        console.log(`[-] Soket taymauti (10 daqiqa faolsizlik): ${socket.remoteAddress}`);
         socket.destroy();
     });
 

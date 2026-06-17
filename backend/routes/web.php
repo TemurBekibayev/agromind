@@ -378,6 +378,49 @@ Route::get('/admin/regions', function () {
     return view('admin.regions', compact('regions'));
 });
 
+// Kutilayotgan GPS buyruqlari navbati (Bloklash/Ochish)
+Route::get('/admin/commands', function () {
+    $vehicles = Vehicle::with(['farm'])->get();
+    $pendingCommands = [];
+    
+    foreach ($vehicles as $vehicle) {
+        $key = "gps_command_{$vehicle->gps_device_id}";
+        if (Cache::has($key)) {
+            $command = Cache::get($key);
+            $status = $vehicle->status;
+            
+            if ($status === 'offline') {
+                $reason = 'Qurilma tarmoqdan uzilgan (Offline). Ulanishi kutilmoqda.';
+                $solution = 'Qurilma quvvati, SIM-kartadagi megabayt balansi yoki ochiqroq osmon ostiga olib chiqishni tekshiring.';
+            } else {
+                $reason = 'GPS sun\'iy yo\'ldosh signali yo\'q (Searching for Satellite).';
+                $solution = 'Qurilma online, biroq xavfsizlik cheklovi tufayli dvigatelni o\'chirish kechiktirilyapti. Mashinani tepasi ochiqroq joyga siljiting.';
+            }
+            
+            $pendingCommands[] = [
+                'id' => $vehicle->id,
+                'name' => $vehicle->name,
+                'plate_number' => $vehicle->plate_number,
+                'gps_device_id' => $vehicle->gps_device_id,
+                'farm_name' => $vehicle->farm ? $vehicle->farm->name : 'Noma\'lum',
+                'command' => $command,
+                'status' => $status,
+                'reason' => $reason,
+                'solution' => $solution,
+            ];
+        }
+    }
+    
+    return view('admin.commands', compact('pendingCommands'));
+});
+
+// Kutilayotgan GPS buyruqni bekor qilish
+Route::post('/admin/commands/clear/{id}', function ($id) {
+    $vehicle = Vehicle::findOrFail($id);
+    Cache::forget("gps_command_{$vehicle->gps_device_id}");
+    return back()->with('success', "{$vehicle->name} texnikasi uchun navbatdagi buyruq muvaffaqiyatli bekor qilindi.");
+});
+
 // Hukumat monitoring paneli (Token bilan himoyalangan, Login shart emas)
 Route::get('/monitor', function (Request $request) {
     $validToken = 'agromind_monitoring_token_2026';
