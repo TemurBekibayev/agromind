@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
+import '../services/localization_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -15,19 +16,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
-    final userName = user?['name'] ?? 'Fermer';
+    final userName = user?['name'] ?? ref.tr('user_role');
     final userPhone = user?['phone'] ?? '';
-    final userRegion = user?['region']?['name'] ?? 'Yuklanmoqda...';
+    final userRegion = user?['region']?['name'] ?? '...';
     final userDistrict = user?['district'];
     final fullRegionDisplay = userDistrict != null && userDistrict.toString().isNotEmpty
         ? '$userRegion, $userDistrict'
         : userRegion;
 
+    final currentLocale = ref.watch(localeProvider);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A3C2A),
         foregroundColor: Colors.white,
-        title: const Text('Profil va Sozlamalar'),
+        title: Text(ref.tr('profile_settings')),
         automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
@@ -59,7 +62,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Fermer (Dehqon)',
+                      ref.tr('user_role'),
                       style: TextStyle(fontSize: 14, color: Colors.grey[600], fontWeight: FontWeight.w500),
                     ),
                   ],
@@ -69,13 +72,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 20),
 
             // Profile detail options
-            const Text(
-              'Ma\'lumotlar',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+            Text(
+              ref.tr('profile_info'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
             ),
             const SizedBox(height: 10),
-            _buildInfoTile(Icons.phone_rounded, 'Telefon raqam', userPhone),
-            _buildInfoTile(Icons.location_on_rounded, 'Hudud', fullRegionDisplay),
+            _buildInfoTile(Icons.phone_rounded, ref.tr('phone_label'), userPhone),
+            _buildInfoTile(Icons.location_on_rounded, ref.tr('region_label'), fullRegionDisplay),
+            const SizedBox(height: 20),
+
+            // Settings Section
+            Text(
+              ref.tr('profile_settings_title'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: const Icon(Icons.language_rounded, color: Color(0xFF1A3C2A)),
+                title: Text(ref.tr('app_lang')),
+                trailing: Text(
+                  currentLocale == 'uz'
+                      ? 'O\'zbekcha (Lotin)'
+                      : currentLocale == 'oz'
+                          ? 'Ўзбекча (Кирилл)'
+                          : 'Русский',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                onTap: () => _showLanguageSelector(context),
+              ),
+            ),
             const SizedBox(height: 40),
 
             // Logout Button
@@ -92,7 +120,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 }
               },
               icon: const Icon(Icons.exit_to_app_rounded),
-              label: const Text('Tizimdan Chiqish', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: Text(ref.tr('logout'), style: const TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[800],
                 foregroundColor: Colors.white,
@@ -103,6 +131,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showLanguageSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      builder: (context) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final currentLocale = ref.watch(localeProvider);
+            return Container(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: const Text('O\'zbekcha (Lotin)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: currentLocale == 'uz' ? const Icon(Icons.check_circle_rounded, color: Color(0xFF1A3C2A)) : null,
+                    onTap: () {
+                      ref.read(localeProvider.notifier).changeLocale('uz');
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    title: const Text('Ўзбекча (Кирилл)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: currentLocale == 'oz' ? const Icon(Icons.check_circle_rounded, color: Color(0xFF1A3C2A)) : null,
+                    onTap: () {
+                      ref.read(localeProvider.notifier).changeLocale('oz');
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    title: const Text('Русский', style: TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: currentLocale == 'ru' ? const Icon(Icons.check_circle_rounded, color: Color(0xFF1A3C2A)) : null,
+                    onTap: () {
+                      ref.read(localeProvider.notifier).changeLocale('ru');
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

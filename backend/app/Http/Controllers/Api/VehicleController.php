@@ -122,8 +122,13 @@ class VehicleController extends Controller
             ], 404);
         }
 
+        $days = (int) $request->query('days', 3);
+        if ($days < 1 || $days > 7) {
+            $days = 3;
+        }
+
         $history = $vehicle->gpsTracks()
-            ->where('recorded_at', '>=', Carbon::now()->subHours(24))
+            ->where('recorded_at', '>=', Carbon::now()->subDays($days))
             ->orderBy('recorded_at', 'asc')
             ->get();
 

@@ -35,7 +35,14 @@ class ListingController extends Controller
             'equipment_type' => 'required|string',
             'price' => 'required|string|max:100',
             'contact_phone' => 'required|string|max:50',
+            'image' => 'nullable|image|max:20480', // Max 20MB image
         ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('listings', 'public');
+            $imagePath = asset('storage/' . $path);
+        }
 
         $listing = Listing::create([
             'user_id' => $request->user()->id,
@@ -44,6 +51,7 @@ class ListingController extends Controller
             'equipment_type' => $request->equipment_type,
             'price' => $request->price,
             'contact_phone' => $request->contact_phone,
+            'image_path' => $imagePath,
             'status' => 'active',
         ]);
 

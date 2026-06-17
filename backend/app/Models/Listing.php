@@ -14,6 +14,7 @@ class Listing extends Model
         'equipment_type',
         'price',
         'contact_phone',
+        'image_path',
         'status',
     ];
 
