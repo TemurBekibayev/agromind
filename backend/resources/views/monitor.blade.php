@@ -1175,6 +1175,8 @@
         // Render Accordion Farms List on Sidebar
         function renderFarmsSidebar() {
             const container = document.getElementById('farmsList');
+            if (!container) return;
+            const savedScrollTop = container.scrollTop;
             container.innerHTML = '';
 
             if (filteredFarmsData.length === 0) {
@@ -1303,6 +1305,7 @@
                 `;
                 container.insertAdjacentHTML('beforeend', cardHTML);
             });
+            container.scrollTop = savedScrollTop;
         }
 
         // Apply dynamic filters for Farms
@@ -1987,6 +1990,7 @@
             .then(data => {
                 if (data.status === 'success') {
                     alert("AI Tavsiyasi muvaffaqiyatli tayyorlandi!");
+                    isFirstLoad = true;
                     loadFarmsAndVehicles();
                 } else {
                     alert("Xato yuz berdi: " + (data.message || 'Noma\'lum xato'));
@@ -2017,14 +2021,13 @@
                     // Dynamically populate filters once
                     if (isFirstLoad) {
                         populateDistrictFilter(farms);
+                        // Draw all geofences on the map globally
+                        drawAllFarmsGeofences(farms);
                         isFirstLoad = false;
                     }
 
                     // Refresh active filters
                     applyFilters();
-
-                    // Draw all geofences on the map globally
-                    drawAllFarmsGeofences(farms);
 
                     // Refresh AI Drawer if open
                     if (activeGeofence && activeFarm) {
@@ -2114,9 +2117,9 @@
                 .catch(err => console.error('Error fetching live farms data:', err));
         }
 
-        // First Load and 5 minutes interval refresh
+        // First Load and 10 seconds interval refresh
         loadFarmsAndVehicles();
-        setInterval(loadFarmsAndVehicles, 300000);
+        setInterval(loadFarmsAndVehicles, 10000);
     </script>
 </body>
 </html>
