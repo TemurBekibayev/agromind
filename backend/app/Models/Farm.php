@@ -76,4 +76,12 @@ class Farm extends Model
     {
         return $this->hasMany(Alert::class);
     }
+
+    /**
+     * Suv limitlari va amalda sarflangan suv hajmlari.
+     */
+    public function waterRecords(): HasMany
+    {
+        return $this->hasMany(WaterRecord::class);
+    }
 }

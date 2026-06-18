@@ -131,6 +131,14 @@
                     </svg>
                     Hududlar
                 </a>
+
+                <a href="/admin/water" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('admin/water*') ? 'bg-forest-700 text-white' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                    <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.3.025-.602.047-.905.066m0-.066c-1.637.1-3.292.1-4.93 0m4.93 0c-.347-.021-.692-.047-1.036-.077M18.75 16.5c-.34-.03-.68-.067-1.02-.112m-6.48 1.112c.34-.03.68-.067 1.02-.112m1.11 1.11a8.96 8.96 0 01-2.22-2.22m2.22 2.22a8.96 8.96 0 002.22-2.22M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.682 9.07a9 9 0 00-11.364 0M2.25 10.608a10.5 10.5 0 0019.5 0" />
+                    </svg>
+                    Suv Nazorati
+                </a>
             </nav>
             
             <div class="border-t border-gray-150 p-4">

@@ -533,6 +533,229 @@ Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request)
     }
 });
 
+// ==================== SUV NAZORATI VA MONITORINGI MODULI ====================
+
+use App\Models\WaterRecord;
+use App\Models\Farm;
+
+// 1. Tashqi xodimlar uchun umumiy to'ldirish oynasi (Token bilan himoyalangan)
+Route::get('/water-entry', function (Request $request) {
+    $token = $request->query('token');
+    if ($token !== 'agromind_water_entry_2026') {
+        abort(403, 'Ruxsat etilmagan kirish. Token xato yoki taqdim etilmagan.');
+    }
+
+    $farms = Farm::with('owner')->orderBy('name')->get();
+    
+    $existingRecords = collect();
+    $farmId = $request->query('farm_id');
+    $year = $request->query('year', date('Y'));
+    $month = $request->query('month');
+
+    if ($farmId && $month) {
+        $existingRecords = WaterRecord::where('farm_id', $farmId)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->get();
+    }
+
+    return view('water.entry', compact('farms', 'existingRecords'));
+});
+
+Route::post('/water-entry/store', function (Request $request) {
+    if ($request->input('token') !== 'agromind_water_entry_2026') {
+        abort(403, 'Ruxsat etilmagan kirish.');
+    }
+
+    $request->validate([
+        'farm_id' => 'required|exists:farms,id',
+        'year' => 'required|integer',
+        'month' => 'required|integer|between:1,12',
+        'records' => 'required|array',
+    ]);
+
+    $farmId = $request->input('farm_id');
+    $year = $request->input('year');
+    $month = $request->input('month');
+
+    foreach ($request->input('records') as $source => $decades) {
+        foreach ($decades as $decade => $values) {
+            WaterRecord::updateOrCreate([
+                'farm_id' => $farmId,
+                'year' => $year,
+                'month' => $month,
+                'decade' => $decade,
+                'water_source' => $source,
+            ], [
+                'limit_m3' => $values['limit_m3'] ?? 0.00,
+                'used_m3' => $values['used_m3'] ?? 0.00,
+            ]);
+        }
+    }
+
+    return back()->with('success', 'Ushbu oy uchun suv limitlari va sarfi muvaffaqiyatli saqlandi!');
+});
+
+// 2. Admin Panel integratsiyasi
+Route::get('/admin/water', function (Request $request) {
+    $farms = Farm::orderBy('name')->get();
+
+    $query = WaterRecord::with('farm');
+
+    if ($request->filled('farm_id')) {
+        $query->where('farm_id', $request->farm_id);
+    }
+    if ($request->filled('year')) {
+        $query->where('year', $request->year);
+    }
+    if ($request->filled('month')) {
+        $query->where('month', $request->month);
+    }
+
+    // Statistika hisoblash
+    $totalLimit = (double) $query->sum('limit_m3');
+    $totalUsed = (double) $query->sum('used_m3');
+
+    $records = $query->orderBy('year', 'desc')
+        ->orderBy('month', 'desc')
+        ->orderBy('decade', 'asc')
+        ->paginate(15);
+
+    return view('admin.water', compact('records', 'farms', 'totalLimit', 'totalUsed'));
+});
+
+Route::get('/admin/water/create', function (Request $request) {
+    $farms = Farm::with('owner')->orderBy('name')->get();
+    
+    $existingRecords = collect();
+    $farmId = $request->query('farm_id');
+    $year = $request->query('year', date('Y'));
+    $month = $request->query('month');
+
+    if ($farmId && $month) {
+        $existingRecords = WaterRecord::where('farm_id', $farmId)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->get();
+    }
+
+    return view('admin.water_create', compact('farms', 'existingRecords'));
+});
+
+Route::post('/admin/water/store', function (Request $request) {
+    $request->validate([
+        'farm_id' => 'required|exists:farms,id',
+        'year' => 'required|integer',
+        'month' => 'required|integer|between:1,12',
+        'records' => 'required|array',
+    ]);
+
+    $farmId = $request->input('farm_id');
+    $year = $request->input('year');
+    $month = $request->input('month');
+
+    foreach ($request->input('records') as $source => $decades) {
+        foreach ($decades as $decade => $values) {
+            WaterRecord::updateOrCreate([
+                'farm_id' => $farmId,
+                'year' => $year,
+                'month' => $month,
+                'decade' => $decade,
+                'water_source' => $source,
+            ], [
+                'limit_m3' => $values['limit_m3'] ?? 0.00,
+                'used_m3' => $values['used_m3'] ?? 0.00,
+            ]);
+        }
+    }
+
+    return redirect('/admin/water')->with('success', 'Suv limitlari va sarfi muvaffaqiyatli saqlandi!');
+});
+
+Route::post('/admin/water/destroy/{id}', function ($id) {
+    $record = WaterRecord::findOrFail($id);
+    $record->delete();
+    return back()->with('success', 'Suv yozuvi muvaffaqiyatli o\'chirildi.');
+});
+
+// 3. Mobil dasturchilar uchun ochiq API yo'nalishlari (API routes)
+Route::get('/api/farms/{id}/water-records', function ($id) {
+    $farm = Farm::find($id);
+    if (!$farm) {
+        return response()->json(['status' => 'error', 'message' => 'Fermer xo\'jaligi topilmadi.'], 404);
+    }
+
+    $records = WaterRecord::where('farm_id', $id)
+        ->orderBy('year', 'desc')
+        ->orderBy('month', 'desc')
+        ->orderBy('decade', 'asc')
+        ->get();
+
+    return response()->json([
+        'status' => 'success',
+        'farm_id' => $farm->id,
+        'farm_name' => $farm->name,
+        'records' => $records
+    ]);
+});
+
+Route::get('/api/farmers/{id}/water-records', function ($id) {
+    $farmer = User::where('role', 'farmer')->find($id);
+    if (!$farmer) {
+        return response()->json(['status' => 'error', 'message' => 'Fermer topilmadi.'], 404);
+    }
+
+    $farmIds = Farm::where('user_id', $id)->pluck('id');
+
+    $records = WaterRecord::whereIn('farm_id', $farmIds)
+        ->with('farm')
+        ->orderBy('year', 'desc')
+        ->orderBy('month', 'desc')
+        ->orderBy('decade', 'asc')
+        ->get();
+
+    return response()->json([
+        'status' => 'success',
+        'farmer_id' => $farmer->id,
+        'farmer_name' => $farmer->name,
+        'records' => $records
+    ]);
+});
+
+Route::post('/api/water-records/store', function (Request $request) {
+    // Mobil ilovadan kiritilganda ham token tekshirish
+    if ($request->header('Authorization') !== 'Bearer agromind_water_entry_2026') {
+        return response()->json(['status' => 'error', 'message' => 'Ruxsat berilmagan.'], 401);
+    }
+
+    $request->validate([
+        'farm_id' => 'required|exists:farms,id',
+        'year' => 'required|integer',
+        'month' => 'required|integer|between:1,12',
+        'decade' => 'required|integer|between:1,3',
+        'water_source' => 'required|string',
+        'limit_m3' => 'required|numeric|min:0',
+        'used_m3' => 'required|numeric|min:0',
+    ]);
+
+    $record = WaterRecord::updateOrCreate([
+        'farm_id' => $request->farm_id,
+        'year' => $request->year,
+        'month' => $request->month,
+        'decade' => $request->decade,
+        'water_source' => $request->water_source,
+    ], [
+        'limit_m3' => $request->limit_m3,
+        'used_m3' => $request->used_m3,
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Suv sarfi ma\'lumoti muvaffaqiyatli saqlandi.',
+        'record' => $record
+    ]);
+});
+
 // Maxfiylik Siyosati (Privacy Policy) Google Play Market uchun
 Route::get('/privacy-policy', function () {
     return view('privacy_policy');
