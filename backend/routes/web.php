@@ -756,6 +756,11 @@ Route::post('/api/water-records/store', function (Request $request) {
     ]);
 });
 
+// Interaktiv taqdimot slaydlari (Fermerlarga tushuntirish va namoyish qilish uchun)
+Route::get('/presentation', function () {
+    return view('presentation');
+});
+
 // Maxfiylik Siyosati (Privacy Policy) Google Play Market uchun
 Route::get('/privacy-policy', function () {
     return view('privacy_policy');
