@@ -87,7 +87,10 @@
         </div>
         
         <div class="flex items-center gap-4 text-xs font-semibold text-slate-400">
-            <span id="slideCounter">Slayd: 1 / 11</span>
+            <button onclick="toggleSpeakerNotes()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950 text-emerald-450 border border-emerald-800/50 hover:bg-emerald-900 transition font-display">
+                🎙️ Nutq Yordamchisi
+            </button>
+            <span id="slideCounter" class="min-w-[70px]">Slayd: 1 / 11</span>
             <div class="flex gap-1">
                 <button onclick="prevSlide()" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 transition">&larr;</button>
                 <button onclick="nextSlide()" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 transition">&rarr;</button>
@@ -125,17 +128,17 @@
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-md flex flex-col justify-between">
                     <div class="h-10 w-10 rounded-xl bg-rose-950 text-rose-400 flex items-center justify-center text-xl">💧</div>
                     <h3 class="font-bold text-slate-200 text-sm">Nazoratsiz Suv Sarfi</h3>
-                    <p class="text-xs text-slate-450 leading-relaxed">Suv taqchilligi sharoitida sug'orish jadvallari va limitlarining qog'ozda qolib ketishi, amaliy nazorat yo'qligi.</p>
+                    <p class="text-xs text-slate-450 leading-relaxed">Sug'orish jadvallari va suv limitlarining qog'ozda qolib ketishi, suv isrofi va suv boshqarmasi bilan real-vaqtda aloqa yo'qligi sababli eng qimmatli resursimiz behuda sarflanmoqda.</p>
                 </div>
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-md flex flex-col justify-between">
                     <div class="h-10 w-10 rounded-xl bg-rose-950 text-rose-400 flex items-center justify-center text-xl">🌱</div>
                     <h3 class="font-bold text-slate-200 text-sm">Tuproq Sho'rlanishi</h3>
-                    <p class="text-xs text-slate-450 leading-relaxed">Tuproq tarkibini (pH, NPK) o'rganmay turib kimyoviy o'g'itlarni me'yoridan ortiqcha solish va hosildorlik tushishi.</p>
+                    <p class="text-xs text-slate-450 leading-relaxed">Tuproq tarkibini (pH kislotaliligi, unumdorligini) aniq bilmay, ko'r-ko'rona va me'yoridan ortiqcha kimyoviy o'g'it solish natijasida yerlarimiz sho'rlanib, hosildorlik yildan-yilga tushib bormoqda.</p>
                 </div>
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-md flex flex-col justify-between">
                     <div class="h-10 w-10 rounded-xl bg-rose-950 text-rose-400 flex items-center justify-center text-xl">🚜</div>
                     <h3 class="font-bold text-slate-200 text-sm">Texnikalar Nazoratsizligi</h3>
-                    <p class="text-xs text-slate-450 leading-relaxed">Traktorlarning qayerda yurgani, yoqilg'ining maqsadsiz sarflanishi va o'g'irlanishi ustidan nazorat yo'qligi.</p>
+                    <p class="text-xs text-slate-450 leading-relaxed">Traktor va og'ir texnikalarning real-vaqtda qayerda yurgani, yoqilg'i qanchalik to'g'ri sarflanayotgani va maqsadsiz foydalanishlar ustidan ishonchli nazorat mexanizmining yo'qligi.</p>
                 </div>
             </div>
         </div>
@@ -150,46 +153,34 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div class="space-y-4">
                     <div class="flex gap-3">
-                        <div class="h-8 w-8 rounded-lg bg-emerald-950 text-emerald-400 flex items-center justify-center font-bold shrink-0 mt-0.5">1</div>
+                        <div class="h-8 w-8 rounded-lg bg-emerald-950 text-emerald-450 flex items-center justify-center font-bold shrink-0 mt-0.5">1</div>
                         <div>
                             <h4 class="font-bold text-sm text-slate-200">GIS va Geofencing Xaritasi</h4>
-                            <p class="text-xs text-slate-400 leading-relaxed mt-0.5">Har bir xo'jalik va dala chegaralari GPS orqali xaritaga kontur qilib chiziladi.</p>
+                            <p class="text-xs text-slate-400 leading-relaxed mt-0.5">Har bir xo'jalik va dala chegaralari GPS yordamida sun'iy yo'ldosh xaritasi ustida kontur shaklida chiziladi. Bu har bir qarich yerni aniq nazorat qilish, maydonlarni to'g'ri hisoblash va chegaradan tashqaridagi noqonuniy ishlarning oldini olish poydevoridir.</p>
                         </div>
                     </div>
                     <div class="flex gap-3">
-                        <div class="h-8 w-8 rounded-lg bg-emerald-950 text-emerald-400 flex items-center justify-center font-bold shrink-0 mt-0.5">2</div>
+                        <div class="h-8 w-8 rounded-lg bg-emerald-950 text-emerald-450 flex items-center justify-center font-bold shrink-0 mt-0.5">2</div>
                         <div>
                             <h4 class="font-bold text-sm text-slate-200">IoT datchiklar va Telemetriya</h4>
-                            <p class="text-xs text-slate-400 leading-relaxed mt-0.5">Dala tuproq datchigi va traktorlarga o'rnatilgan GPS trekerlar real-vaqtda ma'lumot yuboradi.</p>
+                            <p class="text-xs text-slate-400 leading-relaxed mt-0.5">Dala tuproq datchigi pH, namlik va unumdorlikni o'lchaydi. Traktorlarga o'rnatilgan GPS trekerlar real-vaqtda ularning harakati, joylashuvi va yoqilg'i sarfi ma'lumotlarini serverga uzatib turadi.</p>
                         </div>
                     </div>
                     <div class="flex gap-3">
-                        <div class="h-8 w-8 rounded-lg bg-emerald-950 text-emerald-400 flex items-center justify-center font-bold shrink-0 mt-0.5">3</div>
+                        <div class="h-8 w-8 rounded-lg bg-emerald-950 text-emerald-450 flex items-center justify-center font-bold shrink-0 mt-0.5">3</div>
                         <div>
                             <h4 class="font-bold text-sm text-slate-200">Sun'iy Intellekt Agro-Tavsiyasi</h4>
-                            <p class="text-xs text-slate-400 leading-relaxed mt-0.5">Yig'ilgan tahlillar asosida aqlli tavsiyalar va sug'orish muddatlari ishlab chiqiladi.</p>
+                            <p class="text-xs text-slate-400 leading-relaxed mt-0.5">Yig'ilgan tahlillar platformaning o'ziga xos Groq AI (Llama-3) sun'iy intellekti yordamida qayta ishlanadi va fermerga tayyor qarorlar, sug'orish va o'g'itlash rejalari shaklida taqdim etiladi.</p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Stylized Mock Screen / Vector -->
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center justify-center relative min-h-[220px]">
-                    <div class="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 rounded-2xl"></div>
-                    <div class="relative border border-slate-800 rounded-xl p-3 bg-slate-950/80 max-w-sm space-y-3 shadow-inner w-full">
-                        <div class="flex justify-between items-center border-b border-slate-900 pb-2">
-                            <span class="text-[10px] font-bold text-slate-450 uppercase tracking-wider">UzAgromind GIS</span>
-                            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        </div>
-                        <div class="h-20 bg-slate-900 rounded-lg flex items-center justify-center text-[10px] text-slate-500 italic relative overflow-hidden">
-                            <!-- simulated map lines -->
-                            <div class="absolute inset-0 border border-slate-800 m-2 rounded opacity-30 bg-slate-950"></div>
-                            <div class="absolute w-12 h-12 bg-emerald-500/20 rounded-full blur"></div>
-                            🗺️ GIS Xarita Vizualizatsiyasi
-                        </div>
-                        <div class="flex justify-between text-[9px] text-slate-400">
-                            <span>Jami Maydon: <strong>35.5 ha</strong></span>
-                            <span>Texnikalar: <strong>2 faol</strong></span>
-                        </div>
+                <!-- Farming Cycle Image -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 shadow-xl flex flex-col items-center justify-center relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 opacity-50"></div>
+                    <img src="/presentation_assets/farming_cycle.png" alt="UzAgromind Ekotizimi" class="rounded-xl w-full h-auto object-cover border border-slate-800 shadow-md">
+                    <div class="w-full text-center mt-2">
+                        <span class="text-[9px] text-slate-450 font-semibold tracking-wide uppercase">Tizimning yaxlit ishlash va ma'lumot almashish sxemasi</span>
                     </div>
                 </div>
             </div>
@@ -200,6 +191,7 @@
             <div class="text-center md:text-left">
                 <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Interaktiv Simulyatsiya</span>
                 <h2 class="text-2xl md:text-3.5xl font-black font-display mt-1">Tuproq Tahlili va Sun'iy Intellekt Tavsiyasi</h2>
+                <p class="text-xs text-slate-400 leading-relaxed mt-1.5">Dalaga o'rnatilgan aqlli sensorlar orqali tuproqning namligi, kislotaliligi (pH) va ozuqa moddalari (NPK) real-vaqtda o'lchanadi. Groq AI esa ushbu ko'rsatkichlarni bir necha soniyada tahlil qilib, fermerga tayyor o'g'itlash va sug'orish rejasini generatsiya qiladi. Quyidagi slayderlarni o'zgartirib, tizim qanday ishlashini sinab ko'ring:</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -261,9 +253,7 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- ==================== SLIDE 5: GPS TRACKING ==================== -->
+          <!-- ==================== SLIDE 5: GPS TRACKING ==================== -->
         <div class="slide hidden flex-col w-full max-w-4xl space-y-6">
             <div class="text-center md:text-left">
                 <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Texnika nazorati</span>
@@ -273,38 +263,38 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <!-- Text Details -->
                 <div class="space-y-3.5">
-                    <div class="p-3 bg-slate-900 border border-slate-850 rounded-xl space-y-1">
-                        <h4 class="font-bold text-xs text-emerald-400 uppercase tracking-wider">● Jonli Harakat</h4>
-                        <p class="text-xs text-slate-350">Har 10 soniyada ma'lumotlarni so'rash orqali xaritada texnika markeri sakramasdan, tekis harakatlanadi.</p>
+                    <div class="p-3.5 bg-slate-900 border border-slate-850 rounded-xl space-y-1.5">
+                        <h4 class="font-bold text-xs text-emerald-400 uppercase tracking-wider">🟢 Jonli Harakat va Drift Filtr</h4>
+                        <p class="text-xs text-slate-350">Har 10 soniyada yangilanadigan ma'lumotlar bilan texnika markeri xaritada sakrashlarsiz, mutlaqo tekis harakatlanadi. Maxsus GPS drift filtri sun'iy siljishlarni tozalab, bosib o'tilgan yo'lni (kilometrajni) 99% aniqlikda hisoblab beradi.</p>
                     </div>
-                    <div class="p-3 bg-slate-900 border border-slate-850 rounded-xl space-y-1">
-                        <h4 class="font-bold text-xs text-rose-450 uppercase tracking-wider">⚠️ Aloqa uzilgan hududlar (GPRS Gaps)</h4>
-                        <p class="text-xs text-slate-350">Aloqa uzilgan (daraxtzor yoki daryo bo'ylarida) qismlar xaritada qizil rangda va yo'qolgan daqiqalari bilan chiqadi.</p>
+                    <div class="p-3.5 bg-slate-900 border border-slate-850 rounded-xl space-y-1.5">
+                        <h4 class="font-bold text-xs text-rose-455 uppercase tracking-wider">⚠️ Aloqa uzilgan hududlar (GPRS Gaps)</h4>
+                        <p class="text-xs text-slate-350">GSM/GPRS signallari past bo'lgan o'rmonzor yoki daryo bo'yi hududlarida aloqa uzilgan qismlar tizimda aniqlanib, xaritada qizil rang va uzilish vaqti bilan chizib ko'rsatiladi. Bu haydovchining nazoratsiz qolib ketishini oldini oladi.</p>
                     </div>
                 </div>
 
-                <!-- Animated GPS Track Canvas (SVG Mock) -->
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center justify-center min-h-[220px]">
-                    <svg width="400" height="180" viewBox="0 0 400 180" class="w-full h-full">
-                        <!-- Simulated farm boundaries -->
-                        <polygon points="20,160 380,160 350,20 50,20" fill="none" stroke="#047857" stroke-width="1.5" stroke-dasharray="4, 4" />
-                        
-                        <!-- Simulated GPS Route path -->
-                        <path id="routePath" d="M 50 140 Q 150 40 250 140 T 350 40" fill="none" stroke="#10B981" stroke-width="3.5" class="gps-trail" />
-                        
-                        <!-- Red connection break segment -->
-                        <path d="M 150 90 L 250 140" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-dasharray="4, 4" />
-                        
-                        <!-- Warning circle for connection gap -->
-                        <circle cx="200" cy="115" r="5" fill="#EF4444" />
-                        <text x="180" y="102" fill="#EF4444" font-size="9" font-weight="bold" font-family="sans-serif">Aloqa uzilishi (12 min)</text>
-
-                        <!-- Tractor marker -->
-                        <g class="moving-tractor">
-                            <circle cx="0" cy="0" r="10" fill="#10B981" stroke="#ffffff" stroke-width="1.5" />
-                            <text x="-4" y="3" fill="#ffffff" font-size="9" font-weight="bold" font-family="sans-serif">🚜</text>
-                        </g>
-                    </svg>
+                <!-- Animated SVG and Screenshot Stack -->
+                <div class="space-y-4">
+                    <!-- Animated GPS Track Canvas (SVG Mock) -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center justify-center min-h-[160px]">
+                        <svg width="400" height="130" viewBox="0 0 400 130" class="w-full h-full">
+                            <polygon points="20,110 380,110 350,15 50,15" fill="none" stroke="#047857" stroke-width="1.5" stroke-dasharray="4, 4" />
+                            <path id="routePath" d="M 50 100 Q 150 20 250 100 T 350 20" fill="none" stroke="#10B981" stroke-width="3.5" class="gps-trail" />
+                            <path d="M 150 65 L 250 100" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-dasharray="4, 4" />
+                            <circle cx="200" cy="82" r="5" fill="#EF4444" />
+                            <text x="180" y="70" fill="#EF4444" font-size="9" font-weight="bold" font-family="sans-serif">Aloqa uzilishi (12 min)</text>
+                            <g class="moving-tractor">
+                                <circle cx="0" cy="0" r="10" fill="#10B981" stroke="#ffffff" stroke-width="1.5" />
+                                <text x="-4" y="3" fill="#ffffff" font-size="9" font-weight="bold" font-family="sans-serif">🚜</text>
+                            </g>
+                        </svg>
+                    </div>
+                    
+                    <!-- Real tractor trail screenshot -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-xl flex flex-col items-center relative overflow-hidden">
+                        <img src="/presentation_assets/tractor_trail.png" alt="Traktor GPS yo'nalishi" class="rounded-xl w-full h-28 object-cover border border-slate-800 shadow-md">
+                        <div class="text-[9px] text-slate-450 font-semibold tracking-wide uppercase mt-1">Tizimdagi real traktor monitoringi va yo'l chizmasi</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -318,16 +308,16 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <!-- Simulated phone dashboard -->
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl max-w-sm mx-auto w-full space-y-5 text-center relative overflow-hidden">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl max-w-sm mx-auto w-full space-y-4 text-center relative overflow-hidden">
                     <div class="absolute inset-x-0 top-0 h-1 bg-emerald-500" id="dash-border"></div>
                     
                     <div>
                         <h4 class="font-extrabold text-sm text-slate-250 font-display">Tractor TTZ-80 (01 A 123 AA)</h4>
-                        <p class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Fermer: Sherzod Dehqon</p>
+                        <p class="text-[10px] text-slate-555 uppercase tracking-wider font-semibold">Fermer: Sherzod Dehqon</p>
                     </div>
 
                     <!-- Engine status badge -->
-                    <div class="py-4 bg-slate-950 rounded-2xl border border-slate-850 flex flex-col items-center justify-center">
+                    <div class="py-3 bg-slate-950 rounded-2xl border border-slate-850 flex flex-col items-center justify-center">
                         <div class="flex items-center gap-1.5 text-emerald-400 font-bold text-xs" id="engine-status">
                             <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" id="engine-dot"></span>
                             DVIGATEL YONIQ (ACC ON)
@@ -336,26 +326,34 @@
                     </div>
 
                     <!-- Interactive trigger button -->
-                    <button onclick="toggleEngineSimulation()" id="btn-cutoff" class="w-full rounded-xl bg-rose-600 hover:bg-rose-500 py-3 text-xs font-bold text-white shadow-lg shadow-rose-500/20 transition border border-rose-500/30">
+                    <button onclick="toggleEngineSimulation()" id="btn-cutoff" class="w-full rounded-xl bg-rose-600 hover:bg-rose-500 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-500/20 transition border border-rose-500/30">
                         🛑 Dvigatelni Bloklash (Cutoff)
                     </button>
                     
-                    <p class="text-[9px] text-slate-500 italic">*Tugmani bosing va brauzer ovoziga diqqat qiling.</p>
+                    <p class="text-[9px] text-slate-500 italic">*Tugmani bosing va ovozli simulyatsiyani sinang.</p>
                 </div>
 
-                <!-- Explanation text -->
-                <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
-                    <div class="flex gap-2">
-                        <span class="text-rose-500 mt-0.5">⚠️</span>
-                        <span>**Chegara buzilishi (Geofence Breach)**: Traktor o'z maydonidan tashqariga ruxsatsiz chiqib ketsa, telefoningizga darhol avtomatik bildirishnoma yuboriladi.</span>
+                <!-- Explanation text & SMS commands image -->
+                <div class="space-y-4">
+                    <div class="space-y-2.5 text-xs text-slate-300 leading-relaxed">
+                        <div class="flex gap-2">
+                            <span class="text-rose-500 mt-0.5">⚠️</span>
+                            <span>**Chegara nazorati (Geofence)**: Agar texnika fermer tomonidan belgilangan dala konturidan ruxsatsiz chiqsa, telefonga darhol ogohlantirish keladi va uning harakati real-vaqtda kuzatiladi.</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-emerald-450 mt-0.5">🔌</span>
+                            <span>**Dvigatelni masofadan o'chirish (Cutoff)**: GPS trekerga ulangan masofaviy rele yordamida, fermer smartfonidan bitta tugmani bosib, dvigatel starterini bloklashi mumkin. Bu texnika ruxsatsiz foydalanilganda yoki o'g'irlanganda uni zudlik bilan to'xtatishga imkon beradi.</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-blue-400 mt-0.5">💬</span>
+                            <span>**SMS va GPRS xavfsiz buyruqlar**: Tizim internet bo'lmagan sharoitda ham SMS buyruqlar (GPRS relay protokoli) orqali boshqaruvni ta'minlaydi. Quyida GPRS protokoli orqali tizim loglarida aks etgan haqiqiy boshqaruv buyruqlari ko'rsatilgan.</span>
+                        </div>
                     </div>
-                    <div class="flex gap-2">
-                        <span class="text-emerald-400 mt-0.5">🔌</span>
-                        <span>**Masofaviy Rele orqali Bloklash**: Dvigatelning starter simlariga ulangan rele orqali, ulanish mavjud bo'lgan zaxira holatida dvigatel starterini bir soniyada bloklash imkoniyati.</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <span class="text-blue-400 mt-0.5">💡</span>
-                        <span>**Kutilayotgan buyruqlar**: Aloqa uzilgan vaqtda yuborilgan buyruqlar navbatga olinadi va traktor tarmoqqa kirishi bilan dvigatel bloklanadi.</span>
+                    
+                    <!-- SMS commands log image -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-lg relative overflow-hidden group">
+                        <img src="/presentation_assets/sms_commands.png" alt="SMS GPRS Commands Log" class="rounded-lg w-full h-28 object-cover border border-slate-850">
+                        <div class="text-[9px] text-slate-450 text-center mt-1 font-semibold">Tizim loglari: Qurilmaga yuborilgan GPRS va SMS boshqaruv buyruqlari</div>
                     </div>
                 </div>
             </div>
@@ -434,11 +432,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ==================== SLIDE 8: COMMUNITY & MARKETPLACE ==================== -->
+                   <!-- ==================== SLIDE 8: COMMUNITY & MARKETPLACE ==================== -->
         <div class="slide hidden flex-col w-full max-w-4xl space-y-6">
             <div class="text-center md:text-left">
                 <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Hamjamiyat kuchaytirish</span>
@@ -462,21 +456,21 @@
                         <!-- Message 2 -->
                         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-850 ml-4 border-l-2 border-l-emerald-500">
                             <span class="font-bold text-blue-400 block mb-0.5">Akmal Monitor (Mutaxassis):</span>
-                            <span class="text-slate-300">AI tavsiyasini yangilang. Azotli o'g'it va sug'orish muddatlarini to'g'rilab beradi!</span>
+                            <span class="text-slate-300">AI tavsiyasini yangilang. Azotli o'g'it va sug'orish muddatlarini avtomatik to'g'rilab beradi!</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Rental listings mockup -->
-                <div class="space-y-3">
-                    <h3 class="font-bold text-sm text-slate-200 font-display">🚜 Texnikalarni Ijara / Almashish bozori:</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">Fermerlar o'zlarida bo'sh turgan chizel kultivatori, omoch yoki pluglarni ijara e'loniga joylashtirib, qo'shimcha daromad topishi mumkin.</p>
+                <div class="space-y-4">
+                    <h3 class="font-bold text-sm text-slate-200 font-display">🚜 Texnikalarni Ijara / Almashish bozori</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Fermerlar o'zlarida bo'sh turgan kultivator, omoch yoki plug kabi texnikalarni ijaraga berish e'loniga qo'yib, qo'shimcha daromad topishi mumkin. Boshqa fermerlar esa arzon narxlarda kerakli texnikani ijaraga olib, ish unumdorligini oshiradilar.</p>
                     
                     <div class="bg-slate-900 border border-slate-850 rounded-xl p-3.5 flex justify-between items-center gap-3">
                         <div class="flex items-center gap-3">
                             <div class="h-10 w-10 rounded bg-slate-950 border border-slate-800 flex items-center justify-center text-xl">🚜</div>
                             <div>
-                                <h4 class="font-bold text-xs text-slate-250">Chizel kultivatori ijaraga</h4>
+                                <h4 class="font-bold text-xs text-slate-250 font-sans">Chizel kultivatori ijaraga</h4>
                                 <p class="text-[9px] text-slate-500">Narxi: 100 000 so'm/kun | Tel: 998901111111</p>
                             </div>
                         </div>
@@ -495,41 +489,42 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div class="space-y-4">
-                    <p class="text-xs text-slate-350 leading-relaxed">Tuman rahbarlari va mutaxassislar uchun maxsus avtorizatsiya talab qilmaydigan, faqat xavfsiz token bilan himoyalangan `/monitor` sahifasi:</p>
+                    <p class="text-xs text-slate-350 leading-relaxed">Tuman rahbarlari va mutaxassislar uchun maxsus avtorizatsiya talab qilmaydigan, faqat xavfsiz token bilan himoyalangan `/monitor` boshqaruv paneli:</p>
                     
                     <div class="space-y-2 text-xs">
                         <div class="flex items-center gap-2">
                             <span class="text-emerald-500">✔</span>
-                            Barcha fermerlar maydonining jami gektari va o'rtacha unumdorligi
+                            <span>**Hududiy xarita**: Amudaryo tumanining barcha fermalari, dalalari konturlari va faol texnikalari bitta umumiy GIS xaritada real-vaqtda ko'rinadi.</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-emerald-500">✔</span>
-                            Ayni vaqtda faol texnikalarning soni (Online/Offline)
+                            <span>**Tahliliy vidjetlar**: Jami nazoratdagi maydon, faol/nofaol traktorlar soni, o'rtacha tuproq unumdorligi va suv balansi statistikasi.</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-emerald-500">✔</span>
-                            Amudaryo tumani xaritasi markazida joylashgan premium GIS interfeysi
+                            <span>**Tezkor qidiruv**: Har bir fermer xo'jaligi bo'yicha qidirish, ekin turlari va sug'orish ko'rsatkichlarini filtrlash.</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Counter Widget -->
+                    <div class="grid grid-cols-2 gap-3 bg-slate-900 border border-slate-850 p-3 rounded-xl shadow-md">
+                        <div class="text-center bg-slate-950/60 p-2 rounded-lg border border-slate-850/60">
+                            <span class="text-[8px] text-slate-500 font-bold uppercase block">Jami maydon</span>
+                            <span class="text-xs font-black text-slate-100 font-display mt-0.5 block">1 590.3 ha</span>
+                        </div>
+                        <div class="text-center bg-slate-950/60 p-2 rounded-lg border border-slate-850/60">
+                            <span class="text-[8px] text-slate-500 font-bold uppercase block">Online Texnika</span>
+                            <span class="text-xs font-black text-emerald-400 font-display mt-0.5 block">12 / 15 ta</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mock Monitor Statistics counter -->
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl grid grid-cols-2 gap-4">
-                    <div class="bg-slate-950 border border-slate-850 p-3 rounded-xl text-center">
-                        <span class="text-[9px] text-slate-550 font-bold uppercase tracking-wider block">Nazoratdagi maydon</span>
-                        <span class="text-base font-black text-slate-100 font-display mt-1 block">1 590.3 ha</span>
-                    </div>
-                    <div class="bg-slate-950 border border-slate-850 p-3 rounded-xl text-center">
-                        <span class="text-[9px] text-slate-550 font-bold uppercase tracking-wider block">Faol Texnikalar</span>
-                        <span class="text-base font-black text-slate-100 font-display mt-1 block">12 / 15</span>
-                    </div>
-                    <div class="bg-slate-950 border border-slate-850 p-3 rounded-xl text-center">
-                        <span class="text-[9px] text-slate-550 font-bold uppercase tracking-wider block">Fermer Xo'jaliklari</span>
-                        <span class="text-base font-black text-slate-100 font-display mt-1 block">42 ta</span>
-                    </div>
-                    <div class="bg-slate-950 border border-slate-850 p-3 rounded-xl text-center">
-                        <span class="text-[9px] text-slate-550 font-bold uppercase tracking-wider block">O'rtacha unumdorlik</span>
-                        <span class="text-base font-black text-emerald-400 font-display mt-1 block">74.5%</span>
+                <!-- Real Dashboard Map Screenshot -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 shadow-xl flex flex-col items-center justify-center relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 opacity-30"></div>
+                    <img src="/presentation_assets/dashboard_map.png" alt="UzAgromind GIS Monitoring Paneli" class="rounded-xl w-full h-auto object-cover border border-slate-800 shadow-md">
+                    <div class="w-full text-center mt-2">
+                        <span class="text-[9px] text-slate-450 font-semibold tracking-wide uppercase">Tizimning haqiqiy GIS xaritasi va tuman monitoringi interfeysi</span>
                     </div>
                 </div>
             </div>
@@ -569,11 +564,7 @@
             </div>
             
             <div class="bg-slate-900/40 border border-slate-850 p-4 rounded-xl text-center text-xs text-slate-400 leading-relaxed max-w-xl mx-auto">
-                Tizimning joriy etilishi har bir fermer xo'jaligi uchun birinchi mavsumdayoq investitsiyalarni to'liq qoplash va daromadni oshirish imkonini beradi.
-            </div>
-        </div>
-
-        <!-- ==================== SLIDE 11: WRAP-UP ==================== -->
+                Tizimning joriy etilishi har bir fermer xo'jaligi uchun birinchi mavsumdayoq investitsiyalarni to'liq qoplash va daromad        <!-- ==================== SLIDE 11: WRAP-UP ==================== -->
         <div class="slide hidden flex-col items-center justify-center text-center space-y-6 w-full max-w-4xl">
             <div class="h-16 w-16 rounded-2xl bg-emerald-950 border border-emerald-800/60 text-emerald-400 flex items-center justify-center text-3xl animate-bounce">
                 🤝
@@ -590,6 +581,19 @@
         </div>
 
     </main>
+
+    <!-- Speaker Notes Panel -->
+    <div id="speakerNotesPanel" class="fixed right-0 top-16 bottom-12 w-80 bg-slate-900/95 backdrop-blur-lg border-l border-slate-800 z-35 transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col hidden">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+            <h3 class="font-bold text-xs uppercase tracking-wider text-emerald-400 font-display flex items-center gap-1.5">
+                🎙️ Spiker Nutqi (Yordamchi)
+            </h3>
+            <button onclick="toggleSpeakerNotes()" class="text-slate-400 hover:text-white text-base font-bold">&times;</button>
+        </div>
+        <div class="flex-1 p-4 overflow-y-auto text-xs text-slate-300 leading-relaxed space-y-3" id="speakerNotesContent">
+            <!-- Dinamik yuklanadi -->
+        </div>
+    </div>
 
     <!-- Bottom Footer Navigation helper -->
     <footer class="h-12 border-t border-slate-850 bg-slate-900/40 flex items-center justify-center text-[10px] text-slate-500 shrink-0 font-medium font-display">
@@ -686,13 +690,50 @@
                 crop = "Sholi, Suli, Kartoshka";
                 plan = "Ohaklash tavsiya etiladi (Kislotani kamaytirish uchun), Azotli o'g'itlar";
             } else if (moisture < 35) {
-                crop = "Makkajo'xori, Beda (Qurg'oqchilikka chidamli)";
+                crop = "Makkajo'xori, Beda (Qurg'oqchilikke chidamli)";
                 plan = "Sug'orish chastotasini 2 martaga oshiring!";
             }
             
             document.getElementById('sim-crop').textContent = crop;
             document.getElementById('sim-plan').textContent = plan;
         }
+
+        // Speaker notes text database
+        const speakerNotes = {
+            0: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 1: Kirish (Titul)</p>
+                <p class="font-medium text-slate-100">"Assalomu alaykum, hurmatli fermerlar va qishloq xo'jaligi sohasi mutaxassislari!"</p>
+                <p class="mt-2 text-slate-350">"Bugun sizlarga qishloq xo'jaligimizni yangi bosqichga olib chiquvchi, har biringizning kundalik og'iringizni yengillashtiruvchi <strong>UzAgromind</strong> platformasini taqdim etmoqchiman. Ushbu taqdimotda tizim qanday qilib sizning daromadingizni oshirishi, suv va o'g'it xarajatlarini tejashi hamda texnikalar xavfsizligini ta'minlashini tushuntirib beraman."</p>`,
+            1: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 2: Muammolar</p>
+                <p class="font-medium text-slate-100">"Keling, avvalo kundalik qiyinchiliklarimiz haqida gaplashaylik."</p>
+                <p class="mt-2 text-slate-355">"Qishloq xo'jaligida uchta eng katta muammoga duch kelyapmiz. Birinchidan, suv yildan-yilga kamayib bormoqda, sug'orish rejalarini faqat qog'ozda yuritish esa real nazorat yo'qligiga va suv isrofiga olib keladi. Ikkinchidan, tuproq tarkibini bilmay dorilaymiz, bu yerni sho'rlatib, unumdorlikni pasaytiradi. Uchinchidan, traktorlar qayerda yurgani va yoqilg'i sarfi ustidan ishonchli nazorat yo'qligi sababli xarajatlarimiz oshib ketmoqda. UzAgromind loyihasi aynan shu muammolarga yechim beradi."</p>`,
+            2: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 3: Yechim</p>
+                <p class="font-medium text-slate-100">"UzAgromind barcha muammolarni bitta aqlli ekotizim orqali hal etadi."</p>
+                <p class="mt-2 text-slate-350">"Dalalarimiz xaritaga kontur shaklida chiziladi. Tuproqqa sensorlar o'rnatiladi va traktorlarimizga GPS qo'yiladi. Barcha ma'lumotlar sun'iy intellekt tomonidan tahlil qilinib, sizning telefoningizga tayyor agro-tavsiyalar sifatida uzatiladi. O'ng tomondagi chizmada sensorlar, texnikalar va markaziy boshqaruv platformamiz qanday qilib yaxlit integratsiyada ishlashi sxemasi tasvirlangan."</p>`,
+            4: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 4: Tuproq Tahlili va AI</p>
+                <p class="font-medium text-slate-100">"Aqlli tuproq tahlili o'g'it xarajatlarini keskin kamaytirish uchun xizmat qiladi."</p>
+                <p class="mt-2 text-slate-350">"Sensor pH darajasi, tuproq namligi va ozuqa moddalari (NPK) kabi ko'rsatkichlarni real-vaqtda o'lchab turadi. Telefoningizda esa Groq sun'iy intellekti ushbu ko'rsatkichlarni tahlil qilib, dalangizga qaysi ekin mos kelishi, qaysi o'g'itdan qancha solish va sug'orish rejalarini tayyorlab beradi. Slayddagi ko'rsatkichlarni o'zgartirib AI tavsiyasi qanday o'zgarishini ko'rishingiz mumkin."</p>`,
+            3: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 5: GPS Monitoring</p>
+                <p class="font-medium text-slate-105">"GPS monitoring tizimi – bu yoqilg'i tejash va haydovchining ish sifatini tekshirish usulidir."</p>
+                <p class="mt-2 text-slate-350">"Trekerlar orqali traktor qayerda yurganini aniq ko'rib turasiz. Bizning tizimda aloqa uzilgan (daraxtzor yoki daryo bo'ylarida) nuqtalar ham xaritada qizil rang bilan ko'rsatilib, yo'qolgan vaqtlar hisoblab boriladi. GPS Drift filtri esa kilometrajni 99% aniqlikda hisoblaydi. O'ng tomonda tizimning haqiqiy traktor yo'nalishi va aloqa uzilishi ko'rinishi aks etgan."</p>`,
+            5: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 6: Dvigatelni Bloklash</p>
+                <p class="font-medium text-slate-100">"Dvigatelni masofadan boshqarish va xavfsizlik (Engine Cutoff) modulini ko'rib chiqamiz."</p>
+                <p class="mt-2 text-slate-350">"Agar traktor belgilangan maydondan ruxsatsiz chiqib ketsa, telefonga darhol ogohlantirish keladi va fermer telefondan bitta tugmani bosib traktor starterini bloklab qo'yishi mumkin. Traktor qayta o't olmaydi. O'ng tomonda qurilmaga yuborilgan haqiqiy SMS/GPRS buyruqlari jurnali ko'rsatilgan. Dvigatelni yoritib yoki o'chirib simulyatsiyani sinab ko'rishingiz mumkin."</p>`,
+            6: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 7: Suv Limitlari</p>
+                <p class="font-medium text-slate-100">"Suv – dehqonchiligimiz asosi. Uni tejamkorlik bilan boshqarishimiz zarur."</p>
+                <p class="mt-2 text-slate-350">"Endi har bir fermer uchun dekadalar bo'yicha limitlar va amaldagi sarf hisoblab boriladi. Suv boshqarmasi xodimlari dalaning o'zida turib telefonda ma'lumotlarni yozadilar, fermer esa suv limitidan qancha qolganini ko'radi. Bu sug'orishni to'g'ri rejalashtirish va suv isrofiga yo'l qo'ymaslik uchun ogohlantirish beradi."</p>`,
+            7: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 8: Hamjamiyat</p>
+                <p class="font-medium text-slate-100">"UzAgromind faqat nazorat tizimi emas, balki fermerlar hamjamiyatidir."</p>
+                <p class="mt-2 text-slate-350">"Siz chat orqali boshqa fermerlar va agronom mutaxassislar bilan maslahatlashishingiz mumkin. Shuningdek, bo'sh turgan kultivator, omoch yoki plug kabi texnikalaringizni ijaraga qo'yib, qo'shimcha daromad topishingiz mumkin. Bu fermerlar uchun o'zaro foydali bozor vazifasini o'taydi."</p>`,
+            8: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 9: Raislar Monitoringi</p>
+                <p class="font-medium text-slate-100">"Hukumat vakillari va viloyat rahbarlari uchun maxsus monitoring paneli ishlab chiqilgan."</p>
+                <p class="mt-2 text-slate-350">"O'ng tomondagi rasmda tumanimizdagi barcha fermer maydonlari, suv sarfi va faol texnikalarni bitta umumiy GIS xaritada real-vaqtda ko'rsatuvchi haqiqiy boshqaruv ekrani tasvirlangan. Bu orqali butun tuman bo'yicha tahliliy ko'rsatkichlarni bir joyda kuzatib borish mumkin."</p>`,
+            9: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 10: Iqtisodiy Foyda</p>
+                <p class="font-medium text-slate-100">"Xulosa qilib aytganda, tizim fermerga qanday iqtisodiy foyda keltiradi?"</p>
+                <p class="mt-2 text-slate-350">"Tizim o'g'it xarajatlarini 30% gacha, yoqilg'i sarfini 20% gacha, suv sarfini 15% gacha tejaydi. Hosildorlikni esa kamida 25% ga oshiradi. Bu investitsiya o'zini birinchi mavsumdayoq to'liq qoplaydi va sof foydaga chiqadi."</p>`,
+            10: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 11: Savol-Javob</p>
+                <p class="font-medium text-slate-105">"E'tiboringiz uchun kattakon rahmat!"</p>
+                <p class="mt-2 text-slate-350">"Aqlli qishloq xo'jaligi tizimini keng joriy etish barchamiz uchun katta imkoniyat. Taqdimotimiz yakunlandi. Endi sizlarni qiziqtirgan savollarga bajonidil javob berishga tayyorman."</p>`
+        };
 
         // Slide controller
         let currentSlide = 0;
@@ -706,7 +747,7 @@
                     slide.classList.add('flex');
                     slide.classList.add('fade-in');
                     
-                    // Trigger counters on slide 10
+                    // Trigger counters on slide 10 (index 9)
                     if (index === 9) {
                         animateCounter('counter-fertilizer', -30, "%");
                         animateCounter('counter-fuel', -20, "%");
@@ -720,6 +761,31 @@
                 }
             });
             slideCounter.textContent = `Slayd: ${index + 1} / ${slides.length}`;
+            
+            // Update speaker notes
+            const notesContent = document.getElementById('speakerNotesContent');
+            if (notesContent && speakerNotes[index]) {
+                notesContent.innerHTML = speakerNotes[index];
+            }
+        }
+
+        let isNotesOpen = false;
+        function toggleSpeakerNotes() {
+            const panel = document.getElementById('speakerNotesPanel');
+            if (!panel) return;
+            
+            isNotesOpen = !isNotesOpen;
+            if (isNotesOpen) {
+                panel.classList.remove('hidden');
+                setTimeout(() => {
+                    panel.classList.remove('translate-x-full');
+                }, 10);
+            } else {
+                panel.classList.add('translate-x-full');
+                setTimeout(() => {
+                    panel.classList.add('hidden');
+                }, 300);
+            }
         }
 
         function nextSlide() {
@@ -758,11 +824,19 @@
             }, stepTime);
         }
 
+        // Initialize first slide and load speaker notes
+        showSlide(0);
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
                 nextSlide();
             } else if (e.key === 'ArrowLeft') {
                 prevSlide();
+            }
+        });
+    </script>
+</body>
+</html>     prevSlide();
             }
         });
     </script>
