@@ -71,14 +71,25 @@
         </div>
     @endif
 
-    <!-- Table Card -->
-    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <!-- Tabs Header -->
+    <div class="flex border-b border-gray-200 bg-white rounded-t-xl overflow-hidden shadow-sm">
+        <button id="btnFarmersTab" onclick="switchTab('farmers')" class="flex-1 py-3 text-sm font-semibold border-b-2 border-forest-700 text-forest-700 transition bg-slate-50/50 hover:bg-slate-50">
+            👨‍🌾 Dehqonlar va Fermerlar ({{ $farmers->count() }} ta)
+        </button>
+        <button id="btnMonitorsTab" onclick="switchTab('monitors')" class="flex-1 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition bg-slate-50/50 hover:bg-slate-50">
+            🖥️ Tuman Nazoratchilari ({{ $monitors->count() }} ta)
+        </button>
+    </div>
+
+    <!-- Tab 1: Farmers Table -->
+    <div id="farmersTab" class="overflow-hidden rounded-b-xl border border-gray-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
                 <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     <tr>
                         <th scope="col" class="px-6 py-4">Fermer F.I.Sh.</th>
-                        <th scope="col" class="px-6 py-4">Telefon Raqami</th>
+                        <th scope="col" class="px-6 py-4">Telefon Raqami (Login)</th>
+                        <th scope="col" class="px-6 py-4">Tizim Paroli</th>
                         <th scope="col" class="px-6 py-4">Hudud</th>
                         <th scope="col" class="px-6 py-4">Fermer Xo'jaliklari (Yer maydoni)</th>
                         <th scope="col" class="px-6 py-4">Ro'yxatdan o'tgan</th>
@@ -99,7 +110,8 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="whitespace-nowrap px-6 py-4 font-medium">{{ $farmer->phone }}</td>
+                            <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 font-mono">{{ $farmer->phone }}</td>
+                            <td class="whitespace-nowrap px-6 py-4 font-mono text-emerald-800 font-bold bg-emerald-50/40 px-2.5 py-1 rounded text-center select-all">{{ $farmer->plain_password ?? 'secret123' }}</td>
                             <td class="whitespace-nowrap px-6 py-4">
                                 <div class="flex flex-col gap-1">
                                     <span class="inline-flex items-center self-start rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
@@ -121,7 +133,7 @@
                                                 </div>
                                                 <div class="flex items-center gap-1.5 shrink-0">
                                                     <!-- Edit Farm Button -->
-                                                    <button onclick="openEditFarmModal({{ json_encode($farm->only(['id', 'name', 'size', 'soil_type', 'region_id', 'district', 'user_id', 'geofences'])) }})" class="text-blue-600 hover:text-blue-900 p-0.5" title="Xo'jalikni tahrirlash">
+                                                    <button type="button" onclick="openEditFarmModal({{ json_encode($farm->only(['id', 'name', 'size', 'soil_type', 'region_id', 'district', 'user_id', 'geofences'])) }})" class="text-blue-600 hover:text-blue-900 p-0.5" title="Xo'jalikni tahrirlash">
                                                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                         </svg>
@@ -146,14 +158,10 @@
                             <td class="whitespace-nowrap px-6 py-4 text-xs text-gray-500">
                                 {{ $farmer->created_at ? $farmer->created_at->format('d.m.Y H:i') : '-' }}
                             </td>
-                            
-                            <!-- Actions -->
                             <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium space-x-2 shrink-0">
-                                <!-- Edit Farmer Button -->
                                 <button onclick="openEditFarmerModal({{ json_encode($farmer->only(['id', 'name', 'phone', 'region_id', 'district'])) }})" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1 px-2.5 rounded transition inline-block">
                                     Tahrirlash
                                 </button>
-                                <!-- Delete Farmer Button -->
                                 <form action="/admin/farmers/destroy/{{ $farmer->id }}" method="POST" class="inline-block" onsubmit="return confirm('Haqiqatan ham ushbu dehqonni o\'chirmoqchimisiz? Uning barcha fermer xo\'jaliklari, yer maydonlari va barcha tegishli ma\'lumotlari butunlay o\'chib ketadi!')">
                                     @csrf
                                     <button type="submit" class="text-red-650 hover:text-red-900 bg-red-50 hover:bg-red-100 p-1 px-2.5 rounded transition inline-block">
@@ -164,8 +172,75 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center text-gray-400 italic">
+                            <td colspan="7" class="px-6 py-12 text-center text-gray-400 italic">
                                 Tizimda hozircha ro'yxatdan o'tgan dehqonlar mavjud emas.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tab 2: Monitors Table (Hidden by default) -->
+    <div id="monitorsTab" class="overflow-hidden rounded-b-xl border border-gray-200 bg-white shadow-sm hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
+                <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <tr>
+                        <th scope="col" class="px-6 py-4">Nazoratchi F.I.Sh.</th>
+                        <th scope="col" class="px-6 py-4">Login (Telefon / Username)</th>
+                        <th scope="col" class="px-6 py-4">Parol</th>
+                        <th scope="col" class="px-6 py-4">Hudud (Viloyat / Tuman)</th>
+                        <th scope="col" class="px-6 py-4">Yaratilgan</th>
+                        <th scope="col" class="px-6 py-4 text-right">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white text-gray-700">
+                    @forelse($monitors as $monitor)
+                        <tr class="hover:bg-gray-50/75 transition">
+                            <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-9 w-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 font-bold text-sm">
+                                        {{ mb_substr($monitor->name, 0, 2) }}
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold">{{ $monitor->name }}</p>
+                                        <p class="text-xs text-gray-400">ID: #{{ $monitor->id }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 font-mono">{{ $monitor->phone }}</td>
+                            <td class="whitespace-nowrap px-6 py-4 font-mono text-emerald-800 font-bold bg-emerald-50/40 px-2.5 py-1 rounded text-center select-all">{{ $monitor->plain_password ?? 'secretpassword' }}</td>
+                            <td class="whitespace-nowrap px-6 py-4">
+                                <div class="flex flex-col gap-1">
+                                    <span class="inline-flex items-center self-start rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                                        {{ $monitor->region ? $monitor->region->name : 'Noma\'lum' }}
+                                    </span>
+                                    @if($monitor->district)
+                                        <p class="text-xs text-gray-500 font-semibold">{{ $monitor->district }}</p>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="whitespace-nowrap px-6 py-4 text-xs text-gray-500">
+                                {{ $monitor->created_at ? $monitor->created_at->format('d.m.Y H:i') : '-' }}
+                            </td>
+                            <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium space-x-2 shrink-0">
+                                <button onclick="openEditFarmerModal({{ json_encode($monitor->only(['id', 'name', 'phone', 'region_id', 'district'])) }})" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1 px-2.5 rounded transition inline-block">
+                                    Tahrirlash
+                                </button>
+                                <form action="/admin/farmers/destroy/{{ $monitor->id }}" method="POST" class="inline-block" onsubmit="return confirm('Haqiqatan ham ushbu tuman nazoratchisini o\'chirmoqchimisiz?')">
+                                    @csrf
+                                    <button type="submit" class="text-red-650 hover:text-red-900 bg-red-50 hover:bg-red-100 p-1 px-2.5 rounded transition inline-block">
+                                        O'chirish
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-6 py-12 text-center text-gray-400 italic">
+                                Tizimda hozircha tuman nazoratchilari (monitorlar) ro'yxatdan o'tkazilmagan.
                             </td>
                         </tr>
                     @endforelse
@@ -294,18 +369,16 @@
             </div>
         </form>
     </div>
-</div>
-
-<!-- Yangi Dehqon (Fermer) Modal Overlay -->
+</div><!-- Yangi Dehqon (Fermer) yoki Nazoratchi Modal Overlay -->
 <div id="addFarmerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
         <!-- Modal Header -->
         <div class="px-6 py-4 bg-slate-50 border-b border-slate-250 flex justify-between items-center shrink-0">
             <div>
-                <h3 class="font-bold text-gray-900 text-base">Yangi Dehqon (Fermer) Qo'shish</h3>
-                <p class="text-xs text-gray-500 mt-0.5">Tizimga yangi dehqon yoki fermer yetakchisini qo'shish</p>
+                <h3 class="font-bold text-gray-900 text-base">Yangi Foydalanuvchi Qo'shish</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Tizimga yangi dehqon yoki tuman nazoratchisini qo'shish</p>
             </div>
-            <button onclick="closeAddFarmerModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
+            <button type="button" onclick="closeAddFarmerModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -317,13 +390,21 @@
             @csrf
             
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fermer F.I.Sh.</label>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Foydalanuvchi Roli</label>
+                <select name="role" required class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                    <option value="farmer">Dehqon / Fermer (farmer)</option>
+                    <option value="monitor">Tuman Nazoratchisi (monitor)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">F.I.Sh. (Ism Familiya)</label>
                 <input type="text" name="name" required placeholder="Masalan: Sobir Rahimov" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Telefon Raqami</label>
-                <input type="text" name="phone" required value="998" placeholder="Masalan: 998901234567" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Telefon Raqami / Login</label>
+                <input type="text" name="phone" required value="998" placeholder="Masalan: 998901234567 yoki amudaryo_monitor" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -342,6 +423,11 @@
                 </div>
             </div>
 
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tizimga kirish paroli</label>
+                <input type="text" name="password" required value="secret123" placeholder="Masalan: secret123" class="w-full px-3 py-2 border border-slate-350 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white font-mono">
+            </div>
+
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 shrink-0">
                 <button type="button" onclick="closeAddFarmerModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Bekor qilish</button>
                 <button type="submit" class="px-5 py-2 bg-forest-700 text-white rounded-lg text-xs font-semibold hover:bg-forest-600 transition">Saqlash</button>
@@ -356,10 +442,10 @@
         <!-- Modal Header -->
         <div class="px-6 py-4 bg-slate-50 border-b border-slate-250 flex justify-between items-center shrink-0">
             <div>
-                <h3 class="font-bold text-gray-900 text-base">Dehqon (Fermer) Ma'lumotlarini Tahrirlash</h3>
-                <p class="text-xs text-gray-500 mt-0.5">Tizimda ro'yxatdan o'tgan dehqon yoki fermer yetakchisining ma'lumotlarini o'zgartirish</p>
+                <h3 class="font-bold text-gray-900 text-base">Foydalanuvchi Ma'lumotlarini Tahrirlash</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Tizimda ro'yxatdan o'tgan dehqon yoki nazoratchi ma'lumotlarini o'zgartirish</p>
             </div>
-            <button onclick="closeEditFarmerModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
+            <button type="button" onclick="closeEditFarmerModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -371,12 +457,12 @@
             @csrf
             
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fermer F.I.Sh.</label>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">F.I.Sh.</label>
                 <input type="text" name="name" id="edit_farmer_name" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Telefon Raqami</label>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Telefon Raqami / Login</label>
                 <input type="text" name="phone" id="edit_farmer_phone" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
             </div>
 
@@ -394,6 +480,11 @@
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tuman nomi</label>
                     <input type="text" name="district" id="edit_farmer_district" required class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
                 </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yangi parol (ixtiyoriy)</label>
+                <input type="text" name="password" id="edit_farmer_password" placeholder="O'zgartirmaslik uchun bo'sh qoldiring" class="w-full px-3 py-2 border border-slate-355 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white font-mono">
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 shrink-0">
@@ -784,6 +875,27 @@
         updatePolygon();
     }
 
+    function switchTab(tab) {
+        const farmersTab = document.getElementById('farmersTab');
+        const monitorsTab = document.getElementById('monitorsTab');
+        const btnFarmersTab = document.getElementById('btnFarmersTab');
+        const btnMonitorsTab = document.getElementById('btnMonitorsTab');
+        
+        if (tab === 'farmers') {
+            farmersTab.classList.remove('hidden');
+            monitorsTab.classList.add('hidden');
+            
+            btnFarmersTab.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-forest-700 text-forest-700 transition bg-slate-50/50 hover:bg-slate-50";
+            btnMonitorsTab.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition bg-slate-50/50 hover:bg-slate-50";
+        } else {
+            farmersTab.classList.add('hidden');
+            monitorsTab.classList.remove('hidden');
+            
+            btnFarmersTab.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition bg-slate-50/50 hover:bg-slate-50";
+            btnMonitorsTab.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-forest-700 text-forest-700 transition bg-slate-50/50 hover:bg-slate-50";
+        }
+    }
+
     function openAddFarmerModal() {
         const modal = document.getElementById('addFarmerModal');
         modal.classList.remove('hidden');
@@ -802,6 +914,7 @@
         document.getElementById('edit_farmer_phone').value = farmer.phone;
         document.getElementById('edit_farmer_region_id').value = farmer.region_id;
         document.getElementById('edit_farmer_district').value = farmer.district;
+        document.getElementById('edit_farmer_password').value = '';
 
         const modal = document.getElementById('editFarmerModal');
         modal.classList.remove('hidden');

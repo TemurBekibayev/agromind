@@ -86,4 +86,58 @@ class AuthController extends Controller
             'user' => $user
         ]);
     }
+
+    /**
+     * Mobil ilovadan ro'yxatdan o'tish (Register).
+     */
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20|unique:users,phone',
+            'region_id' => 'required|exists:regions,id',
+            'district' => 'nullable|string|max:255',
+            'password' => 'required|string|min:6',
+            'device_name' => 'nullable|string',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'phone' => $request->phone,
+            'region_id' => $request->region_id,
+            'district' => $request->district ?? 'Amudaryo tumani',
+            'role' => 'farmer',
+            'password' => Hash::make($request->password),
+        ]);
+
+        // Viloyat nomini aniqlaymiz murojaat matni uchun
+        $regionName = $user->region ? $user->region->name : 'Noma\'lum viloyat';
+        $districtName = $user->district ?? 'Noma\'lum tuman';
+
+        // Adminga murojaat/bildirishnoma yozamiz
+        \App\Models\SupportMessage::create([
+            'user_id' => $user->id,
+            'type' => 'registration',
+            'sender_name' => $user->name,
+            'sender_phone' => $user->phone,
+            'message' => "Yangi dehqon (fermer) mobil ilovadan ro'yxatdan o'tdi. Hudud: {$regionName}, Tuman: {$districtName}.",
+        ]);
+
+        $deviceName = $request->device_name ?? 'mobile_app';
+        $token = $user->createToken($deviceName)->plainTextToken;
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Muvaffaqiyatli ro\'yxatdan o\'tildi.',
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'role' => $user->role,
+                'region_id' => $user->region_id,
+                'district' => $user->district,
+            ]
+        ], 201);
+    }
 }

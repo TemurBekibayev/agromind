@@ -1,83 +1,33 @@
-name: Deploy Laravel Backend to VPS (Docker & SSH)
+name: Deploy to VPS
 
 on:
   push:
     branches:
       - main
-      - master
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Setup Node.js Environment (needed for compiling frontend assets)
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          node-version: '20'
-
-      # 2. Install NPM Dependencies & Build Production Assets (Vite)
-      - name: Install NPM & Build Production Assets
-        run: |
-          cd backend
-          npm install --no-audit --no-fund
-          npm run build
-
-      # 3. Setup SSH key for deployment (clean any Windows CRLF endings)
-      - name: Install SSH Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-      # 4. Add VPS to known_hosts to prevent interactive prompts
-      - name: Adding Known Hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-
-      # 5. Deploy files using rsync to the VPS
-      - name: Deploy files to VPS via rsync
-        run: |
-          rsync -avz --delete \
-            --exclude='node_modules/' \
-            --exclude='vendor/' \
-            --exclude='.env' \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='storage/logs/' \
-            --exclude='storage/framework/cache/data/' \
-            --exclude='storage/framework/sessions/' \
-            --exclude='storage/framework/views/' \
-            --exclude='bootstrap/cache/' \
-            --exclude='mobile/' \
-            --exclude='scratch/' \
-            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/agromind/
-
-      # 6. Execute remote commands on the VPS over SSH
-      - name: Execute remote post-deployment commands
-        run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
-            # Recreate missing storage and bootstrap directories
-            mkdir -p /var/www/agromind/backend/storage/logs
-            mkdir -p /var/www/agromind/backend/storage/framework/{cache/data,sessions,views}
-            mkdir -p /var/www/agromind/backend/bootstrap/cache
-            chmod -R 775 /var/www/agromind/backend/storage /var/www/agromind/backend/bootstrap/cache
-
-            # Run composer install inside the Laravel Docker container
-            docker exec agromind-laravel.test-1 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-            # Run database migrations
-            docker exec agromind-laravel.test-1 php artisan migrate --force
-
-            # Optimize Laravel application (config, route, views cache)
-            docker exec agromind-laravel.test-1 php artisan optimize:clear
-            docker exec agromind-laravel.test-1 php artisan optimize
-
-            # Restart Standalone GPS Bridge Service on the host VPS
-            systemctl restart gps-bridge
-          "
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /var/www/agromind
+            git fetch --all
+            git reset --hard origin/main
+            
+            # Backend setup & updates
+            cd backend
+            composer install --no-dev --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear

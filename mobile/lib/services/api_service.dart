@@ -116,6 +116,34 @@ class ApiService {
     }
   }
 
+  /// Ro'yxatdan o'tish (Register)
+  Future<Response> register({
+    required String name,
+    required String phone,
+    required int regionId,
+    String? district,
+    required String password,
+  }) async {
+    try {
+      final response = await _dio.post('/auth/register', data: {
+        'name': name,
+        'phone': phone,
+        'region_id': regionId,
+        'district': district ?? 'Amudaryo tumani',
+        'password': password,
+        'device_name': 'flutter_mobile_app',
+      });
+      
+      if (response.statusCode == 201 && response.data['status'] == 'success') {
+        final token = response.data['token'];
+        await saveToken(token);
+      }
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Tizimdan chiqish (Logout)
   Future<Response?> logout() async {
     try {
@@ -265,6 +293,13 @@ class ApiService {
     });
   }
 
+  /// Adminga murojaat yuborish
+  Future<Response> sendSupportMessage(String message) async {
+    return await _dio.post('/support-messages', data: {
+      'message': message,
+    });
+  }
+
   // --- Texnika va Uskunalar Ijarasi (Listings) API ---
 
   /// Barcha faol ijaraga beriladigan texnika e'lonlarini olish
@@ -303,5 +338,39 @@ class ApiService {
   /// E'lonni o'chirish
   Future<Response> deleteListing(int listingId) async {
     return await _dio.delete('/listings/$listingId');
+  }
+
+  // --- Shaxsiy Chatlar (Private Chats) API ---
+
+  /// Tuman kesimidagi suhbatdoshlar ro'yxatini olish
+  Future<Response> getPrivateChatUsers() async {
+    return await _dio.get('/private-chats');
+  }
+
+  /// Tanlangan suhbatdosh bilan yozishmalar tarixini olish
+  Future<Response> getPrivateMessages(int partnerId) async {
+    return await _dio.get('/private-chats/$partnerId');
+  }
+
+  /// Yangi shaxsiy matnli yoki ovozli xabar yuborish
+  Future<Response> sendPrivateMessage({
+    required int receiverId,
+    String? message,
+    String? audioPath,
+  }) async {
+    final Map<String, dynamic> dataMap = {
+      'receiver_id': receiverId,
+      if (message != null && message.isNotEmpty) 'message': message,
+    };
+
+    if (audioPath != null && audioPath.isNotEmpty) {
+      dataMap['audio'] = await MultipartFile.fromFile(
+        audioPath,
+        filename: audioPath.split('/').last,
+      );
+    }
+
+    final formData = FormData.fromMap(dataMap);
+    return await _dio.post('/private-chats', data: formData);
   }
 }

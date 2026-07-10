@@ -148,67 +148,58 @@
                     <input type="hidden" name="year" value="{{ request('year', date('Y')) }}">
                     <input type="hidden" name="month" value="{{ request('month') }}">
 
-                    <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
-                        <table class="w-full border-collapse text-left text-xs">
-                            <thead>
-                                <tr class="border-b border-slate-800 bg-slate-900 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                    <th class="p-3">Suv manbai</th>
-                                    <th class="p-3">Dekadalar</th>
-                                    <th class="p-3">Suv olish limiti, m³</th>
-                                    <th class="p-3">Amalda ishlatilgan suv, m³</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-850">
-                                @php
-                                    $sources = [
-                                        'surface' => 'Er ustidan (daryo, kanal, soy, buloq)',
-                                        'groundwater' => 'Er ostidan (sug\'orish qudug\'i)',
-                                        'drainage' => 'Kollektor-drenaj tarmog\'idan'
-                                    ];
-                                @endphp
+                    @php
+                        $existingLimit = $existingRecord ? $existingRecord->limit_m3 : '';
+                        $existingUsed = $existingRecord ? $existingRecord->used_m3 : '';
+                    @endphp
 
-                                @foreach($sources as $sourceKey => $sourceName)
-                                    @for($dec = 1; $dec <= 3; $dec++)
-                                        @php
-                                            // Find existing record in cache/collection
-                                            $existingLimit = 0;
-                                            $existingUsed = 0;
-                                            
-                                            $rec = $existingRecords->where('water_source', $sourceKey)->where('decade', $dec)->first();
-                                            if ($rec) {
-                                                $existingLimit = $rec->limit_m3;
-                                                $existingUsed = $rec->used_m3;
-                                            }
-                                        @endphp
-                                        <tr class="hover:bg-slate-900/50 transition duration-150">
-                                            @if($dec === 1)
-                                                <td class="p-3 font-semibold text-slate-300 border-r border-slate-850" rowspan="3">
-                                                    {{ $sourceName }}
-                                                </td>
-                                            @endif
-                                            <td class="p-3 font-medium text-slate-450 border-r border-slate-850">
-                                                {{ $dec }}-dekada
-                                            </td>
-                                            <td class="p-2 border-r border-slate-850">
-                                                <input type="number" step="0.01" min="0" 
-                                                       name="records[{{ $sourceKey }}][{{ $dec }}][limit_m3]" 
-                                                       value="{{ old('records.'.$sourceKey.'.'.$dec.'.limit_m3', $existingLimit > 0 ? $existingLimit : '') }}" 
-                                                       placeholder="0.00" 
-                                                       class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-slate-200">
-                                            </td>
-                                            <td class="p-2">
-                                                <input type="number" step="0.01" min="0" 
-                                                       name="records[{{ $sourceKey }}][{{ $dec }}][used_m3]" 
-                                                       value="{{ old('records.'.$sourceKey.'.'.$dec.'.used_m3', $existingUsed > 0 ? $existingUsed : '') }}" 
-                                                       placeholder="0.00" 
-                                                       class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-slate-200">
-                                            </td>
-                                        </tr>
-                                    @endfor
-                                @endforeach
-                            </tbody>
-                        </table>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-950/60 p-6 rounded-xl border border-slate-800 shadow-inner">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-2">Suv olish limiti, m³</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500 text-sm font-semibold select-none">
+                                    💧
+                                </span>
+                                <input type="number" step="0.01" min="0" 
+                                       name="limit_m3" 
+                                       value="{{ old('limit_m3', $existingLimit) }}" 
+                                       placeholder="0.00" 
+                                       class="w-full bg-slate-900 border border-slate-850 rounded-xl pl-10 pr-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold text-slate-200 transition duration-150 placeholder-slate-600 shadow-sm"
+                                       required>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-1.5">Ushbu oy uchun xo'jalikka ajratilgan maksimal suv limiti.</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-355 uppercase tracking-wider mb-2">Amalda ishlatilgan suv, m³</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500 text-sm font-semibold select-none">
+                                    📈
+                                </span>
+                                <input type="number" step="0.01" min="0" 
+                                       name="used_m3" 
+                                       value="{{ old('used_m3', $existingUsed) }}" 
+                                       placeholder="0.00" 
+                                       class="w-full bg-slate-900 border border-slate-850 rounded-xl pl-10 pr-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold text-slate-200 transition duration-150 placeholder-slate-600 shadow-sm"
+                                       required>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-1.5">Ushbu oyda amalda sarflangan umumiy suv miqdori.</p>
+                        </div>
                     </div>
+
+                    @if($existingRecord)
+                        @php
+                            $diff = $existingRecord->limit_m3 - $existingRecord->used_m3;
+                        @endphp
+                        <div class="flex items-center justify-between p-4 rounded-xl border {{ $diff >= 0 ? 'bg-emerald-950/20 border-emerald-900/50 text-emerald-400' : 'bg-rose-950/20 border-rose-900/50 text-rose-400' }} text-[11px] font-medium">
+                            <span class="flex items-center gap-1.5">
+                                ⚖️ Mavjud hisobot bo'yicha balans (Qoldiq):
+                            </span>
+                            <span class="font-bold text-xs">
+                                {{ number_format($diff, 2, '.', ' ') }} m³
+                            </span>
+                        </div>
+                    @endif
 
                     <div class="flex justify-end gap-3 pt-2">
                         <button type="submit" class="rounded-xl bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition flex items-center gap-1.5 border border-blue-500/40">
@@ -225,7 +216,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <h4 class="text-xs font-bold text-slate-450 uppercase tracking-wider">Xo'jalik va Oyni tanlang</h4>
-                    <p class="text-[10px] text-slate-550 mt-1 max-w-[280px]">Dala suv limitlarini to'ldirishni boshlash uchun yuqoridagi maydonlardan fermer xo'jaligi va kerakli oyni tanlang.</p>
+                    <p class="text-[10px] text-slate-555 mt-1 max-w-[280px]">Dala suv limitlarini to'ldirishni boshlash uchun yuqoridagi maydonlardan fermer xo'jaligi va kerakli oyni tanlang.</p>
                 </div>
             @endif
 

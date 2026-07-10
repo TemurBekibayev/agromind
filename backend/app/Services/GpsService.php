@@ -13,7 +13,7 @@ class GpsService
 {
     /**
      * Soxta (Simulyatsiya qilingan) GPS ma'lumotlarini olish.
-     * Dehqon xo'jaligi koordinatalariga tayanadi.
+     * Tizim hisoblab borayotgan dynamic current_fuel_level ga tayanadi.
      */
     public function getFakeLocation(Vehicle $vehicle): array
     {
@@ -23,8 +23,9 @@ class GpsService
         $startLat = $latestTrack ? $latestTrack->latitude : $farm->latitude;
         $startLng = $latestTrack ? $latestTrack->longitude : $farm->longitude;
         
-        // Agar yoqilg'i oldin bo'lsa uni kamaytiramiz, bo'lmasa to'ldiramiz (masalan, 80%)
-        $startFuel = $latestTrack ? $latestTrack->fuel_level : 80.00;
+        // dynamic current_fuel_level foizini aniqlaymiz
+        $capacity = floatval($vehicle->fuel_capacity) ?: 50.0;
+        $startFuel = round((floatval($vehicle->current_fuel_level) / $capacity) * 100.0, 2);
 
         // Tasodifiy kichik harakat (taxminan 10-50 metr)
         $latDelta = (rand(-200, 200) / 1000000);
@@ -32,15 +33,6 @@ class GpsService
 
         $newLat = $startLat + $latDelta;
         $newLng = $startLng + $lngDelta;
-
-        // Yoqilg'i sarfi simulyatsiyasi (tasodifiy 0.05% - 0.15% kamayish)
-        $fuelUsed = (rand(5, 15) / 100);
-        $newFuel = max(0, $startFuel - $fuelUsed);
-        
-        // Agar yoqilg'i judayam kam bo'lsa (masalan 2%), qayta 95% gacha to'ldiramiz (zapravka)
-        if ($newFuel < 2.00) {
-            $newFuel = 95.00;
-        }
 
         // Tezlik (0 dan 25 km/soatgacha)
         $speed = rand(0, 1) === 0 ? rand(5, 25) : 0.00; // Vaqti-vaqti bilan to'xtab turish
@@ -53,7 +45,7 @@ class GpsService
             'latitude' => $newLat,
             'longitude' => $newLng,
             'speed' => $speed,
-            'fuel_level' => $newFuel,
+            'fuel_level' => $startFuel,
             'signal_strength' => $signal,
             'recorded_at' => Carbon::now(),
         ];
@@ -64,6 +56,8 @@ class GpsService
      */
     public function processIncoming(array $data): GpsTrack
     {
+        $vehicle = Vehicle::find($data['vehicle_id']);
+
         // GpsTrack yaratish
         $track = GpsTrack::create([
             'vehicle_id' => $data['vehicle_id'],
@@ -75,11 +69,147 @@ class GpsService
             'recorded_at' => $data['recorded_at'] ?? Carbon::now(),
         ]);
 
+        if ($vehicle) {
+            // Yoqilg'i sarfini dinamik hisoblash
+            $this->updateDynamicFuelLevel($vehicle, $track);
+        }
+
         // Geofence va boshqa tekshiruvlarni ishga tushirish
         $this->checkGeofence($track);
         $this->checkLowFuel($track);
 
         return $track;
+    }
+
+    /**
+     * Haversine formula yordamida ikkita koordinata orasidagi masofani hisoblash (km)
+     */
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371; // km
+        
+        $latDelta = deg2rad($lat2 - $lat1);
+        $lonDelta = deg2rad($lon2 - $lon1);
+        
+        $a = sin($latDelta / 2) * sin($latDelta / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($lonDelta / 2) * sin($lonDelta / 2);
+        
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Yoqilg'i darajasini dinamik ravishda yangilash logikasi
+     */
+    public function updateDynamicFuelLevel(Vehicle $vehicle, GpsTrack $newTrack): void
+    {
+        // Oxirgi GPS nuqtasini topamiz
+        $prevTrack = GpsTrack::where('vehicle_id', $vehicle->id)
+            ->where('id', '<', $newTrack->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$prevTrack) {
+            return;
+        }
+
+        $timePrev = Carbon::parse($prevTrack->recorded_at);
+        $timeNew = Carbon::parse($newTrack->recorded_at);
+        
+        $dt = $timeNew->diffInSeconds($timePrev) / 3600.0; // soat
+        
+        // Agar vaqt farqi 0 dan kichik bo'lsa yoki offline bo'lgan bo'lsa
+        if ($dt <= 0 || $dt > 2.0) {
+            return;
+        }
+
+        // Nuqta geofence ichidami?
+        $inside = false;
+        $farm = $vehicle->farm;
+        if ($farm) {
+            $geofences = $farm->geofences;
+            foreach ($geofences as $geofence) {
+                $coordinates = $geofence->coordinates;
+                if (isset($coordinates[0]) && is_array($coordinates[0]) && isset($coordinates[0][0]) && is_array($coordinates[0][0])) {
+                    $coordinates = $coordinates[0];
+                }
+                if ($coordinates && $this->isPointInPolygon($prevTrack->latitude, $prevTrack->longitude, $coordinates)) {
+                    $inside = true;
+                    break;
+                }
+            }
+        }
+
+        // Ish turi va tezligiga qarab sarf me'yori (l/soat)
+        $rate = floatval($vehicle->nominal_rate_road);
+        if ($inside) {
+            if ($newTrack->speed <= 8.0) {
+                $rate = floatval($vehicle->nominal_rate_work_heavy);
+            } else {
+                $rate = floatval($vehicle->nominal_rate_work_light);
+            }
+        }
+
+        $consumed = $rate * $dt;
+        
+        // Yangi yoqilg'i darajasini hisoblash
+        $newLevel = max(0.0, floatval($vehicle->current_fuel_level) - $consumed);
+        
+        // Ikki nuqta orasidagi masofa
+        $distance = $this->calculateDistance(
+            $prevTrack->latitude, $prevTrack->longitude,
+            $newTrack->latitude, $newTrack->longitude
+        );
+
+        $distanceSinceEmpty = floatval($vehicle->distance_since_empty);
+
+        if ($newLevel <= 0.0) {
+            $distanceSinceEmpty += $distance;
+            
+            // Shubhali holat: yoqilg'i tugagan holda ko'p yurishi (solingan yoqilg'i kiritilmagan)
+            if ($distanceSinceEmpty > 2.0) {
+                $hasAlert = \App\Models\FuelAlert::where('vehicle_id', $vehicle->id)
+                    ->where('type', 'empty_driving')
+                    ->where('status', 'pending_check')
+                    ->exists();
+
+                if (!$hasAlert) {
+                    \App\Models\FuelAlert::create([
+                        'vehicle_id' => $vehicle->id,
+                        'type' => 'empty_driving',
+                        'severity' => 'medium',
+                        'description' => "Yoqilg'i kiritilmasdan 2 km dan ortiq masofa bosib o'tildi. Taxminiy yoqilg'i qoldig'i 0 deb hisoblanmoqda.",
+                        'calculated_fuel_before' => 0.0,
+                        'refilled_amount' => 0.0,
+                        'distance_traveled' => $distanceSinceEmpty,
+                        'status' => 'pending_check',
+                    ]);
+
+                    Alert::create([
+                        'vehicle_id' => $vehicle->id,
+                        'farm_id' => $vehicle->farm_id,
+                        'type' => 'unlogged_refill',
+                        'message' => "Ogohlantirish! {$vehicle->name} (Raqam: {$vehicle->plate_number}) yoqilg'i tugagan deb hisoblansa-da, harakatda davom etmoqda. Solingan yoqilg'ini ilovada kiritish so'raladi.",
+                        'status' => 'active',
+                        'triggered_at' => Carbon::now(),
+                    ]);
+                }
+            }
+        } else {
+            $distanceSinceEmpty = 0.0;
+        }
+
+        $vehicle->update([
+            'current_fuel_level' => $newLevel,
+            'distance_since_empty' => $distanceSinceEmpty,
+        ]);
+        
+        // Track dagi fuel_level ni dinamik yangilash (foiz)
+        $newTrack->update([
+            'fuel_level' => round(($newLevel / (floatval($vehicle->fuel_capacity) ?: 50.0)) * 100.0, 2)
+        ]);
     }
 
     /**

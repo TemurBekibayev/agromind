@@ -40,7 +40,51 @@
             </ul>
         </div>
     @endif
+    @php
+        $pendingFuelAlerts = \App\Models\FuelAlert::with('vehicle')->where('status', 'pending_check')->get();
+    @endphp
 
+    @if($pendingFuelAlerts->isNotEmpty())
+        <div class="p-6 rounded-xl bg-amber-50 border border-amber-250 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 text-amber-800">
+                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 class="font-bold text-sm">Diqqat! Tizimda tasdiqlash kutilayotgan shubhali yoqilg'i holatlari aniqlandi</h3>
+            </div>
+            
+            <div class="grid gap-3 sm:grid-cols-2">
+                @foreach($pendingFuelAlerts as $alert)
+                    <div class="p-4 rounded-lg bg-white border border-amber-200 text-xs shadow-sm flex flex-col justify-between gap-3">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-semibold text-gray-900">{{ $alert->vehicle->name }}</span>
+                                <span class="font-mono text-gray-500 bg-gray-100 px-1 py-0.5 rounded">{{ $alert->vehicle->plate_number }}</span>
+                            </div>
+                            <p class="text-gray-700 leading-relaxed">{{ $alert->description }}</p>
+                            <p class="text-[10px] text-gray-400 mt-1 font-mono">Aniqlangan vaqt: {{ $alert->created_at->format('d.m.Y H:i') }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <form action="/admin/fuel-alerts/{{ $alert->id }}/resolve" method="POST" class="inline-block">
+                                @csrf
+                                <input type="hidden" name="status" value="confirmed">
+                                <button type="submit" class="px-3 py-1.5 bg-forest-700 text-white rounded font-semibold hover:bg-forest-600 transition text-[11px]">
+                                    Tasdiqlash (Kalibrlash)
+                                </button>
+                            </form>
+                            <form action="/admin/fuel-alerts/{{ $alert->id }}/resolve" method="POST" class="inline-block">
+                                @csrf
+                                <input type="hidden" name="status" value="rejected">
+                                <button type="submit" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded font-semibold hover:bg-gray-300 transition text-[11px]">
+                                    Rad etish
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
     <!-- Vehicles Table & Grid -->
     <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
@@ -50,9 +94,10 @@
                         <th scope="col" class="px-6 py-4">Texnika va Raqami</th>
                         <th scope="col" class="px-6 py-4">Turi</th>
                         <th scope="col" class="px-6 py-4">Tegishli Ferma</th>
-                        <th scope="col" class="px-6 py-4">GPS Device (IMEI)</th>
+                        <th scope="col" class="px-6 py-4">GPS Device (IMEI) / SIM</th>
                         <th scope="col" class="px-6 py-4">Joriy Holat (GPS)</th>
                         <th scope="col" class="px-6 py-4">Yoqilg'i Darajasi</th>
+                        <th scope="col" class="px-6 py-4">Yoqilg'i Sarfi (Sarf/Masofa)</th>
                         <th scope="col" class="px-6 py-4">Tezlik & Koordinatalar</th>
                         <th scope="col" class="px-6 py-4">Oxirgi signal</th>
                         <th scope="col" class="px-6 py-4 text-right">Amallar</th>
@@ -100,8 +145,13 @@
                             </td>
 
                             <!-- IMEI -->
-                            <td class="whitespace-nowrap px-6 py-4 font-mono text-xs text-gray-600 font-semibold">
-                                {{ $vehicle->gps_device_id }}
+                            <td class="whitespace-nowrap px-6 py-4 text-xs font-semibold">
+                                <div class="font-mono text-gray-700">{{ $vehicle->gps_device_id }}</div>
+                                @if($vehicle->sim_number)
+                                    <div class="text-[11px] text-gray-500 font-normal mt-0.5">{{ $vehicle->sim_number }}</div>
+                                @else
+                                    <div class="text-[11px] text-gray-400 italic font-normal mt-0.5">Sim raqami yo'q</div>
+                                @endif
                             </td>
 
                             <!-- Status Badge -->
@@ -145,6 +195,26 @@
                                 @endif
                             </td>
 
+                            <!-- Fuel Consumption -->
+                            <td class="whitespace-nowrap px-6 py-4">
+                                <div class="space-y-1 text-xs">
+                                    <p class="font-semibold text-gray-900">Masofa: {{ $vehicle->getDistanceTraveled() }} km</p>
+                                    <p class="text-[11px] text-gray-700">Qoldiq: <span class="font-bold text-blue-600">{{ round($vehicle->current_fuel_level, 1) }} L</span></p>
+                                    
+                                    @php
+                                        $trustScore = $vehicle->trust_score;
+                                        $trustColor = $trustScore >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : ($trustScore >= 50 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-red-700 bg-red-50 border-red-200');
+                                    @endphp
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border {{ $trustColor }}">
+                                            Ishonch: {{ $trustScore }}%
+                                        </span>
+                                    </div>
+                                    
+                                    <p class="text-[10px] text-gray-500 mt-1">Me'yorlar: Yo'l: {{ $vehicle->nominal_rate_road }}L/s | Yengil: {{ $vehicle->nominal_rate_work_light }}L/s | Og'ir: {{ $vehicle->nominal_rate_work_heavy }}L/s</p>
+                                </div>
+                            </td>
+
                             <!-- Speed & GPS Coordinates -->
                             <td class="whitespace-nowrap px-6 py-4">
                                 @if($latestTrack)
@@ -168,7 +238,7 @@
                             
                             <!-- Actions -->
                             <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium space-x-2 shrink-0">
-                                <button onclick="openEditVehicleModal({{ json_encode($vehicle->only(['id', 'name', 'type', 'plate_number', 'farm_id', 'gps_device_id', 'fuel_capacity'])) }})" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1 px-2.5 rounded transition inline-block">
+                                <button onclick="openEditVehicleModal({{ json_encode($vehicle->only(['id', 'name', 'type', 'plate_number', 'farm_id', 'gps_device_id', 'sim_number', 'fuel_capacity', 'nominal_rate_road', 'nominal_rate_work_light', 'nominal_rate_work_heavy'])) }})" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1 px-2.5 rounded transition inline-block">
                                     Tahrirlash
                                 </button>
                                 <form action="/admin/vehicles/destroy/{{ $vehicle->id }}" method="POST" class="inline-block" onsubmit="return confirm('Haqiqatan ham ushbu texnikani o\'chirmoqchimisiz? Barcha tegishli GPS ma\'lumotlari ham butunlay o\'chib ketadi!')">
@@ -249,8 +319,30 @@
                     <input type="text" name="gps_device_id" required placeholder="Masalan: 862292055529242" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white font-mono">
                 </div>
                 <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">GPS Sim Raqami</label>
+                    <input type="text" name="sim_number" placeholder="Masalan: +998901234567" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yoqilg'i Sig'imi (Litr)</label>
                     <input type="number" step="1" name="fuel_capacity" required placeholder="Masalan: 150" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yo'l me'yori (L/s)</label>
+                    <input type="number" step="0.1" name="nominal_rate_road" placeholder="Avtomatik" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yengil ish (L/s)</label>
+                    <input type="number" step="0.1" name="nominal_rate_work_light" placeholder="Avtomatik" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Og'ir ish (L/s)</label>
+                    <input type="number" step="0.1" name="nominal_rate_work_heavy" placeholder="Avtomatik" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
                 </div>
             </div>
 
@@ -319,8 +411,30 @@
                     <input type="text" name="gps_device_id" id="edit_gps_device_id" required placeholder="Masalan: 862292055529242" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white font-mono">
                 </div>
                 <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">GPS Sim Raqami</label>
+                    <input type="text" name="sim_number" id="edit_sim_number" placeholder="Masalan: +998901234567" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yoqilg'i Sig'imi (Litr)</label>
                     <input type="number" step="1" name="fuel_capacity" id="edit_fuel_capacity" required placeholder="Masalan: 150" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yo'l me'yori (L/s)</label>
+                    <input type="number" step="0.1" name="nominal_rate_road" id="edit_nominal_rate_road" placeholder="Yo'l sarfi" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Yengil ish (L/s)</label>
+                    <input type="number" step="0.1" name="nominal_rate_work_light" id="edit_nominal_rate_work_light" placeholder="Yengil ish" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Og'ir ish (L/s)</label>
+                    <input type="number" step="0.1" name="nominal_rate_work_heavy" id="edit_nominal_rate_work_heavy" placeholder="Og'ir ish" class="w-full px-3 py-2 border border-slate-250 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white">
                 </div>
             </div>
 
@@ -357,7 +471,11 @@
         document.getElementById('edit_plate_number').value = vehicle.plate_number;
         document.getElementById('edit_farm_id').value = vehicle.farm_id;
         document.getElementById('edit_gps_device_id').value = vehicle.gps_device_id;
+        document.getElementById('edit_sim_number').value = vehicle.sim_number || '';
         document.getElementById('edit_fuel_capacity').value = Math.round(vehicle.fuel_capacity);
+        document.getElementById('edit_nominal_rate_road').value = vehicle.nominal_rate_road || '';
+        document.getElementById('edit_nominal_rate_work_light').value = vehicle.nominal_rate_work_light || '';
+        document.getElementById('edit_nominal_rate_work_heavy').value = vehicle.nominal_rate_work_heavy || '';
         
         // Open modal
         const modal = document.getElementById('editVehicleModal');

@@ -8,7 +8,7 @@
     <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
             <h2 class="text-2xl font-bold tracking-tight text-gray-900">Suv Limitlari va Sarfi Boshqaruvi</h2>
-            <p class="text-sm text-gray-550">Fermer xo'jaliklari bo'yicha dekadalar va manbalar kesimida ajratilgan suv limitlari va amalda sarflangan suv hajmlari.</p>
+            <p class="text-sm text-gray-550">Fermer xo'jaliklari bo'yicha oylik ajratilgan suv limitlari va amalda sarflangan suv hajmlari.</p>
         </div>
         <div class="flex items-center gap-3">
             <a href="/admin/water/create" class="inline-flex items-center gap-1.5 rounded-lg bg-forest-700 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-forest-600 transition border border-forest-600">
@@ -145,11 +145,10 @@
                 <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     <tr>
                         <th class="px-6 py-4">Fermer Xo'jaligi</th>
-                        <th class="px-6 py-4">Sana va Dekada</th>
-                        <th class="px-6 py-4">Suv Manbai</th>
+                        <th class="px-6 py-4">Oy (Yil)</th>
                         <th class="px-6 py-4 text-center">Limit, m³</th>
-                        <th class="px-6 py-4 text-center">Ishlatilgan, m³</th>
-                        <th class="px-6 py-4 text-center">Farq (Balans)</th>
+                        <th class="px-6 py-4 text-center">Amalda, m³</th>
+                        <th class="px-6 py-4 text-center">Qoldiq, m³</th>
                         <th class="px-6 py-4 text-right">Amallar</th>
                     </tr>
                 </thead>
@@ -161,11 +160,6 @@
                             7 => 'Iyul', 8 => 'Avgust', 9 => 'Sentyabr',
                             10 => 'Oktyabr', 11 => 'Noyabr', 12 => 'Dekabr'
                         ];
-                        $sources = [
-                            'surface' => 'Er usti (Daryo/Kanal)',
-                            'groundwater' => 'Er osti (Quduq)',
-                            'drainage' => 'Kollektor-drenaj'
-                        ];
                     @endphp
 
                     @forelse($records as $record)
@@ -174,19 +168,7 @@
                                 {{ $record->farm ? $record->farm->name : 'Noma\'lum' }}
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-650">
-                                {{ $record->year }}-yil, {{ $months[$record->month] }}
-                                <span class="ml-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[10px] font-bold border border-gray-200">
-                                    {{ $record->decade }}-dekada
-                                </span>
-                            </td>
-                            <td class="whitespace-nowrap px-6 py-4 text-xs font-semibold">
-                                @if($record->water_source === 'surface')
-                                    <span class="text-blue-700 bg-blue-50 px-2.5 py-1 rounded border border-blue-200">💧 {{ $sources[$record->water_source] }}</span>
-                                @elseif($record->water_source === 'groundwater')
-                                    <span class="text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">🪵 {{ $sources[$record->water_source] }}</span>
-                                @else
-                                    <span class="text-purple-700 bg-purple-50 px-2.5 py-1 rounded border border-purple-200">🌱 {{ $sources[$record->water_source] }}</span>
-                                @endif
+                                {{ $months[$record->month] }} ({{ $record->year }})
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-center font-bold text-gray-900">
                                 {{ number_format($record->limit_m3, 2, '.', ' ') }}
@@ -196,16 +178,15 @@
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-center font-bold">
                                 @php
-                                    $diff = $record->limit_m3 - $record->used_m3;
-                                    $percent = $record->limit_m3 > 0 ? ($record->used_m3 / $record->limit_m3) * 100 : 0;
+                                    $diff = $record->remaining_m3;
                                 @endphp
                                 @if($diff >= 0)
-                                    <span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
-                                        +{{ number_format($diff, 1) }} m³ ({{ number_format($percent, 0) }}%)
+                                    <span class="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 text-xs">
+                                        {{ number_format($diff, 2, '.', ' ') }} m³
                                     </span>
                                 @else
-                                    <span class="text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200 text-xs">
-                                        {{ number_format($diff, 1) }} m³ ({{ number_format($percent, 0) }}%)
+                                    <span class="text-red-700 bg-red-50 px-2.5 py-1 rounded border border-red-200 text-xs">
+                                        {{ number_format($diff, 2, '.', ' ') }} m³
                                     </span>
                                 @endif
                             </td>
@@ -220,7 +201,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-10 text-center text-gray-500 font-medium">
+                            <td colspan="6" class="px-6 py-10 text-center text-gray-500 font-medium">
                                 Suv sarfi bo'yicha yozuvlar topilmadi.
                             </td>
                         </tr>

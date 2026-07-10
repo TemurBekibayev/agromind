@@ -369,69 +369,72 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <!-- Text details -->
                 <div class="space-y-4">
-                    <p class="text-xs text-slate-350 leading-relaxed">UzAgromind tizimi suv limitlarini dekadalar (har 10 kunlik) va manbalar bo'yicha hisoblab borish moduliga ega:</p>
+                    <p class="text-xs text-slate-350 leading-relaxed">UzAgromind tizimi suv limitlarini oylik kiritib borish va qoldiqni real-vaqtda nazorat qilish moduliga ega:</p>
                     
                     <div class="space-y-2">
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-300">
                             <span class="h-2 w-2 rounded-full bg-blue-500"></span>
-                            Er ustidan (daryo, kanal, soy, buloq) olinadigan suv
+                            Oylik limit: Har bir oy uchun ajratilgan suv limiti (m³)
                         </div>
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                            <span class="h-2 w-2 rounded-full bg-amber-500"></span>
-                            Er ostidan (sug'orish quduqlari) olinadigan suv
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                            Amaldagi sarf: Sug'orish vaqtida haqiqiy sarflangan suv hajmi
                         </div>
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                            <span class="h-2 w-2 rounded-full bg-purple-500"></span>
-                            Kollektor-drenaj tarmoqlaridan qayta olinadigan suv
+                            <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
+                            Qoldiq hisobi: Limitdan sarfni ayirib, real-vaqtda qoldiqni ko'rsatish
                         </div>
                     </div>
 
                     <div class="p-3 bg-blue-950/40 border border-blue-900/30 rounded-xl text-xs text-blue-400 leading-relaxed">
-                        **Tashqi to'ldirish oynasi**: Suv boshqarmasi xodimlari admin panelga kirmasdan, maxsus token orqali to'g'ridan-to'g'ri dalaning o'zida limit va sarfni kiritib ketadilar.
+                        <strong>Soddalashtirilgan tizim</strong>: Tashqi xodimlar va mas'ullar uchun murakkab jadvallarsiz, faqatgina 2 ta maydonni (Limit va Amalda) telefonda to'ldirish kifoya.
                     </div>
                 </div>
 
                 <!-- Water bar chart simulation -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-                    <h4 class="font-bold text-xs text-slate-200 text-center font-display">Dekadalar bo'yicha Suv sarfi (m³): Limit vs Amalda</h4>
+                    <h4 class="font-bold text-xs text-slate-200 text-center font-display">Oylik Suv sarfi (m³): Limit vs Amalda</h4>
                     
                     <div class="space-y-3">
-                        <!-- 1-decade -->
+                        <!-- Iyun -->
                         <div class="space-y-1 text-[10px]">
                             <div class="flex justify-between text-slate-400">
-                                <span>1-dekada (Aprel)</span>
-                                <span>Limit: 64,970 m³ | Amalda: 62,750 m³</span>
+                                <span>Iyun oyi</span>
+                                <span>Limit: 120,000 m³ | Amalda: 105,000 m³ (Qoldiq: +15,000 m³)</span>
                             </div>
                             <div class="w-full h-3 bg-slate-950 rounded overflow-hidden flex">
                                 <div class="h-full bg-blue-600" style="width: 80%;"></div>
-                                <div class="h-full bg-emerald-500" style="width: 77%;"></div>
+                                <div class="h-full bg-emerald-500" style="width: 70%;"></div>
                             </div>
                         </div>
                         
-                        <!-- 2-decade -->
+                        <!-- Iyul -->
                         <div class="space-y-1 text-[10px]">
                             <div class="flex justify-between text-slate-400">
-                                <span>2-dekada (Aprel)</span>
-                                <span>Limit: 65,420 m³ | Amalda: 72,110 m³ (Oshib ketdi ⚠️)</span>
+                                <span>Iyul oyi</span>
+                                <span>Limit: 135,000 m³ | Amalda: 140,000 m³ (⚠️ -5,000 m³)</span>
                             </div>
                             <div class="w-full h-3 bg-slate-950 rounded overflow-hidden flex">
                                 <div class="h-full bg-blue-600" style="width: 80%;"></div>
-                                <div class="h-full bg-rose-500 animate-pulse" style="width: 88%;"></div>
+                                <div class="h-full bg-rose-500 animate-pulse" style="width: 83%;"></div>
                             </div>
                         </div>
 
-                        <!-- 3-decade -->
+                        <!-- Avgust -->
                         <div class="space-y-1 text-[10px]">
                             <div class="flex justify-between text-slate-400">
-                                <span>3-dekada (Aprel)</span>
-                                <span>Limit: 69,970 m³ | Amalda: 40,270 m³</span>
+                                <span>Avgust oyi</span>
+                                <span>Limit: 110,000 m³ | Amalda: 92,000 m³ (Qoldiq: +18,000 m³)</span>
                             </div>
                             <div class="w-full h-3 bg-slate-950 rounded overflow-hidden flex">
-                                <div class="h-full bg-blue-600" style="width: 85%;"></div>
-                                <div class="h-full bg-emerald-500" style="width: 50%;"></div>
+                                <div class="h-full bg-blue-600" style="width: 80%;"></div>
+                                <div class="h-full bg-emerald-500" style="width: 67%;"></div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
                    <!-- ==================== SLIDE 8: COMMUNITY & MARKETPLACE ==================== -->
         <div class="slide hidden flex-col w-full max-w-4xl space-y-6">
             <div class="text-center md:text-left">
@@ -720,7 +723,7 @@
                 <p class="mt-2 text-slate-350">"Agar traktor belgilangan maydondan ruxsatsiz chiqib ketsa, telefonga darhol ogohlantirish keladi va fermer telefondan bitta tugmani bosib traktor starterini bloklab qo'yishi mumkin. Traktor qayta o't olmaydi. O'ng tomonda qurilmaga yuborilgan haqiqiy SMS/GPRS buyruqlari jurnali ko'rsatilgan. Dvigatelni yoritib yoki o'chirib simulyatsiyani sinab ko'rishingiz mumkin."</p>`,
             6: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 7: Suv Limitlari</p>
                 <p class="font-medium text-slate-100">"Suv – dehqonchiligimiz asosi. Uni tejamkorlik bilan boshqarishimiz zarur."</p>
-                <p class="mt-2 text-slate-350">"Endi har bir fermer uchun dekadalar bo'yicha limitlar va amaldagi sarf hisoblab boriladi. Suv boshqarmasi xodimlari dalaning o'zida turib telefonda ma'lumotlarni yozadilar, fermer esa suv limitidan qancha qolganini ko'radi. Bu sug'orishni to'g'ri rejalashtirish va suv isrofiga yo'l qo'ymaslik uchun ogohlantirish beradi."</p>`,
+                <p class="mt-2 text-slate-350">"Endi har bir fermer uchun oylik limitlar va amaldagi sarf hisoblab boriladi. Tizim avtomatik ravishda qoldiqni (+/-) aniqlaydi. Suv boshqarmasi xodimlari dalaning o'zida turib telefonda limit va sarfni kiritadilar, fermer esa suv limitidan qancha qolganini real-vaqtda ko'rib turadi. Bu suv isrofiga yo'l qo'ymaslik va qoldiq tugab qolishining oldini olish imkonini beradi."</p>`,
             7: `<p class="font-bold text-emerald-400 border-b border-slate-800 pb-1.5 mb-1.5 font-display text-[10px] uppercase">Slayd 8: Hamjamiyat</p>
                 <p class="font-medium text-slate-100">"UzAgromind faqat nazorat tizimi emas, balki fermerlar hamjamiyatidir."</p>
                 <p class="mt-2 text-slate-350">"Siz chat orqali boshqa fermerlar va agronom mutaxassislar bilan maslahatlashishingiz mumkin. Shuningdek, bo'sh turgan kultivator, omoch yoki plug kabi texnikalaringizni ijaraga qo'yib, qo'shimcha daromad topishingiz mumkin. Bu fermerlar uchun o'zaro foydali bozor vazifasini o'taydi."</p>`,

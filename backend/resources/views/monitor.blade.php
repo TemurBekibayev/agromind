@@ -1,3 +1,14 @@
+@php
+    $user = Auth::user();
+    $lat = 42.11005;
+    $lng = 60.07327;
+    $zoom = 12; // Default for Amudaryo tumani
+
+    if ($user && $user->role === 'monitor' && $user->district === 'Shumanay tumani') {
+        $lat = 42.63000;
+        $lng = 59.13000;
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="uz" class="h-full bg-slate-50 text-slate-800">
 <head>
@@ -21,6 +32,16 @@
                             500: '#10B981', // Emerald
                             600: '#059669',
                             700: '#047857'
+                        },
+                        forest: {
+                            50: '#F4F7F5',
+                            100: '#E8EDE9',
+                            200: '#C7D5CC',
+                            500: '#2A5C43',
+                            600: '#1C422F',
+                            700: '#1A3C2A', // Primary deep green
+                            850: '#11271B',
+                            900: '#0B1A12',
                         }
                     },
                     fontFamily: {
@@ -40,60 +61,60 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .font-display { font-family: 'Outfit', sans-serif; }
-        #map { height: 100%; width: 100%; background-color: #0b0f19; }
+        #map { height: 100%; width: 100%; background-color: #f3f4f6; }
         
         /* Custom styled scrollbars for sidebar */
         ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #0b0f19; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        ::-webkit-scrollbar-track { background: #f3f4f6; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
         
         /* Premium custom styling for Leaflet controls */
         .leaflet-bar {
             border: none !important;
-            box-shadow: 0 4px 12px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3) !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
         }
         .leaflet-bar a {
-            background-color: #0f172a !important;
-            color: #94a3b8 !important;
-            border-bottom: 1px solid #1e293b !important;
+            background-color: #ffffff !important;
+            color: #4b5563 !important;
+            border-bottom: 1px solid #e5e7eb !important;
             transition: all 0.2s;
         }
         .leaflet-bar a:hover {
-            background-color: #1e293b !important;
-            color: #10B981 !important;
+            background-color: #f3f4f6 !important;
+            color: #1A3C2A !important;
         }
         .leaflet-control-layers {
-            background-color: #0f172a !important;
-            color: #cbd5e1 !important;
-            border: 1px solid #1e293b !important;
-            box-shadow: 0 4px 12px -1px rgb(0 0 0 / 0.3) !important;
+            background-color: #ffffff !important;
+            color: #374151 !important;
+            border: 1px solid #e5e7eb !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
         }
     </style>
 </head>
-<body class="h-full flex flex-col overflow-hidden bg-slate-950 text-slate-100 select-none font-sans">
+<body class="h-full flex flex-col overflow-hidden bg-gray-50 text-gray-800 select-none font-sans">
 
     <!-- Header Panel -->
-    <header class="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-6 shrink-0 z-20 shadow-md">
+    <header class="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shrink-0 z-20 shadow-sm">
         <div class="flex items-center gap-3">
             <span class="flex h-3 w-3 relative">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </span>
             <div>
-                <h1 class="text-base font-bold tracking-tight text-slate-100 font-display flex items-center gap-2">
-                    AGROMIND GIS <span class="bg-emerald-950 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-sans font-bold border border-emerald-800/50">TIZIM MONITORINGI</span>
+                <h1 class="text-base font-bold tracking-tight text-forest-700 font-display flex items-center gap-2">
+                    AGROMIND GIS <span class="bg-forest-50 text-forest-700 text-[10px] px-2.5 py-0.5 rounded-full font-sans font-bold border border-forest-100">TIZIM MONITORINGI</span>
                 </h1>
-                <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Enterprise Real-Time Farm & Fleet Controls</p>
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Enterprise Real-Time Farm & Fleet Controls</p>
             </div>
         </div>
 
         <!-- Clock and Connection Status -->
         <div class="flex items-center gap-3">
-            <span class="hidden md:inline-flex items-center gap-1.5 text-xs text-slate-300 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg shadow-inner">
+            <span class="hidden md:inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
                 <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> PORT: ULANISH FAOL
             </span>
-            <div id="liveClock" class="text-xs font-semibold text-slate-300 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 shadow-inner">
+            <div id="liveClock" class="text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
                 12:00:00
             </div>
         </div>
@@ -103,18 +124,18 @@
     <div class="flex-1 flex overflow-hidden">
         
         <!-- Left Side: Fermer Xo'jaliklari Sidebar -->
-        <aside class="w-96 border-r border-slate-800 bg-slate-900 flex flex-col overflow-hidden shrink-0 z-10 shadow-lg">
+        <aside class="w-96 border-r border-gray-200 bg-white flex flex-col overflow-hidden shrink-0 z-10 shadow-sm">
             <!-- Search & Filters -->
-            <div class="p-4 border-b border-slate-800 bg-slate-950 text-slate-100 shrink-0 space-y-3">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 text-gray-800 shrink-0 space-y-3">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider font-display">Tizim Monitoringi</h2>
-                    <span class="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider font-display">Tizim Monitoringi</h2>
+                    <span class="flex h-1.5 w-1.5 rounded-full bg-forest-600"></span>
                 </div>
                 
                 <!-- Search bar -->
                 <div class="relative">
-                    <input type="text" id="searchFarm" oninput="applyFilters()" placeholder="Xo'jalik yoki dehqon nomi..." class="w-full pl-8 pr-3 py-1.5 border border-slate-800 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-900 text-slate-200 placeholder-slate-500 shadow-inner">
-                    <span class="absolute left-2.5 top-2.5 text-slate-500">
+                    <input type="text" id="searchFarm" oninput="applyFilters()" placeholder="Xo'jalik yoki dehqon nomi..." class="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-forest-500 bg-white text-gray-800 placeholder-gray-400">
+                    <span class="absolute left-2.5 top-2.5 text-gray-400">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
@@ -124,14 +145,14 @@
                 <!-- Advanced Filters -->
                 <div class="grid grid-cols-2 gap-2 text-[10px]">
                     <div>
-                        <label class="block text-slate-400 font-bold uppercase tracking-wider mb-1">Tumanlar</label>
-                        <select id="filterDistrict" onchange="applyFilters()" class="w-full bg-slate-900 border border-slate-800 rounded p-1.5 font-semibold text-slate-350 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
+                        <label class="block text-gray-500 font-bold uppercase tracking-wider mb-1">Tumanlar</label>
+                        <select id="filterDistrict" onchange="applyFilters()" class="w-full bg-white border border-gray-300 rounded p-1.5 font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-forest-500 cursor-pointer">
                             <option value="">Barchasi</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-slate-400 font-bold uppercase tracking-wider mb-1">Tuproq unumdorligi</label>
-                        <select id="filterSoil" onchange="applyFilters()" class="w-full bg-slate-900 border border-slate-800 rounded p-1.5 font-semibold text-slate-350 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
+                        <label class="block text-gray-500 font-bold uppercase tracking-wider mb-1">Tuproq unumdorligi</label>
+                        <select id="filterSoil" onchange="applyFilters()" class="w-full bg-white border border-gray-300 rounded p-1.5 font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-forest-500 cursor-pointer">
                             <option value="">Barchasi</option>
                             <option value="high">Yuqori (>=70%)</option>
                             <option value="medium">O'rtacha (40-69%)</option>
@@ -143,49 +164,49 @@
             </div>
 
             <!-- Statistics Panel -->
-            <div class="grid grid-cols-2 gap-2 p-4 bg-slate-950 border-b border-slate-800 shrink-0">
-                <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
-                    <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Nazoratdagi maydon</span>
-                    <span id="statTotalArea" class="text-xs font-black text-slate-200 font-display">0.0 ha</span>
+            <div class="grid grid-cols-2 gap-2 p-4 bg-gray-50 border-b border-gray-200 shrink-0">
+                <div class="bg-white border border-gray-200 p-2.5 rounded-lg shadow-sm">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase tracking-wider block">Nazoratdagi maydon</span>
+                    <span id="statTotalArea" class="text-xs font-black text-gray-800 font-display">0.0 ha</span>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
-                    <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Faol texnikalar</span>
-                    <span id="statActiveFleets" class="text-xs font-black text-slate-200 font-display">0/0</span>
+                <div class="bg-white border border-gray-200 p-2.5 rounded-lg shadow-sm">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase tracking-wider block">Faol texnikalar</span>
+                    <span id="statActiveFleets" class="text-xs font-black text-gray-800 font-display">0/0</span>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
-                    <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Fermer xo'jaliklari</span>
-                    <span id="statTotalFarmers" class="text-xs font-black text-slate-200 font-display">0</span>
+                <div class="bg-white border border-gray-200 p-2.5 rounded-lg shadow-sm">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase tracking-wider block">Fermer xo'jaliklari</span>
+                    <span id="statTotalFarmers" class="text-xs font-black text-gray-800 font-display">0</span>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
-                    <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">O'rtacha unumdorlik</span>
-                    <span id="statAvgFertility" class="text-xs font-black text-emerald-400 font-display">0%</span>
+                <div class="bg-white border border-gray-200 p-2.5 rounded-lg shadow-sm">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase tracking-wider block">O'rtacha unumdorlik</span>
+                    <span id="statAvgFertility" class="text-xs font-black text-forest-600 font-display">0%</span>
                 </div>
             </div>
             
             <!-- Farms and accordion list -->
-            <div id="farmsList" class="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-950">
-                <div class="p-6 text-center text-xs text-slate-500 mt-10">Fermer xo'jaliklari yuklanmoqda...</div>
+            <div id="farmsList" class="flex-1 overflow-y-auto p-3 space-y-2.5 bg-white">
+                <div class="p-6 text-center text-xs text-gray-400 mt-10">Fermer xo'jaliklari yuklanmoqda...</div>
             </div>
         </aside>
 
         <!-- Center: Fullscreen Map & Vehicle HUD overlay -->
-        <main class="flex-1 relative bg-slate-900">
+        <main class="flex-1 relative bg-gray-100">
             <!-- Leaflet Map -->
             <div id="map"></div>
 
             <!-- Floating Map Layer Selector -->
-            <div class="absolute top-4 left-4 z-[1000] flex bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1 shadow-2xl overflow-hidden font-display text-xs font-semibold">
-                <button id="btnLayerSoil" onclick="switchMapLayer('soil')" class="px-4 py-2 rounded-lg text-emerald-400 bg-emerald-950/50 border border-emerald-800/40 transition-all duration-200 flex items-center gap-1.5 shadow-sm">
+            <div class="absolute top-4 left-16 z-[1000] flex bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl p-1 shadow-md overflow-hidden font-display text-xs font-semibold">
+                <button id="btnLayerSoil" onclick="switchMapLayer('soil')" class="px-4 py-2 rounded-lg text-emerald-700 bg-emerald-50 border border-emerald-200 transition-all duration-200 flex items-center gap-1.5 shadow-sm">
                     🧪 Tuproq tahlili
                 </button>
-                <button id="btnLayerNdvi" onclick="switchMapLayer('ndvi')" class="px-4 py-2 rounded-lg text-slate-450 hover:text-slate-200 transition-all duration-200 flex items-center gap-1.5 ml-1">
+                <button id="btnLayerNdvi" onclick="switchMapLayer('ndvi')" class="px-4 py-2 rounded-lg text-gray-500 hover:text-gray-800 transition-all duration-200 flex items-center gap-1.5 ml-1">
                     🛰️ Sun'iy yo'ldosh (NDVI)
                 </button>
             </div>
 
             <!-- Floating NDVI Legend Widget -->
-            <div id="ndviLegendWidget" class="hidden absolute bottom-4 left-4 z-[1000] bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-2xl w-48 text-xs text-slate-300 font-medium">
-                <h4 class="font-extrabold text-slate-200 font-display uppercase tracking-wider text-[10px] mb-2">NDVI Rivojlanish Indeksi</h4>
+            <div id="ndviLegendWidget" class="hidden absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl p-3 shadow-md w-48 text-xs text-gray-700 font-medium">
+                <h4 class="font-extrabold text-gray-900 font-display uppercase tracking-wider text-[10px] mb-2">NDVI Rivojlanish Indeksi</h4>
                 <div class="space-y-2">
                     <div class="flex items-center gap-2">
                         <span class="h-3 w-3 rounded-md bg-[#059669]"></span>
@@ -201,20 +222,20 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="h-3 w-3 rounded-md bg-[#EF4444]"></span>
-                        <span>Bo'sh yer / Suvsiz (<0.2)</span>
+                        <span>Bo'sh yer / Suvsiz (&lt;0.2)</span>
                     </div>
                 </div>
             </div>
             
             <!-- Selected Vehicle Telemetry HUD -->
-            <div id="selectedDeviceHud" class="hidden absolute top-4 right-4 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-4 shadow-2xl z-[1000] w-64 transition-all duration-300 transform scale-95 translate-y-1 text-slate-300">
+            <div id="selectedDeviceHud" class="hidden absolute top-4 right-4 bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl p-4 shadow-md z-[1000] w-64 transition-all duration-300 transform scale-95 translate-y-1 text-gray-700">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 id="hudName" class="font-extrabold text-sm text-slate-100 font-display">-</h3>
-                        <p id="hudPlate" class="text-xs text-slate-400 font-semibold font-display">-</p>
+                        <h3 id="hudName" class="font-extrabold text-sm text-gray-950 font-display">-</h3>
+                        <p id="hudPlate" class="text-xs text-gray-500 font-semibold font-display">-</p>
                         <div id="hudConnectionStatus" class="mt-1"></div>
                     </div>
-                    <button onclick="closeHud()" class="text-slate-400 hover:text-slate-200 bg-slate-850 p-1.5 border border-slate-800 rounded-lg transition">
+                    <button onclick="closeHud()" class="text-gray-400 hover:text-gray-650 bg-gray-50 p-1.5 border border-gray-200 rounded-lg transition">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -222,44 +243,44 @@
                 </div>
                 
                 <!-- Harakat kuni filtri -->
-                <div class="mt-3.5 bg-slate-950 border border-slate-850 rounded-lg p-2.5">
-                    <label for="historyDateFilter" class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Harakat traektoriyasi kuni</label>
-                    <select id="historyDateFilter" onchange="changeHistoryDate()" class="w-full text-xs bg-slate-900 border border-slate-800 rounded p-1.5 font-bold text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
+                <div class="mt-3.5 bg-gray-50 border border-gray-200 rounded-lg p-2.5 shadow-sm">
+                    <label for="historyDateFilter" class="text-[8px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Harakat traektoriyasi kuni</label>
+                    <select id="historyDateFilter" onchange="changeHistoryDate()" class="w-full text-xs bg-white border border-gray-300 rounded p-1.5 font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-forest-500 cursor-pointer">
                     </select>
                 </div>
                 
                 <!-- Speedometer Widget -->
-                <div class="mt-4 bg-slate-950 border border-slate-850 rounded-lg p-3 flex flex-col items-center justify-center">
-                    <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Hozirgi tezligi</span>
+                <div class="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-3 flex flex-col items-center justify-center shadow-sm">
+                    <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Hozirgi tezligi</span>
                     <div class="flex items-baseline mt-0.5">
-                        <span id="hudSpeed" class="text-3xl font-black text-slate-100 font-display">0</span>
-                        <span class="text-xs font-semibold text-slate-400 ml-1 font-display">km/soat</span>
+                        <span id="hudSpeed" class="text-3xl font-black text-gray-950 font-display">0</span>
+                        <span class="text-xs font-semibold text-gray-500 ml-1 font-display">km/soat</span>
                     </div>
                 </div>
 
                 <!-- Ignition and Battery details -->
                 <div class="grid grid-cols-2 gap-2 mt-2">
-                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-850 text-center">
-                        <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Dvigatel (ACC)</span>
+                    <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-200 text-center shadow-sm">
+                        <span class="text-[9px] text-gray-550 font-bold uppercase tracking-wider block">Dvigatel (ACC)</span>
                         <span id="hudIgnition" class="text-[10px] font-extrabold mt-1.5 block">-</span>
                     </div>
-                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-850 text-center">
-                        <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Batareya</span>
-                        <span class="text-sm font-bold text-slate-200 font-display mt-1 block"><span id="hudVoltage">12.96</span> <span class="text-[10px] font-normal text-slate-500">V</span></span>
+                    <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-200 text-center shadow-sm">
+                        <span class="text-[9px] text-gray-550 font-bold uppercase tracking-wider block">Batareya</span>
+                        <span class="text-sm font-bold text-gray-800 font-display mt-1 block"><span id="hudVoltage">12.96</span> <span class="text-[10px] font-normal text-gray-400">V</span></span>
                     </div>
                 </div>
 
                 <!-- Live stats -->
-                <div class="mt-2.5 bg-slate-950 p-2.5 rounded-lg border border-slate-850 text-xs space-y-1.5">
-                    <div class="flex justify-between text-slate-400">
+                <div class="mt-2.5 bg-gray-50 p-2.5 rounded-lg border border-gray-200 text-xs space-y-1.5 shadow-sm">
+                    <div class="flex justify-between text-gray-500">
                         <span>Yoqilg'i miqdori:</span>
-                        <span class="font-bold text-slate-200"><span id="hudFuel">-</span>%</span>
+                        <span class="font-bold text-gray-800"><span id="hudFuel">-</span>%</span>
                     </div>
-                    <div class="flex justify-between text-slate-400">
+                    <div class="flex justify-between text-gray-500">
                         <span>Faollik vaqti:</span>
-                        <span id="hudDuration" class="font-bold text-slate-200">-</span>
+                        <span id="hudDuration" class="font-bold text-gray-800">-</span>
                     </div>
-                    <div class="flex justify-between text-slate-500 text-[9px] pt-1.5 border-t border-slate-850">
+                    <div class="flex justify-between text-gray-400 text-[9px] pt-1.5 border-t border-gray-250">
                         <span>Oxirgi yangilanish:</span>
                         <span id="hudTime" class="font-medium">-</span>
                     </div>
@@ -268,21 +289,21 @@
         </main>
 
         <!-- Right Side: AI Soil Analysis Drawer -->
-        <aside id="aiAnalysisDrawer" class="w-96 border-l border-slate-800 bg-slate-900 flex flex-col overflow-hidden shrink-0 z-10 shadow-xl hidden">
+        <aside id="aiAnalysisDrawer" class="w-96 border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0 z-10 shadow-xl hidden">
             <!-- Header -->
-            <div class="p-4 border-b border-slate-800 bg-slate-950 shrink-0 flex justify-between items-center">
+            <div class="p-4 border-b border-gray-200 bg-gray-55 shrink-0 flex justify-between items-center">
                 <div class="flex items-center gap-2.5">
-                    <div class="h-8 w-8 rounded-lg bg-emerald-950 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
+                    <div class="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-250 flex items-center justify-center text-emerald-700">
                         <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 21l8.982-11.861H13.62l.812-5.043L5.458 15.904h4.355z" />
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider font-display" id="drawerFieldName">Maydon Tahlili</h3>
-                        <p class="text-[9px] text-slate-400 font-semibold" id="drawerFarmName">AgroMind AI Tizimi</p>
+                        <h3 class="text-xs font-bold text-gray-800 uppercase tracking-wider font-display" id="drawerFieldName">Maydon Tahlili</h3>
+                        <p class="text-[9px] text-gray-500 font-semibold" id="drawerFarmName">AgroMind AI Tizimi</p>
                     </div>
                 </div>
-                <button onclick="closeAiAnalysisDrawer()" class="text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-850 p-1.5 rounded-lg transition shadow-md">
+                <button onclick="closeAiAnalysisDrawer()" class="text-gray-400 hover:text-gray-650 bg-white border border-gray-200 p-1.5 rounded-lg transition shadow-sm">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -290,13 +311,13 @@
             </div>
 
             <!-- Scrollable Content -->
-            <div id="drawerContent" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 text-slate-300">
+            <div id="drawerContent" class="flex-1 overflow-y-auto p-4 space-y-4 bg-white text-gray-700">
                 <!-- Filled dynamically -->
             </div>
             
             <!-- Bottom Footer Actions -->
-            <div class="p-4 border-t border-slate-800 bg-slate-950 flex gap-2 shrink-0">
-                <button onclick="printAiReport()" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition border border-emerald-500/40">
+            <div class="p-4 border-t border-gray-200 bg-gray-55 flex gap-2 shrink-0">
+                <button onclick="printAiReport()" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-xs font-bold text-white shadow-sm transition border border-emerald-500/40">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 19.189l3-3m0 0l3-3m-3 3v12m5.94-9.94l.008-.008a3 3 0 00-4.243-4.243l-.008.008M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -339,7 +360,7 @@
         }
 
         programmaticMove(() => {
-            map.setView([42.11005, 60.07327], 9);
+            map.setView([{{ $lat }}, {{ $lng }}], {{ $zoom }});
         });
 
         // Track user interactions to suspend auto-centering
@@ -943,12 +964,12 @@
             const legend = document.getElementById('ndviLegendWidget');
             
             if (layer === 'soil') {
-                btnSoil.className = "px-4 py-2 rounded-lg text-emerald-400 bg-emerald-950/50 border border-emerald-800/40 transition-all duration-200 flex items-center gap-1.5 shadow-sm";
-                btnNdvi.className = "px-4 py-2 rounded-lg text-slate-450 hover:text-slate-200 transition-all duration-200 flex items-center gap-1.5 ml-1";
+                btnSoil.className = "px-4 py-2 rounded-lg text-emerald-700 bg-emerald-50 border border-emerald-200 transition-all duration-200 flex items-center gap-1.5 shadow-sm";
+                btnNdvi.className = "px-4 py-2 rounded-lg text-gray-500 hover:text-gray-800 transition-all duration-200 flex items-center gap-1.5 ml-1";
                 legend.classList.add('hidden');
             } else {
-                btnNdvi.className = "px-4 py-2 rounded-lg text-emerald-400 bg-emerald-950/50 border border-emerald-800/40 transition-all duration-200 flex items-center gap-1.5 shadow-sm";
-                btnSoil.className = "px-4 py-2 rounded-lg text-slate-450 hover:text-slate-200 transition-all duration-200 flex items-center gap-1.5 ml-1";
+                btnNdvi.className = "px-4 py-2 rounded-lg text-emerald-700 bg-emerald-50 border border-emerald-200 transition-all duration-200 flex items-center gap-1.5 shadow-sm";
+                btnSoil.className = "px-4 py-2 rounded-lg text-gray-500 hover:text-gray-800 transition-all duration-200 flex items-center gap-1.5 ml-1";
                 legend.classList.remove('hidden');
             }
             
@@ -1186,30 +1207,30 @@
 
             filteredFarmsData.forEach(farm => {
                 const isOpen = selectedFarmId === farm.id;
-                const accordionStyle = isOpen ? 'border-emerald-500/60 bg-slate-900 shadow-lg text-slate-200' : 'border-slate-800/80 bg-slate-900/60 hover:border-slate-700 text-slate-350 shadow-sm';
+                const accordionStyle = isOpen ? 'border-forest-500 bg-gray-55 shadow-md text-gray-800' : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700 shadow-sm';
                 
                 // Expandable contents
                 let expandedHTML = '';
                 if (isOpen) {
                     // 1. Geofences / Yer maydoni details
-                    let geofenceHTML = `<div class="text-[10px] text-slate-500 italic">Maydon chegaralari kiritilmagan</div>`;
+                    let geofenceHTML = `<div class="text-[10px] text-gray-400 italic">Maydon chegaralari kiritilmagan</div>`;
                     if (farm.geofences && farm.geofences.length > 0) {
                         geofenceHTML = farm.geofences.map(gf => {
-                            let fertilityBadge = `<span class="bg-slate-950 text-slate-500 px-1.5 py-0.5 rounded font-bold border border-slate-850">Tahlil yo'q</span>`;
+                            let fertilityBadge = `<span class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold border border-gray-200">Tahlil yo'q</span>`;
                             if (gf.latest_soil_analysis) {
                                 const fertility = parseFloat(gf.latest_soil_analysis.fertility).toFixed(0);
                                 if (fertility >= 70) {
-                                    fertilityBadge = `<span class="bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded font-bold border border-emerald-900/40">Unumdor: ${fertility}%</span>`;
+                                    fertilityBadge = `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold border border-emerald-200">Unumdor: ${fertility}%</span>`;
                                 } else if (fertility >= 40) {
-                                    fertilityBadge = `<span class="bg-amber-950 text-amber-400 px-1.5 py-0.5 rounded font-bold border border-amber-900/40">O'rtacha: ${fertility}%</span>`;
+                                    fertilityBadge = `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-bold border border-amber-200">O'rtacha: ${fertility}%</span>`;
                                 } else {
-                                    fertilityBadge = `<span class="bg-rose-950 text-rose-400 px-1.5 py-0.5 rounded font-bold border border-rose-900/40">Yomon: ${fertility}%</span>`;
+                                    fertilityBadge = `<span class="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-bold border border-rose-250">Yomon: ${fertility}%</span>`;
                                 }
                             }
                             return `
-                                <div class="flex justify-between items-center bg-slate-950 px-2.5 py-1.5 rounded border border-slate-850 text-[10px] text-slate-300 hover:bg-slate-900 hover:border-slate-700 transition cursor-pointer" onclick="event.stopPropagation(); selectGeofence(${gf.id}, ${farm.id})">
+                                <div class="flex justify-between items-center bg-white px-2.5 py-1.5 rounded border border-gray-200 text-[10px] text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition cursor-pointer shadow-sm" onclick="event.stopPropagation(); selectGeofence(${gf.id}, ${farm.id})">
                                     <span class="font-medium flex items-center gap-1.5">
-                                        <svg class="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
@@ -1222,32 +1243,32 @@
                     }
 
                     // 2. Related Vehicles
-                    let vehiclesHTML = `<div class="p-3 text-center text-[10px] text-slate-500 border border-dashed border-slate-800 rounded-lg bg-slate-950/40">Ushbu xo'jalikka texnika biriktirilmagan</div>`;
+                    let vehiclesHTML = `<div class="p-3 text-center text-[10px] text-gray-400 border border-dashed border-gray-200 rounded-lg bg-gray-50">Ushbu xo'jalikka texnika biriktirilmagan</div>`;
                     if (farm.vehicles && farm.vehicles.length > 0) {
                         vehiclesHTML = farm.vehicles.map(v => {
                             const hasTrack = v.latest_gps_track;
                             const speed = hasTrack ? parseFloat(v.latest_gps_track.speed) : 0;
                             const statusText = v.status === 'online' ? (speed > 0 ? 'YONIQ (Faol)' : 'KUTISHDA') : "O'CHIQ";
-                            const badgeColor = v.status === 'online' ? (speed > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400') : 'bg-slate-500';
-                            const activeCardStyle = selectedVehicleId === v.id ? 'border-emerald-500/60 bg-slate-900' : 'border-slate-850 bg-slate-950';
+                            const badgeColor = v.status === 'online' ? (speed > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400') : 'bg-gray-400';
+                            const activeCardStyle = selectedVehicleId === v.id ? 'border-forest-500 bg-gray-55 text-gray-900 shadow-sm' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300';
                             
                             const clickHandler = hasTrack ? `onclick="event.stopPropagation(); focusVehicle(${v.id}, ${hasTrack.latitude}, ${hasTrack.longitude})"` : '';
 
                             return `
                                 <div class="vehicle-card p-2.5 border rounded-lg shadow-sm transition hover:shadow-md cursor-pointer ${activeCardStyle}" ${clickHandler}>
                                     <div class="flex justify-between items-center">
-                                        <span class="font-bold text-[11px] text-slate-300 font-display flex items-center gap-2">
-                                            <span class="p-1 rounded bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center shrink-0" style="width: 22px; height: 22px;">
+                                        <span class="font-bold text-[11px] text-gray-700 font-display flex items-center gap-2">
+                                            <span class="p-1 rounded bg-gray-100 border border-gray-200 text-gray-500 flex items-center justify-center shrink-0" style="width: 22px; height: 22px;">
                                                 ${getVehicleSvg(v.type)}
                                             </span>
                                             <span>${v.name}</span>
                                         </span>
-                                        <span class="flex items-center gap-1 text-[9px] font-bold text-slate-400 font-sans">
+                                        <span class="flex items-center gap-1 text-[9px] font-bold text-gray-500 font-sans">
                                             <span class="h-1.5 w-1.5 rounded-full ${badgeColor}"></span>
                                             ${statusText}
                                         </span>
                                     </div>
-                                    <div class="flex justify-between items-center mt-2 text-[9px] text-slate-550 font-sans">
+                                    <div class="flex justify-between items-center mt-2 text-[9px] text-gray-550 font-sans">
                                         <span>Raqami: <strong>${v.plate_number}</strong></span>
                                         <span>Tezlik: <strong>${speed.toFixed(0)} km/s</strong></span>
                                     </div>
@@ -1257,32 +1278,32 @@
                     }
 
                     expandedHTML = `
-                        <div class="mt-3 pt-3 border-t border-slate-800 space-y-3">
+                        <div class="mt-3 pt-3 border-t border-gray-200 space-y-3">
                             <!-- Owner & Size Info -->
-                            <div class="bg-slate-950/50 rounded-lg p-2.5 border border-slate-850 text-[10px] text-slate-400 space-y-1">
+                            <div class="bg-gray-50 rounded-lg p-2.5 border border-gray-200 text-[10px] text-gray-600 space-y-1">
                                 <div class="flex justify-between">
                                     <span>Rahbari:</span>
-                                    <span class="font-semibold text-slate-200">${farm.owner ? farm.owner.name : 'Noma\'lum'}</span>
+                                    <span class="font-semibold text-gray-900">${farm.owner ? farm.owner.name : 'Noma\'lum'}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span>Telefon:</span>
-                                    <span class="font-semibold text-slate-200">${farm.owner ? farm.owner.phone : '-'}</span>
+                                    <span class="font-semibold text-gray-900">${farm.owner ? farm.owner.phone : '-'}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span>Tuproq turi:</span>
-                                    <span class="font-semibold text-slate-200">${farm.soil_type || 'Loyli'}</span>
+                                    <span class="font-semibold text-gray-900">${farm.soil_type || 'Loyli'}</span>
                                 </div>
                             </div>
 
                             <!-- Yer Chegaralari -->
                             <div>
-                                <h4 class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Belgilangan Maydonlari</h4>
+                                <h4 class="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Belgilangan Maydonlari</h4>
                                 <div class="space-y-1.5">${geofenceHTML}</div>
                             </div>
 
                             <!-- Tegishli Texnikalar -->
                             <div>
-                                <h4 class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tegishli Texnikalar (${farm.vehicles.length})</h4>
+                                <h4 class="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tegishli Texnikalar (${farm.vehicles.length})</h4>
                                 <div class="space-y-2">${vehiclesHTML}</div>
                             </div>
                         </div>
@@ -1293,10 +1314,10 @@
                     <div class="farm-card p-3.5 border rounded-xl shadow-sm transition-all duration-300 cursor-pointer ${accordionStyle}" onclick="toggleFarm(${farm.id})">
                         <div class="flex justify-between items-center">
                             <div>
-                                <h3 class="font-bold text-xs text-slate-200 font-display">${farm.name}</h3>
-                                <p class="text-[9px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">${farm.owner && farm.owner.region ? farm.owner.region.name : 'Qoraqalpog\'iston'}, ${farm.district || 'Amudaryo tumani'}</p>
+                                <h3 class="font-bold text-xs text-gray-800 font-display">${farm.name}</h3>
+                                <p class="text-[9px] text-gray-500 font-semibold uppercase tracking-wider mt-0.5">${farm.owner && farm.owner.region ? farm.owner.region.name : 'Qoraqalpog\'iston'}, ${farm.district || 'Amudaryo tumani'}</p>
                             </div>
-                            <span class="bg-slate-850 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-800">
+                            <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-gray-200">
                                 ${farm.size || '35'} GA
                             </span>
                         </div>
@@ -1460,11 +1481,11 @@
 
             // Render Tab headers
             let tabHeader = `
-                <div class="flex border-b border-slate-800 shrink-0 font-display text-[10px] uppercase tracking-wider font-extrabold mb-4">
-                    <button onclick="switchDrawerTab('soil')" class="flex-1 pb-2.5 border-b-2 ${activeDrawerTab === 'soil' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'} text-center transition-all duration-200">
+                <div class="flex border-b border-gray-200 shrink-0 font-display text-[10px] uppercase tracking-wider font-extrabold mb-4">
+                    <button onclick="switchDrawerTab('soil')" class="flex-1 pb-2.5 border-b-2 ${activeDrawerTab === 'soil' ? 'border-forest-500 text-forest-700' : 'border-transparent text-gray-500 hover:text-gray-800'} text-center transition-all duration-200">
                         🧪 Kimyoviy Tarkib
                     </button>
-                    <button onclick="switchDrawerTab('ndvi')" class="flex-1 pb-2.5 border-b-2 ${activeDrawerTab === 'ndvi' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'} text-center transition-all duration-200">
+                    <button onclick="switchDrawerTab('ndvi')" class="flex-1 pb-2.5 border-b-2 ${activeDrawerTab === 'ndvi' ? 'border-forest-500 text-forest-700' : 'border-transparent text-gray-500 hover:text-gray-800'} text-center transition-all duration-200">
                         🛰️ Yo'ldosh NDVI
                     </button>
                 </div>
@@ -1475,55 +1496,55 @@
                 if (!latestAnalysis) {
                     contentContainer.innerHTML = tabHeader + `
                         <!-- Farmer Info Card -->
-                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 shadow-md mb-4">
-                            <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
-                                <div class="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-350">
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3 shadow-sm mb-4">
+                            <div class="flex items-center gap-3 border-b border-gray-200 pb-3">
+                                <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
                                     <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h4 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Fermer Ma'lumotlari</h4>
-                                    <p class="text-[9px] font-semibold text-slate-400">Xo'jalik rahbari</p>
+                                    <h4 class="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Fermer Ma'lumotlari</h4>
+                                    <p class="text-[9px] font-semibold text-gray-500">Xo'jalik rahbari</p>
                                 </div>
                             </div>
-                            <div class="space-y-2 text-[11px] text-slate-300">
+                            <div class="space-y-2 text-[11px] text-gray-650">
                                 <div class="flex justify-between">
-                                    <span class="text-slate-550">Ism-familiya:</span>
-                                    <span class="font-bold text-slate-200">${farm.owner ? farm.owner.name : 'Noma\'lum'}</span>
+                                    <span class="text-gray-500">Ism-familiya:</span>
+                                    <span class="font-bold text-gray-900">${farm.owner ? farm.owner.name : 'Noma\'lum'}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-550">Telefon raqami:</span>
-                                    <span class="font-bold text-slate-200">${farm.owner ? farm.owner.phone : '-'}</span>
+                                    <span class="text-gray-500">Telefon raqami:</span>
+                                    <span class="font-bold text-gray-900">${farm.owner ? farm.owner.phone : '-'}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-550 font-bold uppercase tracking-wider block">Hudud:</span>
-                                    <span class="font-bold text-slate-200">${farm.owner && farm.owner.region ? farm.owner.region.name : 'Qoraqalpog\'iston'}, ${farm.district || 'Amudaryo tumani'}</span>
+                                    <span class="text-gray-500 font-bold uppercase tracking-wider block">Hudud:</span>
+                                    <span class="font-bold text-gray-900">${farm.owner && farm.owner.region ? farm.owner.region.name : 'Qoraqalpog\'iston'}, ${farm.district || 'Amudaryo tumani'}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-550">Xo'jalik nomi:</span>
-                                    <span class="font-bold text-slate-200">${farm.name}</span>
+                                    <span class="text-gray-500">Xo'jalik nomi:</span>
+                                    <span class="font-bold text-gray-900">${farm.name}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-550">Umumiy maydon:</span>
-                                    <span class="font-bold text-slate-200">${farm.size || '0'} GA</span>
+                                    <span class="text-gray-500">Umumiy maydon:</span>
+                                    <span class="font-bold text-gray-900">${farm.size || '0'} GA</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-550 font-bold uppercase tracking-wider block font-sans">Tuproq turi:</span>
-                                    <span class="font-bold text-slate-200">${farm.soil_type || 'Noma\'lum'}</span>
+                                    <span class="text-gray-500 font-bold uppercase tracking-wider block font-sans">Tuproq turi:</span>
+                                    <span class="font-bold text-gray-900">${farm.soil_type || 'Noma\'lum'}</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="flex flex-col items-center justify-center py-6 text-center">
-                            <div class="h-12 w-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-3 animate-pulse">
+                            <div class="h-12 w-12 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 mb-3 animate-pulse">
                                 <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
-                            <h4 class="text-[10px] font-extrabold text-slate-350 uppercase tracking-wider">Tahlil Natijalari Yo'q</h4>
-                            <p class="text-[9px] text-slate-500 mt-1 max-w-[200px] leading-relaxed">Ushbu yer maydoni uchun tuproq kimyoviy tarkibi tahlillari kiritilmagan.</p>
-                            <a href="/admin/soil" target="_blank" class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition">
+                            <h4 class="text-[10px] font-extrabold text-gray-700 uppercase tracking-wider">Tahlil Natijalari Yo'q</h4>
+                            <p class="text-[9px] text-gray-500 mt-1 max-w-[200px] leading-relaxed">Ushbu yer maydoni uchun tuproq kimyoviy tarkibi tahlillari kiritilmagan.</p>
+                            <a href="/admin/soil" target="_blank" class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition shadow-sm">
                                 Tahlil kiritish
                             </a>
                         </div>
@@ -1536,35 +1557,35 @@
                 const moisture = parseFloat(latestAnalysis.moisture || 0);
                 
                 let fertilityStatus = "Past unumdorlik";
-                let fertilityColor = "bg-rose-500 shadow-[0_0_8px_#f43f5e]";
-                let fertilityTextClass = "text-rose-400";
+                let fertilityColor = "bg-rose-500";
+                let fertilityTextClass = "text-rose-600";
                 if (fertility >= 70) {
                     fertilityStatus = "Yuqori";
-                    fertilityColor = "bg-emerald-500 shadow-[0_0_8px_#10b981]";
-                    fertilityTextClass = "text-emerald-400";
+                    fertilityColor = "bg-emerald-500";
+                    fertilityTextClass = "text-emerald-700";
                 } else if (fertility >= 40) {
                     fertilityStatus = "O'rtacha";
-                    fertilityColor = "bg-amber-500 shadow-[0_0_8px_#f59e0b]";
-                    fertilityTextClass = "text-amber-400";
+                    fertilityColor = "bg-amber-500";
+                    fertilityTextClass = "text-amber-700";
                 }
 
                 let moistureStatus = "Past namlik";
-                let moistureColor = "bg-rose-500 shadow-[0_0_8px_#f43f5e]";
-                let moistureTextClass = "text-rose-400";
+                let moistureColor = "bg-rose-500";
+                let moistureTextClass = "text-rose-600";
                 if (moisture >= 40) {
                     moistureStatus = "Mo'tadil";
-                    moistureColor = "bg-blue-500 shadow-[0_0_8px_#3b82f6]";
-                    moistureTextClass = "text-blue-400";
+                    moistureColor = "bg-blue-500";
+                    moistureTextClass = "text-blue-600";
                 }
 
                 let phStatus = "Neytral";
-                let phTextClass = "text-emerald-450 bg-emerald-950 border-emerald-900/40";
+                let phTextClass = "text-emerald-700 bg-emerald-50 border-emerald-200";
                 if (ph < 6.0) {
                     phStatus = "Kislotali";
-                    phTextClass = "text-amber-400 bg-amber-950 border-amber-900/40";
+                    phTextClass = "text-amber-750 bg-amber-50 border-amber-250";
                 } else if (ph > 7.5) {
                     phStatus = "Ishqoriy";
-                    phTextClass = "text-rose-400 bg-rose-950 border-rose-900/40";
+                    phTextClass = "text-rose-700 bg-rose-50 border-rose-250";
                 }
 
                 let aiBlockHTML = '';
@@ -1574,18 +1595,18 @@
                     let cropsListHTML = '';
                     if (rec.recommended_crops && rec.recommended_crops.length > 0) {
                         cropsListHTML = rec.recommended_crops.map(crop => `
-                            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-200">
+                            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-gray-100 border border-gray-200 text-gray-800">
                                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ${crop}
                             </span>
                         `).join('');
                     } else {
-                        cropsListHTML = `<span class="text-[10px] text-slate-500 italic">Ekinlar belgilanmagan</span>`;
+                        cropsListHTML = `<span class="text-[10px] text-gray-400 italic">Ekinlar belgilanmagan</span>`;
                     }
 
                     let fertilizerListHTML = '';
                     if (rec.fertilizer_plan && Array.isArray(rec.fertilizer_plan) && rec.fertilizer_plan.length > 0) {
                         fertilizerListHTML = rec.fertilizer_plan.map(step => `
-                            <li class="flex items-start gap-2 text-[10px] text-slate-350 bg-slate-900 border border-slate-850 p-2 rounded">
+                            <li class="flex items-start gap-2 text-[10px] text-gray-700 bg-white border border-gray-200 p-2 rounded shadow-sm">
                                 <svg class="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -1596,55 +1617,55 @@
                         fertilizerListHTML = Object.entries(rec.fertilizer_plan).map(([key, value]) => {
                             const label = key.charAt(0).toUpperCase() + key.slice(1);
                             return `
-                                <li class="flex items-start gap-2 text-[10px] text-slate-350 bg-slate-900 border border-slate-850 p-2 rounded">
+                                <li class="flex items-start gap-2 text-[10px] text-gray-700 bg-white border border-gray-200 p-2 rounded shadow-sm">
                                     <svg class="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    <span><strong class="text-emerald-400">${label}:</strong> ${value}</span>
+                                    <span><strong class="text-emerald-700">${label}:</strong> ${value}</span>
                                 </li>
                             `;
                         }).join('');
                     } else {
-                        fertilizerListHTML = `<li class="text-[10px] text-slate-500 italic">O'g'itlash rejasi kiritilmagan</li>`;
+                        fertilizerListHTML = `<li class="text-[10px] text-gray-400 italic">O'g'itlash rejasi kiritilmagan</li>`;
                     }
 
                     aiBlockHTML = `
-                        <div class="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-3.5 space-y-2">
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-2 shadow-sm">
                             <div class="flex justify-between items-center">
-                                <h4 class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 font-display">
-                                    <svg class="h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <h4 class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5 font-display">
+                                    <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                     </svg>
                                     Llama-3 AI Tahlili
                                 </h4>
-                                <span class="inline-flex items-center text-[8px] bg-emerald-900/40 text-emerald-400 border border-emerald-800/40 px-1.5 py-0.5 rounded font-mono">${rec.ai_model || 'llama3-8b'}</span>
+                                <span class="inline-flex items-center text-[8px] bg-emerald-100 text-emerald-700 border border-emerald-250 px-1.5 py-0.5 rounded font-mono">${rec.ai_model || 'llama3-8b'}</span>
                             </div>
-                            <p class="text-[11px] text-slate-200 leading-relaxed font-sans">${rec.content}</p>
+                            <p class="text-[11px] text-gray-800 leading-relaxed font-sans">${rec.content}</p>
                         </div>
 
-                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-                            <h4 class="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-display">Tavsiya ekin turlari</h4>
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2 shadow-sm">
+                            <h4 class="text-[9px] font-bold text-gray-500 uppercase tracking-wider font-display">Tavsiya ekin turlari</h4>
                             <div class="flex flex-wrap gap-1.5">${cropsListHTML}</div>
                         </div>
 
-                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-                            <h4 class="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-display">Parvarish va O'g'itlash rejasi</h4>
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2 shadow-sm">
+                            <h4 class="text-[9px] font-bold text-gray-500 uppercase tracking-wider font-display">Parvarish va O'g'itlash rejasi</h4>
                             <ul class="space-y-1.5">${fertilizerListHTML}</ul>
                         </div>
 
-                        <div class="flex justify-between items-center text-[8px] text-slate-500 pt-1">
+                        <div class="flex justify-between items-center text-[8px] text-gray-400 pt-1">
                             <span>Tokens model: ${rec.tokens_used || 0}</span>
                             <span>Oxirgi tahlil: ${latestAnalysis.analysis_date ? latestAnalysis.analysis_date.split('T')[0] : ''}</span>
                         </div>
                     `;
                 } else {
                     aiBlockHTML = `
-                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
-                            <svg class="h-8 w-8 text-amber-500/80 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center shadow-sm">
+                            <svg class="h-8 w-8 text-amber-600/80 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
-                            <h5 class="text-xs font-bold text-slate-350">AI Tavsiyalari Mavjud Emas</h5>
-                            <p class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">Laboratoriya olingan, biroq sun'iy intellekt tavsiyasi tayyorlanmagan.</p>
+                            <h5 class="text-xs font-bold text-gray-800">AI Tavsiyalari Mavjud Emas</h5>
+                            <p class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">Laboratoriya olingan, biroq sun'iy intellekt tavsiyasi tayyorlanmagan.</p>
                             <button onclick="runAiAnalysisForField(${latestAnalysis.id})" class="mt-3.5 inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white shadow hover:bg-emerald-500 transition">
                                 AI Tavsiya Yaratish
                             </button>
@@ -1655,51 +1676,51 @@
                 contentContainer.innerHTML = tabHeader + `
                     <!-- Soil parameters grid -->
                     <div class="grid grid-cols-2 gap-2">
-                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-                            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">NPK Unumdorligi</span>
+                        <div class="bg-gray-55 border border-gray-200 p-3 rounded-xl shadow-sm">
+                            <span class="text-[8px] text-gray-550 font-bold uppercase tracking-wider block">NPK Unumdorligi</span>
                             <div class="flex items-baseline justify-between mt-1">
-                                <span class="text-lg font-black text-slate-200 font-display">${fertility.toFixed(1)}%</span>
+                                <span class="text-lg font-black text-gray-800 font-display">${fertility.toFixed(1)}%</span>
                                 <span class="text-[9px] font-bold ${fertilityTextClass}">${fertilityStatus}</span>
                             </div>
-                            <div class="w-full bg-slate-950 rounded-full h-1 mt-2">
+                            <div class="w-full bg-gray-200 rounded-full h-1 mt-2">
                                 <div class="${fertilityColor} h-1 rounded-full" style="width: ${fertility}%"></div>
                             </div>
                         </div>
-                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-                            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Tuproq Namligi</span>
+                        <div class="bg-gray-55 border border-gray-200 p-3 rounded-xl shadow-sm">
+                            <span class="text-[8px] text-gray-550 font-bold uppercase tracking-wider block">Tuproq Namligi</span>
                             <div class="flex items-baseline justify-between mt-1">
-                                <span class="text-lg font-black text-slate-200 font-display">${moisture.toFixed(1)}%</span>
+                                <span class="text-lg font-black text-gray-800 font-display">${moisture.toFixed(1)}%</span>
                                 <span class="text-[9px] font-bold ${moistureTextClass}">${moistureStatus}</span>
                             </div>
-                            <div class="w-full bg-slate-950 rounded-full h-1 mt-2">
+                            <div class="w-full bg-gray-200 rounded-full h-1 mt-2">
                                 <div class="${moistureColor} h-1 rounded-full" style="width: ${moisture}%"></div>
                             </div>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-3 gap-2">
-                        <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-center">
-                            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">pH darajasi</span>
-                            <span class="text-sm font-black text-slate-200 mt-1 block">${ph.toFixed(2)}</span>
+                        <div class="bg-gray-55 border border-gray-200 p-2.5 rounded-xl text-center shadow-sm">
+                            <span class="text-[8px] text-gray-550 font-bold uppercase tracking-wider block">pH darajasi</span>
+                            <span class="text-sm font-black text-gray-800 mt-1 block">${ph.toFixed(2)}</span>
                             <span class="inline-flex px-1.5 py-0.5 mt-1 text-[8px] font-bold rounded-full border ${phTextClass}">${phStatus}</span>
                         </div>
-                        <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-center">
-                            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Harorat</span>
-                            <span class="text-sm font-black text-slate-200 mt-1 block">${parseFloat(latestAnalysis.temperature || 0).toFixed(1)}°C</span>
+                        <div class="bg-gray-55 border border-gray-200 p-2.5 rounded-xl text-center shadow-sm">
+                            <span class="text-[8px] text-gray-550 font-bold uppercase tracking-wider block">Harorat</span>
+                            <span class="text-sm font-black text-gray-800 mt-1 block">${parseFloat(latestAnalysis.temperature || 0).toFixed(1)}°C</span>
                         </div>
-                        <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-center">
-                            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Namgarchilik</span>
-                            <span class="text-sm font-black text-slate-200 mt-1 block">${parseFloat(latestAnalysis.humidity || 0).toFixed(0)}%</span>
+                        <div class="bg-gray-55 border border-gray-200 p-2.5 rounded-xl text-center shadow-sm">
+                            <span class="text-[8px] text-gray-550 font-bold uppercase tracking-wider block">Namgarchilik</span>
+                            <span class="text-sm font-black text-gray-800 mt-1 block">${parseFloat(latestAnalysis.humidity || 0).toFixed(0)}%</span>
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl flex justify-between items-center text-[10px]">
-                        <span class="text-slate-400">Ekilgan / Ekishga Reja:</span>
-                        <span class="font-extrabold text-slate-200 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">${latestAnalysis.target_crop}</span>
+                    <div class="bg-gray-55 border border-gray-200 p-3 rounded-xl flex justify-between items-center text-[10px] shadow-sm">
+                        <span class="text-gray-550">Ekilgan / Ekishga Reja:</span>
+                        <span class="font-extrabold text-gray-800 bg-white px-2 py-0.5 rounded border border-gray-250">${latestAnalysis.target_crop}</span>
                     </div>
 
                     <!-- AI Recommendations block -->
-                    <div class="space-y-3 pt-1 border-t border-slate-800">
+                    <div class="space-y-3 pt-1 border-t border-gray-200">
                         ${aiBlockHTML}
                     </div>
                 `;
@@ -1710,16 +1731,16 @@
                 const ndviVal = parseFloat(baseVal.toFixed(2));
                 
                 let ndviStatus = "Past rivojlanish";
-                let ndviColorClass = "text-rose-400 bg-rose-950/40 border border-rose-900/30";
+                let ndviColorClass = "text-rose-700 bg-rose-50 border border-rose-200";
                 if (ndviVal >= 0.7) {
                     ndviStatus = "Zo'r rivojlanish";
-                    ndviColorClass = "text-emerald-400 bg-emerald-950/40 border border-emerald-900/30";
+                    ndviColorClass = "text-emerald-700 bg-emerald-50 border border-emerald-200";
                 } else if (ndviVal >= 0.5) {
                     ndviStatus = "Yaxshi rivojlanish";
-                    ndviColorClass = "text-teal-400 bg-teal-950/40 border border-teal-900/30";
+                    ndviColorClass = "text-teal-700 bg-teal-50 border border-teal-200";
                 } else if (ndviVal >= 0.3) {
                     ndviStatus = "O'rtacha rivojlanish";
-                    ndviColorClass = "text-amber-400 bg-amber-950/40 border border-amber-900/30";
+                    ndviColorClass = "text-amber-700 bg-amber-50 border border-amber-250";
                 }
 
                 const historyData = [
@@ -1730,36 +1751,36 @@
 
                 contentContainer.innerHTML = tabHeader + `
                     <!-- NDVI Status Card -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 shadow-md">
+                    <div class="bg-gray-55 border border-gray-200 rounded-xl p-4 space-y-3 shadow-sm">
                         <div class="flex items-center justify-between">
                             <div>
-                                <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider block font-display">Joriy NDVI Indeksi</span>
-                                <span class="text-2xl font-black text-slate-100 font-display mt-0.5 block">${ndviVal}</span>
+                                <span class="text-[8px] text-gray-550 font-bold uppercase tracking-wider block font-display">Joriy NDVI Indeksi</span>
+                                <span class="text-2xl font-black text-gray-800 font-display mt-0.5 block">${ndviVal}</span>
                             </div>
                             <span class="inline-flex px-2.5 py-1 text-[9px] font-bold rounded-lg ${ndviColorClass}">${ndviStatus}</span>
                         </div>
-                        <div class="w-full bg-slate-950 rounded-full h-1.5 mt-2">
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                             <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${ndviVal * 100}%"></div>
                         </div>
                     </div>
 
                     <!-- NDVI Historical Chart Card -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 shadow-md">
-                        <h4 class="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-display">Ekin Rivojlanish Dinamikasi (3 oylik)</h4>
+                    <div class="bg-gray-55 border border-gray-200 rounded-xl p-4 space-y-2 shadow-sm">
+                        <h4 class="text-[9px] font-bold text-gray-500 uppercase tracking-wider font-display">Ekin Rivojlanish Dinamikasi (3 oylik)</h4>
                         <div class="relative h-44 w-full">
                             <canvas id="ndviHistoryChart"></canvas>
                         </div>
                     </div>
 
                     <!-- AI Satellite Commentary Card -->
-                    <div class="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-3.5 space-y-2">
-                        <h4 class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 font-display">
-                            <svg class="h-3.5 w-3.5 text-emerald-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-2 shadow-sm">
+                        <h4 class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5 font-display">
+                            <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                             Sun'iy Yo'ldosh Tahlili
                         </h4>
-                        <p class="text-[11px] text-slate-200 leading-relaxed font-sans">
+                        <p class="text-[11px] text-gray-800 leading-relaxed font-sans">
                             Sun'iy yo'ldoshning optik-spektral tahliliga ko'ra, maydonda vegetatsiya jarayoni barqaror ketmoqda.
                             ${ndviVal >= 0.7 ? 
                                 `Ekin barglarining zichligi va tarkibidagi xlorofill miqdori yuqori darajada. Rivojlanish fazasi optimal. Sug'orish va o'g'itlash rejasi ayni vaqtda juda to'g'ri tashkil etilgan.` :
@@ -1809,12 +1830,12 @@
                                 y: {
                                     min: 0,
                                     max: 1.0,
-                                    grid: { color: 'rgba(51, 65, 85, 0.3)' },
-                                    ticks: { color: '#94a3b8', font: { size: 9 } }
+                                    grid: { color: 'rgba(229, 231, 235, 0.5)' },
+                                    ticks: { color: '#6b7280', font: { size: 9 } }
                                 },
                                 x: {
                                     grid: { display: false },
-                                    ticks: { color: '#94a3b8', font: { size: 9 } }
+                                    ticks: { color: '#6b7280', font: { size: 9 } }
                                 }
                             }
                         }

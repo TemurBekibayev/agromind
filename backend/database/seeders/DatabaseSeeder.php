@@ -49,9 +49,9 @@ class DatabaseSeeder extends Seeder
         // 2. Create Users
         $admin = User::create([
             'name' => 'Admin AgroMind',
-            'phone' => '998901234567',
+            'phone' => 'admin@uzagromind.uz',
             'role' => 'admin',
-            'password' => Hash::make('secret123'),
+            'password' => Hash::make('uzagromind4321'),
         ]);
 
         $farmer = User::create([

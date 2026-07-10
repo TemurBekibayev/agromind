@@ -101,66 +101,58 @@
             <input type="hidden" name="year" value="{{ request('year', date('Y')) }}">
             <input type="hidden" name="month" value="{{ request('month') }}">
 
-            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                    <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                        <tr>
-                            <th class="px-6 py-4">Suv manbai</th>
-                            <th class="px-6 py-4">Dekadalar</th>
-                            <th class="px-6 py-4">Suv olish limiti, m³</th>
-                            <th class="px-6 py-4">Amalda ishlatilgan suv, m³</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 bg-white text-gray-700">
-                        @php
-                            $sources = [
-                                'surface' => 'Er ustidan (daryo, kanal, soy, buloq)',
-                                'groundwater' => 'Er ostidan (sug\'orish qudug\'i)',
-                                'drainage' => 'Kollektor-drenaj tarmog\'idan'
-                            ];
-                        @endphp
+            @php
+                $existingLimit = $existingRecord ? $existingRecord->limit_m3 : '';
+                $existingUsed = $existingRecord ? $existingRecord->used_m3 : '';
+            @endphp
 
-                        @foreach($sources as $sourceKey => $sourceName)
-                            @for($dec = 1; $dec <= 3; $dec++)
-                                @php
-                                    $existingLimit = 0;
-                                    $existingUsed = 0;
-                                    
-                                    $rec = $existingRecords->where('water_source', $sourceKey)->where('decade', $dec)->first();
-                                    if ($rec) {
-                                        $existingLimit = $rec->limit_m3;
-                                        $existingUsed = $rec->used_m3;
-                                    }
-                                @endphp
-                                <tr class="hover:bg-gray-50/50 transition">
-                                    @if($dec === 1)
-                                        <td class="px-6 py-4 font-semibold text-gray-900 border-r border-gray-150" rowspan="3">
-                                            {{ $sourceName }}
-                                        </td>
-                                    @endif
-                                    <td class="px-6 py-4 font-medium text-gray-500 border-r border-gray-150">
-                                        {{ $dec }}-dekada
-                                    </td>
-                                    <td class="p-2 border-r border-gray-150">
-                                        <input type="number" step="0.01" min="0" 
-                                               name="records[{{ $sourceKey }}][{{ $dec }}][limit_m3]" 
-                                               value="{{ old('records.'.$sourceKey.'.'.$dec.'.limit_m3', $existingLimit > 0 ? $existingLimit : '') }}" 
-                                               placeholder="0.00" 
-                                               class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-forest-500 font-semibold text-gray-800">
-                                    </td>
-                                    <td class="p-2">
-                                        <input type="number" step="0.01" min="0" 
-                                               name="records[{{ $sourceKey }}][{{ $dec }}][used_m3]" 
-                                               value="{{ old('records.'.$sourceKey.'.'.$dec.'.used_m3', $existingUsed > 0 ? $existingUsed : '') }}" 
-                                               placeholder="0.00" 
-                                               class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-forest-500 font-semibold text-gray-800">
-                                    </td>
-                                </tr>
-                            @endfor
-                        @endforeach
-                    </tbody>
-                </table>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 p-6 rounded-xl border border-gray-200 shadow-sm">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Suv olish limiti, m³</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400 text-sm font-semibold select-none">
+                            💧
+                        </span>
+                        <input type="number" step="0.01" min="0" 
+                               name="limit_m3" 
+                               value="{{ old('limit_m3', $existingLimit) }}" 
+                               placeholder="0.00" 
+                               class="w-full bg-white border border-gray-200 rounded-lg pl-10 pr-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-forest-500 font-bold text-gray-800 transition duration-150 placeholder-gray-400 shadow-sm"
+                               required>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1.5">Ushbu oy uchun xo'jalikka ajratilgan maksimal suv limiti.</p>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Amalda ishlatilgan suv, m³</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400 text-sm font-semibold select-none">
+                            📈
+                        </span>
+                        <input type="number" step="0.01" min="0" 
+                               name="used_m3" 
+                               value="{{ old('used_m3', $existingUsed) }}" 
+                               placeholder="0.00" 
+                               class="w-full bg-white border border-gray-200 rounded-lg pl-10 pr-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-forest-500 font-bold text-gray-800 transition duration-150 placeholder-gray-400 shadow-sm"
+                               required>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1.5">Ushbu oyda amalda sarflangan umumiy suv miqdori.</p>
+                </div>
             </div>
+
+            @if($existingRecord)
+                @php
+                    $diff = $existingRecord->limit_m3 - $existingRecord->used_m3;
+                @endphp
+                <div class="flex items-center justify-between p-4 rounded-xl border {{ $diff >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800' }} text-xs font-medium shadow-sm">
+                    <span class="flex items-center gap-1.5">
+                        ⚖️ Hozirgi oy uchun balans (Qoldiq):
+                    </span>
+                    <span class="font-bold">
+                        {{ number_format($diff, 2, '.', ' ') }} m³
+                    </span>
+                </div>
+            @endif
 
             <div class="flex justify-end gap-3 pt-2">
                 <button type="submit" class="rounded-lg bg-forest-700 hover:bg-forest-600 px-6 py-2.5 text-xs font-bold text-white shadow-md transition border border-forest-600">
@@ -171,7 +163,7 @@
     @else
         <div class="p-10 text-center border border-dashed border-gray-200 rounded-xl bg-white shadow-sm flex flex-col items-center justify-center">
             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Xo'jalik va Oyni tanlang</h4>
-            <p class="text-[11px] text-gray-400 mt-1 max-w-[280px]">Dala suv limitlarini to'ldirishni boshlash uchun yuqoridagi maydonlardan fermer xo'jaligi va kerakli oyni tanlang.</p>
+            <p class="text-[11px] text-gray-450 mt-1 max-w-[280px]">Dala suv limitlarini to'ldirishni boshlash uchun yuqoridagi maydonlardan fermer xo'jaligi va kerakli oyni tanlang.</p>
         </div>
     @endif
 </div>

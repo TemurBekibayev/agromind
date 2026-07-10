@@ -7,10 +7,61 @@ use App\Models\Vehicle;
 use App\Models\SoilAnalysis;
 use App\Models\Alert;
 use App\Models\Region;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+
+Route::get('/login', function () {
+    if (Auth::check()) {
+        $user = Auth::user();
+        if ($user->role === 'admin' || $user->role === 'monitor') {
+            return redirect('/admin/dashboard');
+        }
+    }
+    return view('auth.login');
+})->name('login');
+
+Route::post('/login', function (Request $request) {
+    $credentials = $request->validate([
+        'phone' => 'required|string',
+        'password' => 'required|string',
+    ]);
+
+    if (Auth::attempt($credentials)) {
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+        if ($user->role === 'admin') {
+            return redirect()->intended('/admin/dashboard');
+        } elseif ($user->role === 'monitor') {
+            return redirect()->intended('/monitor');
+        }
+
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return back()->withErrors([
+            'phone' => 'Admin panelga kirish ruxsatingiz yo\'q.',
+        ])->onlyInput('phone');
+    }
+
+    return back()->withErrors([
+        'phone' => 'Kiritilgan telefon raqam yoki maxfiy kod noto\'g\'ri.',
+    ])->onlyInput('phone');
+});
+
+Route::post('/logout', function (Request $request) {
+    Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+    return redirect('/login')->with('success', 'Tizimdan muvaffaqiyatli chiqdingiz.');
+})->name('logout');
 
 Route::get('/', function () {
     return redirect('/admin/dashboard');
 });
+
+Route::middleware(['admin.auth'])->group(function () {
 
 // Admin Dashboard marshruti
 Route::get('/admin/dashboard', function () {
@@ -27,18 +78,21 @@ Route::get('/admin/dashboard', function () {
 // Dehqonlar ro'yxati (Xo'jalik chizish uchun viloyatlar bilan birga)
 Route::get('/admin/farmers', function () {
     $farmers = User::where('role', 'farmer')->with(['region', 'farms.geofences'])->get();
+    $monitors = User::where('role', 'monitor')->with('region')->get();
     $regions = Region::all();
     $predefinedFarms = \App\Models\PredefinedFarm::orderBy('name')->get();
-    return view('admin.farmers', compact('farmers', 'regions', 'predefinedFarms'));
+    return view('admin.farmers', compact('farmers', 'monitors', 'regions', 'predefinedFarms'));
 });
 
-// Yangi Dehqon (Fermer) saqlash
+// Yangi Dehqon (Fermer) yoki Monitor saqlash
 Route::post('/admin/farmers/store', function (Request $request) {
     $request->validate([
         'name' => 'required|string|max:255',
         'phone' => 'required|string|max:20|unique:users,phone',
         'region_id' => 'required|exists:regions,id',
         'district' => 'nullable|string|max:255',
+        'role' => 'required|in:farmer,monitor',
+        'password' => 'required|string|min:4',
     ]);
 
     User::create([
@@ -46,66 +100,81 @@ Route::post('/admin/farmers/store', function (Request $request) {
         'phone' => $request->phone,
         'region_id' => $request->region_id,
         'district' => $request->district ?? 'Amudaryo tumani',
-        'role' => 'farmer',
-        'password' => Hash::make('secret123'), // Default password
+        'role' => $request->role,
+        'password' => Hash::make($request->password),
+        'plain_password' => $request->password,
     ]);
 
-    return back()->with('success', 'Yangi dehqon (fermer) muvaffaqiyatli ro\'yxatga olindi!');
+    $roleName = $request->role === 'monitor' ? 'Tuman nazoratchisi' : 'Dehqon (fermer)';
+    return back()->with('success', "Yangi {$roleName} muvaffaqiyatli ro'yxatga olindi!");
 });
 
-// Dehqon (Fermer) tahrirlash (update)
+// Dehqon (Fermer) yoki Monitor tahrirlash (update)
 Route::post('/admin/farmers/update/{id}', function (Request $request, $id) {
-    $farmer = User::where('role', 'farmer')->findOrFail($id);
+    $user = User::findOrFail($id);
 
     $request->validate([
         'name' => 'required|string|max:255',
         'phone' => 'required|string|max:20|unique:users,phone,' . $id,
         'region_id' => 'required|exists:regions,id',
         'district' => 'nullable|string|max:255',
+        'password' => 'nullable|string|min:4',
     ]);
 
-    $farmer->update([
+    $updateData = [
         'name' => $request->name,
         'phone' => $request->phone,
         'region_id' => $request->region_id,
         'district' => $request->district ?? 'Amudaryo tumani',
-    ]);
+    ];
 
-    return back()->with('success', 'Dehqon (fermer) ma\'lumotlari muvaffaqiyatli yangilandi!');
-});
-
-// Dehqon (Fermer) o'chirish (delete)
-Route::post('/admin/farmers/destroy/{id}', function ($id) {
-    $farmer = User::where('role', 'farmer')->with('farms.vehicles', 'farms.soilAnalyses', 'farms.geofences', 'farms.alerts')->findOrFail($id);
-
-    // Cascade delete related farms and their data
-    foreach ($farmer->farms as $farm) {
-        // Delete vehicles & their data
-        foreach ($farm->vehicles as $vehicle) {
-            $vehicle->gpsTracks()->delete();
-            $vehicle->alerts()->delete();
-            $vehicle->delete();
-        }
-        
-        // Delete farm alerts
-        $farm->alerts()->delete();
-
-        // Delete soil analyses & recommendations
-        foreach ($farm->soilAnalyses as $analysis) {
-            $analysis->recommendation()->delete();
-            $analysis->delete();
-        }
-
-        // Delete geofences
-        $farm->geofences()->delete();
-
-        // Delete farm
-        $farm->delete();
+    if ($request->filled('password')) {
+        $updateData['password'] = Hash::make($request->password);
+        $updateData['plain_password'] = $request->password;
     }
 
-    $farmer->delete();
+    $user->update($updateData);
 
-    return back()->with('success', 'Dehqon (fermer) va uning barcha yer maydonlari muvaffaqiyatli o\'chirildi!');
+    $roleName = $user->role === 'monitor' ? 'Tuman nazoratchisi' : 'Dehqon (fermer)';
+    return back()->with('success', "{$roleName} ma'lumotlari muvaffaqiyatli yangilandi!");
+});
+
+// Dehqon (Fermer) yoki Monitor o'chirish (delete)
+Route::post('/admin/farmers/destroy/{id}', function ($id) {
+    $user = User::findOrFail($id);
+
+    if ($user->role === 'farmer') {
+        $user->load('farms.vehicles', 'farms.soilAnalyses', 'farms.geofences', 'farms.alerts');
+        // Cascade delete related farms and their data
+        foreach ($user->farms as $farm) {
+            // Delete vehicles & their data
+            foreach ($farm->vehicles as $vehicle) {
+                $vehicle->gpsTracks()->delete();
+                $vehicle->alerts()->delete();
+                $vehicle->delete();
+            }
+            
+            // Delete farm alerts
+            $farm->alerts()->delete();
+
+            // Delete soil analyses & recommendations
+            foreach ($farm->soilAnalyses as $analysis) {
+                $analysis->recommendation()->delete();
+                $analysis->delete();
+            }
+
+            // Delete geofences
+            $farm->geofences()->delete();
+
+            // Delete farm
+            $farm->delete();
+        }
+    }
+
+    $user->delete();
+
+    $roleName = $user->role === 'monitor' ? 'Tuman nazoratchisi' : 'Dehqon (fermer)';
+    return back()->with('success', "{$roleName} muvaffaqiyatli o'chirildi!");
 });
 
 // Yangi Farm va uning xarita geofence chegarasini saqlash
@@ -294,8 +363,14 @@ Route::post('/admin/vehicles/store', function (Request $request) {
         'plate_number' => 'required|string|max:20',
         'farm_id' => 'required|exists:farms,id',
         'gps_device_id' => 'required|string|max:50|unique:vehicles,gps_device_id',
+        'sim_number' => 'nullable|string|max:30',
         'fuel_capacity' => 'required|numeric|min:10',
+        'nominal_rate_road' => 'nullable|numeric|min:0.1',
+        'nominal_rate_work_light' => 'nullable|numeric|min:0.1',
+        'nominal_rate_work_heavy' => 'nullable|numeric|min:0.1',
     ]);
+
+    $rates = Vehicle::getNominalRatesForName($request->name);
 
     $vehicle = Vehicle::create([
         'name' => $request->name,
@@ -303,7 +378,12 @@ Route::post('/admin/vehicles/store', function (Request $request) {
         'plate_number' => $request->plate_number,
         'farm_id' => $request->farm_id,
         'gps_device_id' => $request->gps_device_id,
+        'sim_number' => $request->sim_number,
         'fuel_capacity' => $request->fuel_capacity,
+        'nominal_rate_road' => $request->nominal_rate_road ?? $rates['road'],
+        'nominal_rate_work_light' => $request->nominal_rate_work_light ?? $rates['light'],
+        'nominal_rate_work_heavy' => $request->nominal_rate_work_heavy ?? $rates['heavy'],
+        'current_fuel_level' => $request->fuel_capacity * 0.8, // Boshlang'ich yoqilg'i: 80%
     ]);
 
     // Boshlang'ich GPS koordinatasini ferma joylashgan joyda yaratish (xaritada darhol ko'rinishi uchun)
@@ -314,7 +394,7 @@ Route::post('/admin/vehicles/store', function (Request $request) {
             'latitude' => $farm->latitude,
             'longitude' => $farm->longitude,
             'speed' => 0.0,
-            'fuel_level' => 85.0,
+            'fuel_level' => 80.0,
             'signal_strength' => 95,
             'recorded_at' => now(),
         ]);
@@ -333,7 +413,11 @@ Route::post('/admin/vehicles/update/{id}', function (Request $request, $id) {
         'plate_number' => 'required|string|max:20',
         'farm_id' => 'required|exists:farms,id',
         'gps_device_id' => 'required|string|max:50|unique:vehicles,gps_device_id,' . $id,
+        'sim_number' => 'nullable|string|max:30',
         'fuel_capacity' => 'required|numeric|min:10',
+        'nominal_rate_road' => 'nullable|numeric|min:0.1',
+        'nominal_rate_work_light' => 'nullable|numeric|min:0.1',
+        'nominal_rate_work_heavy' => 'nullable|numeric|min:0.1',
     ]);
 
     $vehicle->update([
@@ -342,10 +426,46 @@ Route::post('/admin/vehicles/update/{id}', function (Request $request, $id) {
         'plate_number' => $request->plate_number,
         'farm_id' => $request->farm_id,
         'gps_device_id' => $request->gps_device_id,
+        'sim_number' => $request->sim_number,
         'fuel_capacity' => $request->fuel_capacity,
+        'nominal_rate_road' => $request->nominal_rate_road ?? $vehicle->nominal_rate_road,
+        'nominal_rate_work_light' => $request->nominal_rate_work_light ?? $vehicle->nominal_rate_work_light,
+        'nominal_rate_work_heavy' => $request->nominal_rate_work_heavy ?? $vehicle->nominal_rate_work_heavy,
     ]);
 
     return back()->with('success', 'Texnika ma\'lumotlari muvaffaqiyatli yangilandi!');
+});
+
+// Shubhali yoqilg'i ogohlantirishini tasdiqlash yoki rad etish
+Route::post('/admin/fuel-alerts/{id}/resolve', function (Request $request, $id) {
+    $alert = \App\Models\FuelAlert::findOrFail($id);
+    $status = $request->status; // 'confirmed' yoki 'rejected'
+    
+    $alert->update(['status' => $status]);
+    
+    if ($status === 'confirmed') {
+        $vehicle = $alert->vehicle;
+        $road = floatval($vehicle->nominal_rate_road) * 1.05;
+        $light = floatval($vehicle->nominal_rate_work_light) * 1.05;
+        $heavy = floatval($vehicle->nominal_rate_work_heavy) * 1.05;
+        
+        $vehicle->update([
+            'nominal_rate_road' => round($road, 2),
+            'nominal_rate_work_light' => round($light, 2),
+            'nominal_rate_work_heavy' => round($heavy, 2)
+        ]);
+
+        \App\Models\Alert::create([
+            'vehicle_id' => $vehicle->id,
+            'farm_id' => $vehicle->farm_id,
+            'type' => 'system_calibration',
+            'message' => "Tizim o'rganish natijasi: {$vehicle->name} uchun yoqilg'i me'yorlari kalibrlandi (Yo'l: {$vehicle->nominal_rate_road}L/s, Yengil: {$vehicle->nominal_rate_work_light}L/s, Og'ir: {$vehicle->nominal_rate_work_heavy}L/s).",
+            'status' => 'resolved',
+            'triggered_at' => now(),
+        ]);
+    }
+    
+    return back()->with('success', $status === 'confirmed' ? 'Shubhali holat tasdiqlandi va tizim me\'yorlari kalibrlandi!' : 'Shubhali holat rad etildi.');
 });
 
 // Texnikani o'chirish (delete)
@@ -370,6 +490,26 @@ Route::get('/admin/soil', function () {
 Route::get('/admin/alerts', function () {
     $alerts = Alert::with(['vehicle', 'farm'])->latest()->get();
     return view('admin.alerts', compact('alerts'));
+});
+
+// Adminga kelgan Murojaatlar ro'yxati
+Route::get('/admin/messages', function () {
+    $messages = \App\Models\SupportMessage::with('user')->orderBy('is_resolved', 'asc')->latest()->get();
+    return view('admin.messages', compact('messages'));
+});
+
+// Murojaatni o'qilgan/hal qilingan deb belgilash
+Route::post('/admin/messages/resolve/{id}', function ($id) {
+    $msg = \App\Models\SupportMessage::findOrFail($id);
+    $msg->update(['is_resolved' => true]);
+    return back()->with('success', 'Murojaat muvaffaqiyatli o\'qildi/hal qilindi deb belgilandi.');
+});
+
+// Murojaatni o'chirish
+Route::post('/admin/messages/destroy/{id}', function ($id) {
+    $msg = \App\Models\SupportMessage::findOrFail($id);
+    $msg->delete();
+    return back()->with('success', 'Murojaat muvaffaqiyatli o\'chirildi.');
 });
 
 // Hududlar ro'yxati
@@ -421,101 +561,118 @@ Route::post('/admin/commands/clear/{id}', function ($id) {
     return back()->with('success', "{$vehicle->name} texnikasi uchun navbatdagi buyruq muvaffaqiyatli bekor qilindi.");
 });
 
-// Hukumat monitoring paneli (Token bilan himoyalangan, Login shart emas)
-Route::get('/monitor', function (Request $request) {
-    $validToken = 'agromind_monitoring_token_2026';
-    
-    if ($request->query('token') !== $validToken) {
-        abort(403, 'Ruxsat etilmagan kirish. Monitoring tokeni xato yoki mavjud emas.');
-    }
-    
-    return view('monitor');
 });
 
-// Real-vaqt rejimida texnika telemetriyasini beruvchi ochiq JSON API
-Route::get('/api/live-vehicles', function () {
-    $vehicles = Vehicle::with(['farm', 'latestGpsTrack'])->get();
-    $vehicles->each(function ($v) {
-        $v->append('status');
+// Hukumat monitoring paneli (Hozirda faqat admin va monitor rollariga login orqali ruxsat beriladi)
+Route::middleware(['admin.auth'])->group(function () {
+    Route::get('/monitor', function (Request $request) {
+        return view('monitor');
     });
-    return response()->json($vehicles);
-});
 
-// Real-vaqt rejimida fermer xo'jaliklari, geofencelar va tegishli texnikalarni beruvchi ochiq JSON API
-Route::get('/api/live-farms', function () {
-    $farms = \App\Models\Farm::with(['owner', 'geofences.latestSoilAnalysis.recommendation', 'vehicles.latestGpsTrack'])->get();
-    $farms->each(function ($f) {
-        $f->vehicles->each(function ($v) {
+    // Real-vaqt rejimida texnika telemetriyasini beruvchi JSON API
+    Route::get('/api/live-vehicles', function () {
+        $user = Auth::user();
+        $query = Vehicle::with(['farm', 'latestGpsTrack']);
+        
+        if ($user->role === 'monitor') {
+            $query->whereHas('farm', function ($q) use ($user) {
+                $q->where('district', $user->district);
+            });
+        }
+        
+        $vehicles = $query->get();
+        $vehicles->each(function ($v) {
             $v->append('status');
         });
+        return response()->json($vehicles);
     });
-    return response()->json($farms);
-});
 
-// Texnikaning ma'lum bir kundagi GPS harakat tarixi (GIS monitor uchun ochiq API)
-Route::get('/api/live-vehicles/{id}/history', function (Request $request, $id) {
-    $vehicle = \App\Models\Vehicle::find($id);
-    if (!$vehicle) {
-        return response()->json(['status' => 'error', 'message' => 'Texnika topilmadi.'], 404);
-    }
-    
-    $date = $request->query('date'); // Format: YYYY-MM-DD
-    $query = $vehicle->gpsTracks();
-    
-    if ($date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        $query->whereDate('recorded_at', $date);
-    } else {
-        // Default: Bugungi kungi ma'lumotlar
-        $query->whereDate('recorded_at', \Carbon\Carbon::today());
-    }
-    
-    $history = $query->orderBy('recorded_at', 'asc')->get();
+    // Real-vaqt rejimida fermer xo'jaliklari, geofencelar va tegishli texnikalarni beruvchi JSON API
+    Route::get('/api/live-farms', function () {
+        $user = Auth::user();
+        $query = \App\Models\Farm::with(['owner', 'geofences.latestSoilAnalysis.recommendation', 'vehicles.latestGpsTrack']);
         
-    return response()->json([
-        'status' => 'success',
-        'selected_date' => $date ?: \Carbon\Carbon::today()->toDateString(),
-        'history' => $history
-    ]);
-});
+        if ($user->role === 'monitor') {
+            $query->where('district', $user->district);
+        }
+        
+        $farms = $query->get();
+        $farms->each(function ($f) {
+            $f->vehicles->each(function ($v) {
+                $v->append('status');
+            });
+        });
+        return response()->json($farms);
+    });
 
-// AI recommendation generator for monitor panel (unauthenticated / token-based)
-Route::post('/api/monitor-analysis/{id}/recommend', function (Request $request, $id) {
-    $analysis = SoilAnalysis::find($id);
-    if (!$analysis) {
-        return response()->json(['status' => 'error', 'message' => 'Tahlil topilmadi.'], 404);
-    }
-    
-    $existingRec = \App\Models\Recommendation::where('soil_analysis_id', $analysis->id)->first();
-    if ($existingRec) {
+    // Texnikaning ma'lum bir kundagi GPS harakat tarixi (GIS monitor uchun API)
+    Route::get('/api/live-vehicles/{id}/history', function (Request $request, $id) {
+        $user = Auth::user();
+        $vehicle = \App\Models\Vehicle::findOrFail($id);
+        
+        if ($user->role === 'monitor' && (!$vehicle->farm || $vehicle->farm->district !== $user->district)) {
+            abort(403, 'Bu texnika ma\'lumotlarini ko\'rishga ruxsatingiz yo\'q.');
+        }
+        
+        $date = $request->query('date'); // Format: YYYY-MM-DD
+        $query = $vehicle->gpsTracks();
+        
+        if ($date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $query->whereDate('recorded_at', $date);
+        } else {
+            // Default: Bugungi kungi ma'lumotlar
+            $query->whereDate('recorded_at', \Carbon\Carbon::today());
+        }
+        
+        $history = $query->orderBy('recorded_at', 'asc')->get();
+            
         return response()->json([
             'status' => 'success',
-            'message' => 'Tavsiya tayyor.',
-            'recommendation' => $existingRec
+            'selected_date' => $date ?: \Carbon\Carbon::today()->toDateString(),
+            'history' => $history
         ]);
-    }
-    
-    $groqService = app(\App\Services\GroqService::class);
-    $aiData = $groqService->getSoilRecommendation($analysis);
-    
-    $recommendation = \App\Models\Recommendation::create([
-        'soil_analysis_id' => $analysis->id,
-        'content' => $aiData['content'],
-        'recommended_crops' => $aiData['recommended_crops'],
-        'fertilizer_plan' => $aiData['fertilizer_plan'],
-        'ai_model' => $aiData['ai_model'],
-        'tokens_used' => $aiData['tokens_used'],
-    ]);
-    
-    $analysis->update(['status' => 'completed']);
-    
-    return response()->json([
-        'status' => 'success',
-        'message' => 'AI tavsiyasi tayyorlandi.',
-        'recommendation' => $recommendation
-    ]);
+    });
+
+    // AI recommendation generator for monitor panel (session-authenticated)
+    Route::post('/api/monitor-analysis/{id}/recommend', function (Request $request, $id) {
+        $user = Auth::user();
+        $analysis = SoilAnalysis::findOrFail($id);
+        
+        if ($user->role === 'monitor' && (!$analysis->farm || $analysis->farm->district !== $user->district)) {
+            abort(403, 'Bu tahlil ma\'lumotlarini ko\'rishga ruxsatingiz yo\'q.');
+        }
+        
+        $existingRec = \App\Models\Recommendation::where('soil_analysis_id', $analysis->id)->first();
+        if ($existingRec) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Tavsiya tayyor.',
+                'recommendation' => $existingRec
+            ]);
+        }
+        
+        $groqService = app(\App\Services\GroqService::class);
+        $aiData = $groqService->getSoilRecommendation($analysis);
+        
+        $recommendation = \App\Models\Recommendation::create([
+            'soil_analysis_id' => $analysis->id,
+            'content' => $aiData['content'],
+            'recommended_crops' => $aiData['recommended_crops'],
+            'fertilizer_plan' => $aiData['fertilizer_plan'],
+            'ai_model' => $aiData['ai_model'],
+            'tokens_used' => $aiData['tokens_used'],
+        ]);
+        
+        $analysis->update(['status' => 'completed']);
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'AI tavsiyasi tayyorlandi.',
+            'recommendation' => $recommendation
+        ]);
+    });
 });
 
-// Helper to run migrations & seeders on production (cPanel)
 Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request) {
     if ($request->query('token') !== 'agromind_monitoring_token_2026') {
         abort(403, 'Unauthorized.');
@@ -523,11 +680,28 @@ Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request)
 
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        
+        // Update or create admin credentials
+        $admin = \App\Models\User::where('role', 'admin')->first();
+        if ($admin) {
+            $admin->update([
+                'phone' => 'admin@uzagromind.uz',
+                'password' => \Illuminate\Support\Facades\Hash::make('uzagromind4321')
+            ]);
+        } else {
+            \App\Models\User::create([
+                'name' => 'Admin AgroMind',
+                'phone' => 'admin@uzagromind.uz',
+                'role' => 'admin',
+                'password' => \Illuminate\Support\Facades\Hash::make('uzagromind4321')
+            ]);
+        }
+
         \Illuminate\Support\Facades\Artisan::call('db:seed', [
             '--class' => 'Database\\Seeders\\PredefinedFarmSeeder',
             '--force' => true
         ]);
-        return 'Migrations and Seeding completed successfully!';
+        return 'Migrations and Seeding completed successfully, admin user updated!';
     } catch (\Exception $e) {
         return 'Error: ' . $e->getMessage();
     }
@@ -547,19 +721,19 @@ Route::get('/water-entry', function (Request $request) {
 
     $farms = Farm::with('owner')->orderBy('name')->get();
     
-    $existingRecords = collect();
+    $existingRecord = null;
     $farmId = $request->query('farm_id');
     $year = $request->query('year', date('Y'));
     $month = $request->query('month');
 
     if ($farmId && $month) {
-        $existingRecords = WaterRecord::where('farm_id', $farmId)
+        $existingRecord = WaterRecord::where('farm_id', $farmId)
             ->where('year', $year)
             ->where('month', $month)
-            ->get();
+            ->first();
     }
 
-    return view('water.entry', compact('farms', 'existingRecords'));
+    return view('water.entry', compact('farms', 'existingRecord'));
 });
 
 Route::post('/water-entry/store', function (Request $request) {
@@ -571,32 +745,28 @@ Route::post('/water-entry/store', function (Request $request) {
         'farm_id' => 'required|exists:farms,id',
         'year' => 'required|integer',
         'month' => 'required|integer|between:1,12',
-        'records' => 'required|array',
+        'limit_m3' => 'required|numeric|min:0',
+        'used_m3' => 'required|numeric|min:0',
     ]);
 
     $farmId = $request->input('farm_id');
     $year = $request->input('year');
     $month = $request->input('month');
 
-    foreach ($request->input('records') as $source => $decades) {
-        foreach ($decades as $decade => $values) {
-            WaterRecord::updateOrCreate([
-                'farm_id' => $farmId,
-                'year' => $year,
-                'month' => $month,
-                'decade' => $decade,
-                'water_source' => $source,
-            ], [
-                'limit_m3' => $values['limit_m3'] ?? 0.00,
-                'used_m3' => $values['used_m3'] ?? 0.00,
-            ]);
-        }
-    }
+    WaterRecord::updateOrCreate([
+        'farm_id' => $farmId,
+        'year' => $year,
+        'month' => $month,
+    ], [
+        'limit_m3' => $request->input('limit_m3'),
+        'used_m3' => $request->input('used_m3'),
+    ]);
 
     return back()->with('success', 'Ushbu oy uchun suv limitlari va sarfi muvaffaqiyatli saqlandi!');
 });
 
 // 2. Admin Panel integratsiyasi
+Route::middleware(['admin.auth'])->group(function () {
 Route::get('/admin/water', function (Request $request) {
     $farms = Farm::orderBy('name')->get();
 
@@ -618,7 +788,6 @@ Route::get('/admin/water', function (Request $request) {
 
     $records = $query->orderBy('year', 'desc')
         ->orderBy('month', 'desc')
-        ->orderBy('decade', 'asc')
         ->paginate(15);
 
     return view('admin.water', compact('records', 'farms', 'totalLimit', 'totalUsed'));
@@ -627,19 +796,19 @@ Route::get('/admin/water', function (Request $request) {
 Route::get('/admin/water/create', function (Request $request) {
     $farms = Farm::with('owner')->orderBy('name')->get();
     
-    $existingRecords = collect();
+    $existingRecord = null;
     $farmId = $request->query('farm_id');
     $year = $request->query('year', date('Y'));
     $month = $request->query('month');
 
     if ($farmId && $month) {
-        $existingRecords = WaterRecord::where('farm_id', $farmId)
+        $existingRecord = WaterRecord::where('farm_id', $farmId)
             ->where('year', $year)
             ->where('month', $month)
-            ->get();
+            ->first();
     }
 
-    return view('admin.water_create', compact('farms', 'existingRecords'));
+    return view('admin.water_create', compact('farms', 'existingRecord'));
 });
 
 Route::post('/admin/water/store', function (Request $request) {
@@ -647,27 +816,22 @@ Route::post('/admin/water/store', function (Request $request) {
         'farm_id' => 'required|exists:farms,id',
         'year' => 'required|integer',
         'month' => 'required|integer|between:1,12',
-        'records' => 'required|array',
+        'limit_m3' => 'required|numeric|min:0',
+        'used_m3' => 'required|numeric|min:0',
     ]);
 
     $farmId = $request->input('farm_id');
     $year = $request->input('year');
     $month = $request->input('month');
 
-    foreach ($request->input('records') as $source => $decades) {
-        foreach ($decades as $decade => $values) {
-            WaterRecord::updateOrCreate([
-                'farm_id' => $farmId,
-                'year' => $year,
-                'month' => $month,
-                'decade' => $decade,
-                'water_source' => $source,
-            ], [
-                'limit_m3' => $values['limit_m3'] ?? 0.00,
-                'used_m3' => $values['used_m3'] ?? 0.00,
-            ]);
-        }
-    }
+    WaterRecord::updateOrCreate([
+        'farm_id' => $farmId,
+        'year' => $year,
+        'month' => $month,
+    ], [
+        'limit_m3' => $request->input('limit_m3'),
+        'used_m3' => $request->input('used_m3'),
+    ]);
 
     return redirect('/admin/water')->with('success', 'Suv limitlari va sarfi muvaffaqiyatli saqlandi!');
 });
@@ -676,6 +840,8 @@ Route::post('/admin/water/destroy/{id}', function ($id) {
     $record = WaterRecord::findOrFail($id);
     $record->delete();
     return back()->with('success', 'Suv yozuvi muvaffaqiyatli o\'chirildi.');
+});
+
 });
 
 // 3. Mobil dasturchilar uchun ochiq API yo'nalishlari (API routes)
@@ -688,7 +854,6 @@ Route::get('/api/farms/{id}/water-records', function ($id) {
     $records = WaterRecord::where('farm_id', $id)
         ->orderBy('year', 'desc')
         ->orderBy('month', 'desc')
-        ->orderBy('decade', 'asc')
         ->get();
 
     return response()->json([
@@ -711,7 +876,6 @@ Route::get('/api/farmers/{id}/water-records', function ($id) {
         ->with('farm')
         ->orderBy('year', 'desc')
         ->orderBy('month', 'desc')
-        ->orderBy('decade', 'asc')
         ->get();
 
     return response()->json([
@@ -732,8 +896,6 @@ Route::post('/api/water-records/store', function (Request $request) {
         'farm_id' => 'required|exists:farms,id',
         'year' => 'required|integer',
         'month' => 'required|integer|between:1,12',
-        'decade' => 'required|integer|between:1,3',
-        'water_source' => 'required|string',
         'limit_m3' => 'required|numeric|min:0',
         'used_m3' => 'required|numeric|min:0',
     ]);
@@ -742,8 +904,6 @@ Route::post('/api/water-records/store', function (Request $request) {
         'farm_id' => $request->farm_id,
         'year' => $request->year,
         'month' => $request->month,
-        'decade' => $request->decade,
-        'water_source' => $request->water_source,
     ], [
         'limit_m3' => $request->limit_m3,
         'used_m3' => $request->used_m3,

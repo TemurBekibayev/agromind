@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'dart:async';
 import '../services/api_service.dart';
 
 // --- API Service Provider ---
@@ -83,6 +84,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(
           isLoading: false,
           errorMessage: response.data['message'] ?? 'Kirish xatosi.',
+        );
+        return false;
+      }
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Tarmoq xatoligi yoki server ishlamayapti: $e',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> register({
+    required String name,
+    required String phone,
+    required int regionId,
+    String? district,
+    required String password,
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final response = await _apiService.register(
+        name: name,
+        phone: phone,
+        regionId: regionId,
+        district: district,
+        password: password,
+      );
+      if (response.data['status'] == 'success') {
+        state = AuthState(
+          isAuthenticated: true,
+          user: response.data['user'],
+          isLoading: false,
+        );
+        return true;
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: response.data['message'] ?? 'Ro\'yxatdan o\'tish xatosi.',
         );
         return false;
       }
@@ -392,3 +432,96 @@ final listingsProvider = StateNotifierProvider<ListingsNotifier, AsyncValue<List
 
 // --- UI Helpers / Navigation Providers ---
 final shouldShowAddListingProvider = StateProvider<bool>((ref) => false);
+
+// --- Shaxsiy Chatlar (Private Chats) State ---
+class PrivateChatUsersNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
+  final ApiService _apiService;
+
+  PrivateChatUsersNotifier(this._apiService) : super(const AsyncValue.loading()) {
+    fetchChatUsers();
+  }
+
+  Future<void> fetchChatUsers() async {
+    try {
+      final res = await _apiService.getPrivateChatUsers();
+      if (res.data['status'] == 'success') {
+        state = AsyncValue.data(res.data['chats'] as List<dynamic>);
+      } else {
+        state = AsyncValue.error('Suhbatdoshlarni yuklab bo\'lmadi', StackTrace.current);
+      }
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+}
+
+final privateChatUsersProvider = StateNotifierProvider<PrivateChatUsersNotifier, AsyncValue<List<dynamic>>>((ref) {
+  final api = ref.watch(apiServiceProvider);
+  return PrivateChatUsersNotifier(api);
+});
+
+class PrivateMessagesNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
+  final ApiService _apiService;
+  final int partnerId;
+  Timer? _pollingTimer;
+
+  PrivateMessagesNotifier(this._apiService, this.partnerId) : super(const AsyncValue.loading()) {
+    fetchMessages(showLoading: true);
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      fetchMessages(showLoading: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> fetchMessages({bool showLoading = false}) async {
+    if (showLoading) {
+      state = const AsyncValue.loading();
+    }
+    try {
+      final res = await _apiService.getPrivateMessages(partnerId);
+      if (res.data['status'] == 'success') {
+        state = AsyncValue.data(res.data['messages'] as List<dynamic>);
+      } else if (showLoading) {
+        state = AsyncValue.error('Xabarlarni yuklab bo\'lmadi', StackTrace.current);
+      }
+    } catch (e, stack) {
+      if (showLoading) {
+        state = AsyncValue.error(e, stack);
+      }
+    }
+  }
+
+  Future<bool> sendMessage({String? message, String? audioPath}) async {
+    try {
+      final res = await _apiService.sendPrivateMessage(
+        receiverId: partnerId,
+        message: message,
+        audioPath: audioPath,
+      );
+      if (res.data['status'] == 'success') {
+        final newMsg = res.data['message'];
+        state.whenData((currentList) {
+          if (!currentList.any((m) => m['id'] == newMsg['id'])) {
+            state = AsyncValue.data([...currentList, newMsg]);
+          }
+        });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+}
+
+final privateMessagesProvider = StateNotifierProvider.family<PrivateMessagesNotifier, AsyncValue<List<dynamic>>, int>((ref, partnerId) {
+  final api = ref.watch(apiServiceProvider);
+  return PrivateMessagesNotifier(api, partnerId);
+});

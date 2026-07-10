@@ -221,4 +221,261 @@ class VehicleController extends Controller
             'delivery' => 'queued'
         ]);
     }
+
+    /**
+     * Texnikaning yoqilg'i sarfi hisoboti va oxirgi yoqilg'i quyish tarixi.
+     */
+    public function fuelReport(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $vehicle = Vehicle::find($id);
+        } else {
+            $farmIds = $user->farms()->pluck('id');
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        }
+
+        if (!$vehicle) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Texnika topilmadi yoki sizga tegishli emas.'
+            ], 404);
+        }
+
+        // Bosib o'tgan masofa (km)
+        $distance = $vehicle->getDistanceTraveled();
+        // Model bo'yicha kutilgan o'rtacha sarf (litr / km)
+        $expectedRate = $vehicle->expected_fuel_rate;
+        // Kutilgan jami yoqilg'i sarfi (litr)
+        $expectedConsumed = round($distance * $expectedRate, 2);
+        
+        // Haqiqiy yoqilg'i sarfi (litr / km)
+        $actualRate = $vehicle->getActualFuelRate();
+        
+        // Jami kiritilgan yoqilg'i miqdori (litr)
+        $totalRefilled = $vehicle->fuelEntries()->sum('fuel_amount');
+
+        // Dinamik yoqilg'i holati
+        $capacity = floatval($vehicle->fuel_capacity) ?: 50.0;
+        $currentFuel = floatval($vehicle->current_fuel_level);
+        $percent = round(($currentFuel / $capacity) * 100.0, 1);
+        
+        $fuelStatus = 'ok';
+        if ($percent <= 0) {
+            if (floatval($vehicle->distance_since_empty) > 2.0) {
+                $fuelStatus = 'missing_refill';
+            } else {
+                $fuelStatus = 'empty';
+            }
+        } elseif ($percent <= 15) {
+            $fuelStatus = 'low';
+        }
+
+        $warningMessage = null;
+        if ($fuelStatus === 'missing_refill') {
+            $warningMessage = "Siz solingan yoqilg'i miqdorini kiritmagansiz! Iltimos, oxirgi yoqilg'i quyilganligini tasdiqlab ilovaga kiriting.";
+        }
+
+        // Oxirgi yoqilg'i quyishlar
+        $entries = $vehicle->fuelEntries()
+            ->orderBy('refilled_at', 'desc')
+            ->limit(30)
+            ->get();
+
+        // Shubhali holatlar
+        $alerts = $vehicle->fuelAlerts()
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'report' => [
+                'vehicle_id' => $vehicle->id,
+                'vehicle_name' => $vehicle->name,
+                'plate_number' => $vehicle->plate_number,
+                'distance_traveled_km' => $distance,
+                'expected_rate_l_km' => $expectedRate,
+                'expected_consumed_liters' => $expectedConsumed,
+                'actual_rate_l_km' => $actualRate,
+                'total_refilled_liters' => $totalRefilled,
+                'current_fuel_liters' => $currentFuel,
+                'current_fuel_percent' => $percent,
+                'fuel_status' => $fuelStatus,
+                'warning_message' => $warningMessage,
+                'trust_score' => $vehicle->trust_score,
+                'average_difference_percent' => $vehicle->average_difference,
+                'suspicious_events_count' => $alerts->count(),
+            ],
+            'fuel_entries' => $entries,
+            'fuel_alerts' => $alerts
+        ]);
+    }
+
+    /**
+     * Mobil ilovadan yoqilg'i quyish miqdorini kiritish (refill).
+     */
+    public function storeFuelEntry(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $vehicle = Vehicle::find($id);
+        } else {
+            $farmIds = $user->farms()->pluck('id');
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        }
+
+        if (!$vehicle) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Texnika topilmadi yoki sizga tegishli emas.'
+            ], 404);
+        }
+
+        $request->validate([
+            'fuel_amount' => 'required|numeric|min:0.1',
+            'refilled_at' => 'nullable|date',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $fuelAmount = floatval($request->fuel_amount);
+        $currentFuel = floatval($vehicle->current_fuel_level);
+        $capacity = floatval($vehicle->fuel_capacity);
+        
+        $overflowMargin = $capacity * 1.15;
+        $isOverflow = ($currentFuel + $fuelAmount) > $overflowMargin;
+        
+        // Discrepancy (katta farq bilan to'xtab salyarka solish holatini tekshirish)
+        $maxPossibleRefill = max(0.0, $capacity - $currentFuel);
+        $isDiscrepancy = $fuelAmount > ($maxPossibleRefill + 10.0); // 10 Litr marja bilan
+
+        $warning = null;
+        if ($isOverflow) {
+            $warning = "Diqqat! Tizim hisobi bo'yicha bakda taxminan " . round($currentFuel, 1) . " litr yoqilg'i qolgan bo'lishi kerak edi. Kiritilgan miqdor bak sig'imidan oshib ketmoqda (Sig'im: {$capacity}L, Quyildi: {$fuelAmount}L). Traktorchi yoqilg'ini asossiz sarflagan (o'g'irlagan) bo'lishi mumkin!";
+            
+            \App\Models\FuelAlert::create([
+                'vehicle_id' => $vehicle->id,
+                'type' => 'overflow',
+                'severity' => 'medium',
+                'description' => "Bak sig'imidan ortiqcha yoqilg'i quyildi. Sig'im: {$capacity}L, Tizim bo'yicha qoldiq: {$currentFuel}L, Quyildi: {$fuelAmount}L.",
+                'calculated_fuel_before' => $currentFuel,
+                'refilled_amount' => $fuelAmount,
+                'status' => 'pending_check',
+            ]);
+        } elseif ($isDiscrepancy) {
+            $warning = "Diqqat! Tizim hisobi bo'yicha bakda taxminan " . round($currentFuel, 1) . " litr yoqilg'i qolgan bo'lishi kerak edi. Kiritilgan miqdor kutilganidan ancha ko'p (Sig'im: {$capacity}L, Quyildi: {$fuelAmount}L). Iltimos, traktorchi tomonidan yoqilg'i sarflanishini tekshiring.";
+            
+            \App\Models\FuelAlert::create([
+                'vehicle_id' => $vehicle->id,
+                'type' => 'discrepancy',
+                'severity' => 'low',
+                'description' => "Kutilganidan ko'p yoqilg'i quyildi. Taxminan yana {$currentFuel}L yoqilg'i qolgan bo'lishi kerak edi (Sig'im: {$capacity}L, Quyildi: {$fuelAmount}L).",
+                'calculated_fuel_before' => $currentFuel,
+                'refilled_amount' => $fuelAmount,
+                'status' => 'pending_check',
+            ]);
+        }
+
+        if ($warning) {
+            \App\Models\Alert::create([
+                'vehicle_id' => $vehicle->id,
+                'farm_id' => $vehicle->farm_id,
+                'type' => 'fuel_discrepancy',
+                'message' => $warning,
+                'status' => 'active',
+                'triggered_at' => now(),
+            ]);
+        }
+
+        // Tizimdagi yoqilg'i darajasini oshirish
+        $newLevel = min($currentFuel + $fuelAmount, $capacity);
+        $vehicle->update([
+            'current_fuel_level' => $newLevel,
+            'distance_since_empty' => 0.0,
+        ]);
+
+        $entry = \App\Models\FuelEntry::create([
+            'vehicle_id' => $vehicle->id,
+            'user_id' => $user->id,
+            'fuel_amount' => $fuelAmount,
+            'refilled_at' => $request->refilled_at ?? now(),
+            'notes' => $request->notes,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Yoqilg\'i quyish miqdori muvaffaqiyatli saqlandi.',
+            'warning' => $warning,
+            'entry' => $entry
+        ], 201);
+    }
+
+    /**
+     * Shubhali yoqilg'i ogohlantirishini tasdiqlash yoki rad etish (Calibration).
+     */
+    public function resolveFuelAlert(Request $request, $id, $alertId)
+    {
+        $user = $request->user();
+        
+        if ($user->isAdmin() || $user->isMonitor()) {
+            $vehicle = Vehicle::find($id);
+        } else {
+            $farmIds = $user->farms()->pluck('id');
+            $vehicle = Vehicle::whereIn('farm_id', $farmIds)->find($id);
+        }
+
+        if (!$vehicle) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Texnika topilmadi yoki sizga tegishli emas.'
+            ], 404);
+        }
+
+        $alert = \App\Models\FuelAlert::where('vehicle_id', $vehicle->id)->find($alertId);
+        if (!$alert) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Shubhali holat topilmadi.'
+            ], 404);
+        }
+
+        $request->validate([
+            'status' => 'required|string|in:confirmed,rejected'
+        ]);
+
+        $status = $request->status;
+        $alert->update(['status' => $status]);
+
+        // Moving-average kalibrlash (admin tasdiqlasa, me'yoriy sarflarni 5% ga oshiramiz)
+        if ($status === 'confirmed') {
+            $road = floatval($vehicle->nominal_rate_road) * 1.05;
+            $light = floatval($vehicle->nominal_rate_work_light) * 1.05;
+            $heavy = floatval($vehicle->nominal_rate_work_heavy) * 1.05;
+            
+            $vehicle->update([
+                'nominal_rate_road' => round($road, 2),
+                'nominal_rate_work_light' => round($light, 2),
+                'nominal_rate_work_heavy' => round($heavy, 2)
+            ]);
+
+            \App\Models\Alert::create([
+                'vehicle_id' => $vehicle->id,
+                'farm_id' => $vehicle->farm_id,
+                'type' => 'system_calibration',
+                'message' => "Tizim o'rganish natijasi: {$vehicle->name} uchun yoqilg'i me'yorlari kalibrlandi (Road: {$vehicle->nominal_rate_road}L, Light: {$vehicle->nominal_rate_work_light}L, Heavy: {$vehicle->nominal_rate_work_heavy}L).",
+                'status' => 'resolved',
+                'triggered_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $status === 'confirmed' 
+                ? 'Shubhali holat tasdiqlandi va tizim me\'yorlari kalibrlandi.' 
+                : 'Shubhali holat rad etildi.',
+            'alert' => $alert,
+            'vehicle' => $vehicle
+        ]);
+    }
 }
