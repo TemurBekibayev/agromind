@@ -816,7 +816,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => PrivateChatScreen(partnerId: id, partnerName: name),
+              builder: (context) => PrivateChatScreen(partner: {'id': id, 'name': name}),
             ),
           ).then((_) => _fetchPrivateChats());
         },
@@ -834,8 +834,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
           context,
           MaterialPageRoute(
             builder: (context) => PrivateChatScreen(
-              partnerId: admin['id'],
-              partnerName: admin['name'] ?? 'Admin',
+              partner: {'id': admin['id'], 'name': admin['name'] ?? 'Admin'},
             ),
           ),
         ).then((_) => _fetchPrivateChats());
@@ -899,8 +898,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => PrivateChatScreen(
-                                    partnerId: user['id'],
-                                    partnerName: name,
+                                    partner: {'id': user['id'], 'name': name},
                                   ),
                                 ),
                               ).then((_) => _fetchPrivateChats());

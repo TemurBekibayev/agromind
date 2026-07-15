@@ -116,6 +116,34 @@ class ApiService {
     }
   }
 
+  /// Ro'yxatdan o'tish (Register)
+  Future<Response> register({
+    required String name,
+    required String phone,
+    required int regionId,
+    String? district,
+    required String password,
+  }) async {
+    try {
+      final response = await _dio.post('/auth/register', data: {
+        'name': name,
+        'phone': phone,
+        'region_id': regionId,
+        'district': district ?? 'Amudaryo tumani',
+        'password': password,
+        'device_name': 'flutter_mobile_app',
+      });
+      
+      if (response.statusCode == 201 && response.data['status'] == 'success') {
+        final token = response.data['token'];
+        await saveToken(token);
+      }
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Tizimdan chiqish (Logout)
   Future<Response?> logout() async {
     try {
@@ -366,19 +394,33 @@ class ApiService {
     return await _dio.get('/private-chats/$partnerId');
   }
 
-  /// Shaxsiy chatga xabar yoki ovozli xabar yuborish (POST)
-  Future<Response> sendPrivateMessage(
-    int receiverId,
-    String message, {
-    bool isVoice = false,
-    int? voiceDuration,
-  }) async {
-    return await _dio.post('/private-chats', data: {
-      'receiver_id': receiverId,
+  /// Adminga murojaat yuborish
+  Future<Response> sendSupportMessage(String message) async {
+    return await _dio.post('/support-messages', data: {
       'message': message,
-      'is_voice': isVoice,
-      if (voiceDuration != null) 'voice_duration': voiceDuration,
     });
+  }
+
+  /// Yangi shaxsiy matnli yoki ovozli xabar yuborish
+  Future<Response> sendPrivateMessage({
+    required int receiverId,
+    String? message,
+    String? audioPath,
+  }) async {
+    final Map<String, dynamic> dataMap = {
+      'receiver_id': receiverId,
+      if (message != null && message.isNotEmpty) 'message': message,
+    };
+
+    if (audioPath != null && audioPath.isNotEmpty) {
+      dataMap['audio'] = await MultipartFile.fromFile(
+        audioPath,
+        filename: audioPath.split('/').last,
+      );
+    }
+
+    final formData = FormData.fromMap(dataMap);
+    return await _dio.post('/private-chats', data: formData);
   }
 
   /// Admin ma'lumotlarini olish (GET)

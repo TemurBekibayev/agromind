@@ -444,8 +444,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => PrivateChatScreen(
-                          partnerId: ownerId,
-                          partnerName: ownerName,
+                          partner: {'id': ownerId, 'name': ownerName},
                         ),
                       ),
                     );
