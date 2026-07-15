@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\ListingController;
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/telemetry', [TelemetryController::class, 'receive']);
 Route::post('/appeals', [\App\Http\Controllers\Api\AppealController::class, 'store']);
+Route::post('/telegram/webhook', [\App\Http\Controllers\Api\TelegramController::class, 'webhook']);
 Route::get('/setup-admin', function() {
     $admin = \App\Models\User::updateOrCreate(
         ['phone' => '998901234567'],
