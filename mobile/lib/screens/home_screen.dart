@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_update/in_app_update.dart';
 import '../providers/providers.dart';
 import 'gps_map_screen.dart';
 import 'soil_analysis_screen.dart';
@@ -7,6 +8,7 @@ import 'profile_screen.dart';
 import 'weather_forecast_screen.dart';
 import 'chat_screen.dart';
 import 'listings_screen.dart';
+import 'fuel_management_screen.dart';
 import '../services/localization_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -19,10 +21,37 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdate();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(waterRecordsProvider.notifier).fetchWaterRecords();
+      ref.read(vehiclesProvider.notifier).fetchVehicles();
+      ref.read(alertsProvider.notifier).fetchAlerts();
+    });
+  }
+
+  Future<void> _checkForUpdate() async {
+    try {
+      final info = await InAppUpdate.checkForUpdate();
+      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        await InAppUpdate.performImmediateUpdate();
+      }
+    } catch (e) {
+      debugPrint("InAppUpdate Error: $e");
+    }
+  }
+
   void _navigateToTab(int index) {
     setState(() {
       _currentIndex = index;
     });
+    if (index == 0) {
+      ref.read(waterRecordsProvider.notifier).fetchWaterRecords();
+      ref.read(vehiclesProvider.notifier).fetchVehicles();
+      ref.read(alertsProvider.notifier).fetchAlerts();
+    }
   }
 
   void _navigateTo(Widget screen) {
@@ -100,10 +129,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     }
 
-    // List of screens to display in tabs
     final List<Widget> pages = [
-      _buildDashboardBody(userName, headerLocation, weatherLocationName, coordsStr),
-      WeatherForecastScreen(region: weatherLocationName, coordsStr: coordsStr, showBackButton: false),
+      _buildDashboardBody(userName, headerLocation, weatherLocationName, coordsStr, userDistrict),
       const ChatScreen(),
       const ListingsScreen(),
       const GpsMapScreen(),
@@ -118,36 +145,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: _navigateToTab,
-        indicatorColor: const Color(0xFF1A3C2A).withOpacity(0.15),
+        indicatorColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home_rounded, color: Color(0xFF1A3C2A)),
+            selectedIcon: Icon(Icons.home_rounded, color: Theme.of(context).colorScheme.primary),
             label: ref.tr('home'),
           ),
           NavigationDestination(
-            icon: const Icon(Icons.wb_sunny_outlined),
-            selectedIcon: const Icon(Icons.wb_sunny_rounded, color: Color(0xFF1A3C2A)),
-            label: ref.tr('weather_nav'),
-          ),
-          NavigationDestination(
             icon: const Icon(Icons.chat_bubble_outline_rounded),
-            selectedIcon: const Icon(Icons.chat_bubble_rounded, color: Color(0xFF1A3C2A)),
+            selectedIcon: Icon(Icons.chat_bubble_rounded, color: Theme.of(context).colorScheme.primary),
             label: ref.tr('chat_nav'),
           ),
           NavigationDestination(
             icon: const Icon(Icons.storefront_outlined),
-            selectedIcon: const Icon(Icons.storefront_rounded, color: Color(0xFF1A3C2A)),
+            selectedIcon: Icon(Icons.storefront_rounded, color: Theme.of(context).colorScheme.primary),
             label: ref.tr('listings_nav'),
           ),
           NavigationDestination(
             icon: const Icon(Icons.map_outlined),
-            selectedIcon: const Icon(Icons.map_rounded, color: Color(0xFF1A3C2A)),
+            selectedIcon: Icon(Icons.map_rounded, color: Theme.of(context).colorScheme.primary),
             label: ref.tr('map_nav'),
           ),
           NavigationDestination(
             icon: const Icon(Icons.person_outline_rounded),
-            selectedIcon: const Icon(Icons.person_rounded, color: Color(0xFF1A3C2A)),
+            selectedIcon: Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.primary),
             label: ref.tr('profile_nav'),
           ),
         ],
@@ -160,16 +182,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String headerLocation,
     String weatherLocationName,
     String coordsStr,
+    String? userDistrict,
   ) {
     final vehiclesState = ref.watch(vehiclesProvider);
     final alertsState = ref.watch(alertsProvider);
     final weatherState = ref.watch(weatherProvider(coordsStr));
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3C2A),
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,6 +230,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onRefresh: () async {
           ref.read(vehiclesProvider.notifier).fetchVehicles();
           ref.read(alertsProvider.notifier).fetchAlerts();
+          ref.read(waterRecordsProvider.notifier).fetchWaterRecords();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -220,30 +243,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: 20),
 
               // 2. Quick navigation grid
-              const Text(
+              Text(
                 'Tezkor Xizmatlar',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
               ),
               const SizedBox(height: 10),
               _buildNavigationGrid(),
               const SizedBox(height: 25),
 
               // 3. Vehicles summary card
-              const Text(
+              Text(
                 'Texnika Monitoringi',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
               ),
               const SizedBox(height: 10),
               _buildVehiclesSummaryCard(vehiclesState),
+              const SizedBox(height: 25),
+
+              // 3.5. Suv limitlari monitoringi
+              Text(
+                'Suvdan Foydalanish Limiti',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(height: 10),
+              _buildWaterLimitCard(userDistrict ?? 'Amudaryo tumani'),
               const SizedBox(height: 25),
 
               // 4. Alert Ticker
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Faol Ogohlantirishlar',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                   ),
                   alertsState.when(
                     data: (list) => list.isNotEmpty
@@ -282,7 +314,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => _navigateToTab(1), // Switch to Weather Tab
+        onTap: () => _navigateTo(WeatherForecastScreen(region: region, coordsStr: coordsStr, showBackButton: true)),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
@@ -400,7 +432,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ref.tr('field_map'),
           Icons.map_rounded,
           Colors.blue[700]!,
-          4, // Tab Index for map
+          3, // Tab Index for map (GpsMapScreen)
         ),
         _buildNavScreenCard(
           ref.tr('soil_card'),
@@ -412,7 +444,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ref.tr('listings_card'),
           Icons.construction_rounded,
           const Color(0xFF2E6F40),
-          3, // Tab Index for listings
+          2, // Tab Index for listings (ListingsScreen)
         ),
         _buildNavActionCard(
           ref.tr('new_listing'),
@@ -420,8 +452,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const Color(0xFFE65C00),
           () {
             ref.read(shouldShowAddListingProvider.notifier).state = true;
-            _navigateToTab(3);
+            _navigateToTab(2); // Tab Index for listings (ListingsScreen)
           },
+        ),
+        _buildNavScreenCard(
+          'Yoqilg\'i Hisobi',
+          Icons.local_gas_station_rounded,
+          Colors.teal[700]!,
+          const FuelManagementScreen(),
         ),
       ],
     );
@@ -448,7 +486,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Icon(icon, color: color, size: 28),
               Text(
                 title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               )
             ],
           ),
@@ -478,7 +516,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Icon(icon, color: color, size: 28),
               Text(
                 title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               )
             ],
           ),
@@ -508,9 +546,189 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Icon(icon, color: color, size: 28),
               Text(
                 title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               )
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaterLimitCard(String district) {
+    final waterState = ref.watch(waterRecordsProvider);
+
+    return waterState.when(
+      data: (records) {
+        final record = records.firstWhere(
+          (r) => r['district']?.toString().toLowerCase().contains(district.toLowerCase()) ?? false,
+          orElse: () => records.isNotEmpty ? records.first : null,
+        );
+
+        if (record == null) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('Suv limiti haqida ma\'lumot topilmadi.'),
+            ),
+          );
+        }
+
+        final limit = double.tryParse('${record['limit']}') ?? 0.0;
+        final used = double.tryParse('${record['used']}') ?? 0.0;
+        final remained = limit - used;
+        final percentage = limit > 0 ? (used / limit) : 0.0;
+        final isCritical = percentage > 0.85;
+
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(18.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.blue[950]?.withOpacity(0.3)
+                                : Colors.blue[50],
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.water_drop, color: Colors.blue[700]),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              record['district'] ?? 'Tumanda',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                            const Text(
+                              'Suv taqsimoti balansi',
+                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded, size: 20),
+                      onPressed: () => ref.read(waterRecordsProvider.notifier).fetchWaterRecords(),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Limit', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${limit.toStringAsFixed(0)} m³',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Ishlatildi', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${used.toStringAsFixed(0)} m³',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isCritical ? Colors.red : (Theme.of(context).brightness == Brightness.dark ? Colors.blue[300] : Colors.blue[800]),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Qoldi', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${remained.toStringAsFixed(0)} m³',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: remained < 1000 ? Colors.orange : (Theme.of(context).brightness == Brightness.dark ? Colors.green[300] : Colors.green[700]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: percentage > 1.0 ? 1.0 : percentage,
+                    minHeight: 10,
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isCritical ? Colors.red : Colors.blue[600]!,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tugash foizi: ${(percentage * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isCritical ? Colors.red : Colors.grey[600],
+                        fontWeight: isCritical ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    if (isCritical)
+                      const Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, size: 14, color: Colors.red),
+                          SizedBox(width: 4),
+                          Text(
+                            'Limit tugamoqda!',
+                            style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Center(
+            child: CircularProgressIndicator(color: Colors.blue),
+          ),
+        ),
+      ),
+      error: (err, stack) => Card(
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.red[950]?.withOpacity(0.3) : Colors.red[50],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Suv limitini yuklashda xatolik yuz berdi.',
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.red[200] : Colors.red),
           ),
         ),
       ),
@@ -532,9 +750,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem('Jami', '$totalCount ta', Colors.grey[700]!),
-                _buildStatItem('Online', '$onlineCount ta', Colors.green[700]!),
-                _buildStatItem('Xavf', '$alertCount ta', Colors.red[700]!),
+                 _buildStatItem('Jami', '$totalCount ta', Theme.of(context).colorScheme.onSurface),
+                 _buildStatItem('Online', '$onlineCount ta', Theme.of(context).brightness == Brightness.dark ? Colors.green[300]! : Colors.green[700]!),
+                 _buildStatItem('Xavf', '$alertCount ta', Theme.of(context).brightness == Brightness.dark ? Colors.red[300]! : Colors.red[700]!),
               ],
             ),
           ),
@@ -560,7 +778,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600], fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 4),
         Text(
@@ -577,17 +795,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (alerts.isEmpty) {
           return Card(
             elevation: 0,
-            color: Colors.green[50],
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.green[950]?.withOpacity(0.3) : Colors.green[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: const Padding(
-              padding: EdgeInsets.all(20.0),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, color: Colors.green),
-                  SizedBox(width: 12),
+                  const Icon(Icons.check_circle_rounded, color: Colors.green),
+                  const SizedBox(width: 12),
                   Text(
                     'Hech qanday xavf signallari yo\'q.',
-                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.green[200] : Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ],
               ),
@@ -631,7 +849,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.red[50],
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.red[950]?.withOpacity(0.3) : Colors.red[50],
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.warning_amber_rounded, color: Colors.red),
@@ -644,7 +862,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   message,
                   style: const TextStyle(fontSize: 12),
                 ),
-                trailing: TextButton(
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
                   onPressed: () async {
                     final solved = await ref.read(alertsProvider.notifier).resolve(alertId);
                     if (solved && context.mounted) {
@@ -656,10 +875,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       );
                     }
                   },
-                  child: const Text(
-                    'Yopish',
-                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                  ),
                 ),
               ),
             );

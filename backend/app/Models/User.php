@@ -40,6 +40,13 @@ class User extends Authenticatable
     ];
 
     /**
+     * Appended properties.
+     */
+    protected $appends = [
+        'total_area',
+    ];
+
+    /**
      * Cast qilinadigan maydonlar.
      *
      * @return array<string, string>
@@ -105,5 +112,13 @@ class User extends Authenticatable
     public function isFarmer(): bool
     {
         return $this->role === 'farmer';
+    }
+
+    /**
+     * Get the total land area of all farms.
+     */
+    public function getTotalAreaAttribute()
+    {
+        return $this->farms()->sum('size');
     }
 }

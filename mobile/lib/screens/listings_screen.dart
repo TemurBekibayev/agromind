@@ -5,6 +5,8 @@ import '../providers/providers.dart';
 import '../services/localization_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
+import 'private_chat_screen.dart';
 
 class ListingsScreen extends ConsumerStatefulWidget {
   const ListingsScreen({super.key});
@@ -385,43 +387,87 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
     );
   }
 
-  void _contactSeller(BuildContext context, String phone, String ownerName) {
-    showDialog(
+  void _contactSeller(BuildContext context, String phone, String ownerName, int? ownerId) {
+    showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) {
-        return AlertDialog(
-          title: Text(ownerName),
-          content: Column(
+        return SafeArea(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Fermer bilan bog\'lanish uchun telefon raqami:'),
-              const SizedBox(height: 10),
-              SelectableText(
-                phone,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text(
+                  ownerName,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  phone,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.phone_rounded, color: Colors.blue),
+                title: const Text('Qo‘ng‘iroq qilish'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final uri = Uri.parse('tel:$phone');
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                },
+              ),
+              if (ownerId != null)
+                ListTile(
+                  leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.green),
+                  title: const Text('Shaxsiy chatda yozish'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PrivateChatScreen(
+                          partnerId: ownerId,
+                          partnerName: ownerName,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.copy_rounded, color: Colors.orange),
+                title: const Text('Raqamni nusxalash'),
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: phone));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Telefon raqami nusxalandi!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: phone));
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Telefon raqami buferga nusxalandi.'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              child: const Text('Nusxalash', style: TextStyle(color: Color(0xFF1A3C2A), fontWeight: FontWeight.bold)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Yopish', style: TextStyle(color: Colors.grey)),
-            ),
-          ],
         );
       },
     );
@@ -446,10 +492,9 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
     });
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3C2A),
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 1,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -695,7 +740,7 @@ class _ListingsScreenState extends ConsumerState<ListingsScreen> {
                                     ],
                                   ),
                                   ElevatedButton.icon(
-                                    onPressed: () => _contactSeller(context, phone, ownerName),
+                                    onPressed: () => _contactSeller(context, phone, ownerName, owner['id']),
                                     icon: const Icon(Icons.phone_rounded, size: 16),
                                     label: Text(ref.tr('contact_btn')),
                                     style: ElevatedButton.styleFrom(

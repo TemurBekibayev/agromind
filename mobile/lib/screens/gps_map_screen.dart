@@ -18,6 +18,8 @@ class GpsMapScreen extends ConsumerStatefulWidget {
 
 class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
   int? _selectedVehicleId;
+  double? _serverFuelPercent;
+  int _selectedDateFilter = 0;
   Timer? _timer;
   List<dynamic> _history = [];
   Map<String, dynamic>? _currentLocation;
@@ -80,8 +82,17 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
         final lat = double.tryParse('${loc['latitude']}') ?? 41.38;
         final lng = double.tryParse('${loc['longitude']}') ?? 69.45;
 
+        double? serverFuel;
+        try {
+          final fuelRes = await api.getFuelReport(id);
+          if (fuelRes.data['status'] == 'success') {
+            serverFuel = (fuelRes.data['report']['current_fuel_percent'] as num?)?.toDouble();
+          }
+        } catch (_) {}
+
         setState(() {
           _currentLocation = res.data;
+          _serverFuelPercent = serverFuel;
           _isLoadingLocation = false;
 
           _markers.clear();
@@ -92,10 +103,11 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
               height: 50,
               child: GestureDetector(
                 onTap: () {
+                  final displayFuel = serverFuel ?? loc['fuel_level'] ?? 0;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        '${res.data['vehicle_name'] ?? 'Texnika'} (${res.data['plate_number'] ?? ''}): Tezlik: ${loc['speed']} km/h | Yoqilg\'i: ${loc['fuel_level']}%',
+                        '${res.data['vehicle_name'] ?? 'Texnika'} (${res.data['plate_number'] ?? ''}): Tezlik: ${loc['speed']} km/h | Yoqilg\'i: $displayFuel%',
                       ),
                       duration: const Duration(seconds: 4),
                     ),
@@ -295,6 +307,58 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
     );
   }
 
+  void _updateMapRoute() {
+    _polylines.clear();
+    final List<LatLng> points = [];
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final twoDaysAgo = today.subtract(const Duration(days: 2));
+
+    DateTime targetDate;
+    if (_selectedDateFilter == 0) {
+      targetDate = today;
+    } else if (_selectedDateFilter == 1) {
+      targetDate = yesterday;
+    } else {
+      targetDate = twoDaysAgo;
+    }
+
+    for (var h in _history) {
+      final lat = double.tryParse('${h['latitude']}');
+      final lng = double.tryParse('${h['longitude']}');
+      final recordedAtStr = h['recorded_at'] ?? '';
+      
+      if (lat != null && lng != null && recordedAtStr.isNotEmpty) {
+        try {
+          String normalized = recordedAtStr;
+          if (!normalized.endsWith('Z') && !RegExp(r'[+-]\d\d:?\d\d$').hasMatch(normalized)) {
+            normalized = normalized.replaceAll(' ', 'T') + 'Z';
+          }
+          final dt = DateTime.parse(normalized).toLocal();
+          final checkDate = DateTime(dt.year, dt.month, dt.day);
+          
+          if (checkDate == targetDate) {
+            points.add(LatLng(lat, lng));
+          }
+        } catch (_) {}
+      }
+    }
+
+    setState(() {
+      if (points.isNotEmpty) {
+        _polylines.add(
+          Polyline(
+            points: points,
+            color: Colors.blue,
+            strokeWidth: 5,
+          ),
+        );
+      }
+    });
+  }
+
   Future<void> _fetchHistory(int id) async {
     setState(() {
       _isLoadingHistory = true;
@@ -307,30 +371,13 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
       final res = await api.getVehicleHistory(id);
       if (res.data['status'] == 'success' && mounted) {
         final historyList = res.data['history'] as List<dynamic>;
-        final List<LatLng> points = [];
-
-        for (var h in historyList) {
-          final lat = double.tryParse('${h['latitude']}');
-          final lng = double.tryParse('${h['longitude']}');
-          if (lat != null && lng != null) {
-            points.add(LatLng(lat, lng));
-          }
-        }
 
         setState(() {
           _history = historyList;
           _isLoadingHistory = false;
-
-          if (points.isNotEmpty) {
-            _polylines.add(
-              Polyline(
-                points: points,
-                color: Colors.blue,
-                strokeWidth: 5,
-              ),
-            );
-          }
         });
+
+        _updateMapRoute();
       }
     } catch (_) {
       if (mounted) {
@@ -344,6 +391,8 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
   void _onVehicleSelected(int id) {
     setState(() {
       _selectedVehicleId = id;
+      _serverFuelPercent = null;
+      _selectedDateFilter = 0;
       _currentLocation = null;
       _history = [];
       _errorMessage = null;
@@ -656,7 +705,7 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
     final vehicleName = _currentLocation!['vehicle_name'] ?? 'Texnika';
     final plateNumber = _currentLocation!['plate_number'] ?? '';
     final speed = loc['speed'] ?? 0;
-    final fuel = loc['fuel_level'] ?? 0;
+    final fuel = _serverFuelPercent ?? loc['fuel_level'] ?? 0;
     final lat = loc['latitude'] ?? 0.0;
     final lng = loc['longitude'] ?? 0.0;
 
@@ -1175,8 +1224,6 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
   }
 
   void _showHistoryDialog(BuildContext context) {
-    int selectedDateFilter = 0; // 0 = Bugun, 1 = Kecha, 2 = O'tgan kun
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1191,9 +1238,9 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
             final twoDaysAgo = today.subtract(const Duration(days: 2));
 
             DateTime targetDate;
-            if (selectedDateFilter == 0) {
+            if (_selectedDateFilter == 0) {
               targetDate = today;
-            } else if (selectedDateFilter == 1) {
+            } else if (_selectedDateFilter == 1) {
               targetDate = yesterday;
             } else {
               targetDate = twoDaysAgo;
@@ -1211,7 +1258,11 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
               final recordedAtStr = h['recorded_at'] ?? '';
               if (recordedAtStr.isEmpty) continue;
               try {
-                final dt = DateTime.parse(recordedAtStr).toLocal();
+                String normalized = recordedAtStr;
+                if (!normalized.endsWith('Z') && !RegExp(r'[+-]\d\d:?\d\d$').hasMatch(normalized)) {
+                  normalized = normalized.replaceAll(' ', 'T') + 'Z';
+                }
+                final dt = DateTime.parse(normalized).toLocal();
                 final checkDate = DateTime(dt.year, dt.month, dt.day);
                 if (checkDate == targetDate) {
                   dayHistory.add(h);
@@ -1376,11 +1427,12 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                                         Expanded(
                                           child: buildDateFilterButton(
                                             label: 'Bugun',
-                                            isSelected: selectedDateFilter == 0,
+                                            isSelected: _selectedDateFilter == 0,
                                             onTap: () {
                                               setModalState(() {
-                                                selectedDateFilter = 0;
+                                                _selectedDateFilter = 0;
                                               });
+                                              _updateMapRoute();
                                             },
                                           ),
                                         ),
@@ -1388,11 +1440,12 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                                         Expanded(
                                           child: buildDateFilterButton(
                                             label: 'Kecha',
-                                            isSelected: selectedDateFilter == 1,
+                                            isSelected: _selectedDateFilter == 1,
                                             onTap: () {
                                               setModalState(() {
-                                                selectedDateFilter = 1;
+                                                _selectedDateFilter = 1;
                                               });
+                                              _updateMapRoute();
                                             },
                                           ),
                                         ),
@@ -1400,11 +1453,12 @@ class _GpsMapScreenState extends ConsumerState<GpsMapScreen> {
                                         Expanded(
                                           child: buildDateFilterButton(
                                             label: twoDaysAgoLabel,
-                                            isSelected: selectedDateFilter == 2,
+                                            isSelected: _selectedDateFilter == 2,
                                             onTap: () {
                                               setModalState(() {
-                                                selectedDateFilter = 2;
+                                                _selectedDateFilter = 2;
                                               });
+                                              _updateMapRoute();
                                             },
                                           ),
                                         ),

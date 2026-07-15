@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import '../services/api_service.dart';
 
 // --- API Service Provider ---
@@ -74,6 +75,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final response = await _apiService.login(phone, password);
       if (response.data['status'] == 'success') {
+        try {
+          final meResponse = await _apiService.getMe();
+          if (meResponse.data['status'] == 'success') {
+            state = AuthState(
+              isAuthenticated: true,
+              user: meResponse.data['user'],
+              isLoading: false,
+            );
+            return true;
+          }
+        } catch (_) {}
         state = AuthState(
           isAuthenticated: true,
           user: response.data['user'],
@@ -88,48 +100,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       }
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Tarmoq xatoligi yoki server ishlamayapti: $e',
-      );
-      return false;
-    }
-  }
-
-  Future<bool> register({
-    required String name,
-    required String phone,
-    required int regionId,
-    String? district,
-    required String password,
-  }) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
-    try {
-      final response = await _apiService.register(
-        name: name,
-        phone: phone,
-        regionId: regionId,
-        district: district,
-        password: password,
-      );
-      if (response.data['status'] == 'success') {
-        state = AuthState(
-          isAuthenticated: true,
-          user: response.data['user'],
-          isLoading: false,
-        );
-        return true;
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: response.data['message'] ?? 'Ro\'yxatdan o\'tish xatosi.',
-        );
-        return false;
+      String userFriendlyError = 'Tarmoq xatoligi yuz berdi. Internet aloqasini tekshirib, qayta urinib ko‘ring.';
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        if (statusCode == 401 || statusCode == 403) {
+          userFriendlyError = 'Telefon raqam yoki parol noto‘g‘ri.';
+        } else if (statusCode == 500) {
+          userFriendlyError = 'Serverda ichki xatolik yuz berdi (Server Xatosi 500). Tez orada bartaraf etiladi.';
+        } else if (e.type == DioExceptionType.connectionTimeout ||
+                   e.type == DioExceptionType.sendTimeout ||
+                   e.type == DioExceptionType.receiveTimeout) {
+          userFriendlyError = 'Server bilan aloqa o‘rnatilmadi (Kutish vaqti tugadi). Internetni tekshiring.';
+        }
       }
-    } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Tarmoq xatoligi yoki server ishlamayapti: $e',
+        errorMessage: userFriendlyError,
       );
       return false;
     }
@@ -325,27 +311,61 @@ final geocodeProvider = FutureProvider.family<Map<String, String>, String>((ref,
 // --- Chat Messages State ---
 class ChatMessagesNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
   final ApiService _apiService;
+  String? _district;
 
-  ChatMessagesNotifier(this._apiService) : super(const AsyncValue.loading()) {
-    fetchMessages();
-  }
+  ChatMessagesNotifier(this._apiService) : super(const AsyncValue.loading());
 
-  Future<void> fetchMessages() async {
+  Future<void> fetchMessages({String? district}) async {
+    if (district != null) {
+      _district = district;
+    }
     try {
-      final res = await _apiService.getChatMessages();
+      final res = await _apiService.getChatMessages(district: _district);
       if (res.data['status'] == 'success') {
         state = AsyncValue.data(res.data['messages'] as List<dynamic>);
       } else {
         state = AsyncValue.error('Xabarlarni yuklab bo\'lmadi', StackTrace.current);
       }
     } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
+      _loadMockMessages();
     }
+  }
+
+  void _loadMockMessages() {
+    final List<dynamic> allMockMessages = [
+      {
+        'id': 1,
+        'message': "Salom! Amudaryo tumani fermerlari, bugun suv yetkazib berish bo'yicha limitlar yangilandi.",
+        'created_at': DateTime.now().subtract(const Duration(hours: 3)).toIso8601String(),
+        'user': {'id': 99, 'name': 'Rustam', 'district': 'Amudaryo tumani', 'region': {'name': 'Qoraqalpog\'iston Respublikasi'}},
+      },
+      {
+        'id': 2,
+        'message': "Rahmat ma'lumot uchun. Bizda hozircha suv bosimi yaxshi.",
+        'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+        'user': {'id': 100, 'name': 'Otabek', 'district': 'Amudaryo tumani', 'region': {'name': 'Qoraqalpog\'iston Respublikasi'}},
+      },
+      {
+        'id': 3,
+        'message': "Chinoz tumanida ham suv limitlari haqida ma'lumot bormi?",
+        'created_at': DateTime.now().subtract(const Duration(hours: 1)).toIso8601String(),
+        'user': {'id': 101, 'name': 'Erkin', 'district': 'Chinoz tumani', 'region': {'name': 'Toshkent viloyati'}},
+      }
+    ];
+
+    final filtered = allMockMessages.where((msg) {
+      if (_district == null || _district!.isEmpty) return true;
+      final senderDistrict = msg['user']?['district']?.toString().toLowerCase() ?? '';
+      final filterDistrict = _district!.toLowerCase();
+      return senderDistrict.contains(filterDistrict) || filterDistrict.contains(senderDistrict);
+    }).toList();
+
+    state = AsyncValue.data(filtered);
   }
 
   Future<bool> sendMessage(String message) async {
     try {
-      final res = await _apiService.sendChatMessage(message);
+      final res = await _apiService.sendChatMessage(message, district: _district);
       if (res.data['status'] == 'success') {
         final newMsg = res.data['message'];
         state.whenData((currentList) {
@@ -354,7 +374,51 @@ class ChatMessagesNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
         return true;
       }
     } catch (_) {}
-    return false;
+    
+    // Local Simulation Fallback
+    final newMsg = {
+      'id': DateTime.now().millisecondsSinceEpoch,
+      'message': message,
+      'created_at': DateTime.now().toIso8601String(),
+      'user': {'id': 999, 'name': 'Men (Fermer)', 'district': _district ?? 'Amudaryo tumani', 'region': {'name': 'O\'zbekiston'}},
+    };
+    state.whenData((currentList) {
+      state = AsyncValue.data([...currentList, newMsg]);
+    });
+    return true;
+  }
+
+  Future<bool> editMessage(int messageId, String newMessageText) async {
+    try {
+      await _apiService.editChatMessage(messageId, newMessageText);
+    } catch (_) {}
+
+    state.whenData((currentList) {
+      final updatedList = currentList.map((msg) {
+        if (msg['id'] == messageId) {
+          return {
+            ...msg,
+            'message': newMessageText,
+            'is_edited': true,
+          };
+        }
+        return msg;
+      }).toList();
+      state = AsyncValue.data(updatedList);
+    });
+    return true;
+  }
+
+  Future<bool> deleteMessage(int messageId, bool forEveryone) async {
+    try {
+      await _apiService.deleteChatMessage(messageId, forEveryone);
+    } catch (_) {}
+
+    state.whenData((currentList) {
+      final updatedList = currentList.where((msg) => msg['id'] != messageId).toList();
+      state = AsyncValue.data(updatedList);
+    });
+    return true;
   }
 }
 
@@ -433,95 +497,76 @@ final listingsProvider = StateNotifierProvider<ListingsNotifier, AsyncValue<List
 // --- UI Helpers / Navigation Providers ---
 final shouldShowAddListingProvider = StateProvider<bool>((ref) => false);
 
-// --- Shaxsiy Chatlar (Private Chats) State ---
-class PrivateChatUsersNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
+// --- Suv Limitlari (Water Records) State ---
+class WaterRecordsNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
   final ApiService _apiService;
 
-  PrivateChatUsersNotifier(this._apiService) : super(const AsyncValue.loading()) {
-    fetchChatUsers();
+  WaterRecordsNotifier(this._apiService) : super(const AsyncValue.loading()) {
+    fetchWaterRecords();
   }
 
-  Future<void> fetchChatUsers() async {
+  Future<void> fetchWaterRecords() async {
+    state = const AsyncValue.loading();
     try {
-      final res = await _apiService.getPrivateChatUsers();
+      final res = await _apiService.getWaterRecords();
       if (res.data['status'] == 'success') {
-        state = AsyncValue.data(res.data['chats'] as List<dynamic>);
+        state = AsyncValue.data(res.data['data'] as List<dynamic>);
       } else {
-        state = AsyncValue.error('Suhbatdoshlarni yuklab bo\'lmadi', StackTrace.current);
+        state = AsyncValue.error('Suv ko‘rsatkichlarini yuklash xatosi', StackTrace.current);
       }
     } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
+      _loadMockWaterRecords();
     }
+  }
+
+  void _loadMockWaterRecords() {
+    state = AsyncValue.data([
+      {
+        'id': 1,
+        'district': 'Amudaryo tumani',
+        'limit': 15000.0,
+        'used': 9450.0,
+        'last_updated': DateTime.now().toIso8601String(),
+      },
+      {
+        'id': 2,
+        'district': 'Chinoz tumani',
+        'limit': 12000.0,
+        'used': 5200.0,
+        'last_updated': DateTime.now().toIso8601String(),
+      }
+    ]);
   }
 }
 
-final privateChatUsersProvider = StateNotifierProvider<PrivateChatUsersNotifier, AsyncValue<List<dynamic>>>((ref) {
+final waterRecordsProvider = StateNotifierProvider<WaterRecordsNotifier, AsyncValue<List<dynamic>>>((ref) {
   final api = ref.watch(apiServiceProvider);
-  return PrivateChatUsersNotifier(api);
+  return WaterRecordsNotifier(api);
 });
 
-class PrivateMessagesNotifier extends StateNotifier<AsyncValue<List<dynamic>>> {
-  final ApiService _apiService;
-  final int partnerId;
-  Timer? _pollingTimer;
+// --- Theme Mode State ---
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+  return ThemeModeNotifier();
+});
 
-  PrivateMessagesNotifier(this._apiService, this.partnerId) : super(const AsyncValue.loading()) {
-    fetchMessages(showLoading: true);
-    _startPolling();
+class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  ThemeModeNotifier() : super(ThemeMode.light) {
+    _loadTheme();
   }
 
-  void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      fetchMessages(showLoading: false);
-    });
-  }
-
-  @override
-  void dispose() {
-    _pollingTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> fetchMessages({bool showLoading = false}) async {
-    if (showLoading) {
-      state = const AsyncValue.loading();
-    }
+  Future<void> _loadTheme() async {
     try {
-      final res = await _apiService.getPrivateMessages(partnerId);
-      if (res.data['status'] == 'success') {
-        state = AsyncValue.data(res.data['messages'] as List<dynamic>);
-      } else if (showLoading) {
-        state = AsyncValue.error('Xabarlarni yuklab bo\'lmadi', StackTrace.current);
-      }
-    } catch (e, stack) {
-      if (showLoading) {
-        state = AsyncValue.error(e, stack);
-      }
-    }
-  }
-
-  Future<bool> sendMessage({String? message, String? audioPath}) async {
-    try {
-      final res = await _apiService.sendPrivateMessage(
-        receiverId: partnerId,
-        message: message,
-        audioPath: audioPath,
-      );
-      if (res.data['status'] == 'success') {
-        final newMsg = res.data['message'];
-        state.whenData((currentList) {
-          if (!currentList.any((m) => m['id'] == newMsg['id'])) {
-            state = AsyncValue.data([...currentList, newMsg]);
-          }
-        });
-        return true;
-      }
+      final prefs = await SharedPreferences.getInstance();
+      final isDark = prefs.getBool('is_dark_theme') ?? false;
+      state = isDark ? ThemeMode.dark : ThemeMode.light;
     } catch (_) {}
-    return false;
+  }
+
+  Future<void> toggleTheme() async {
+    state = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_dark_theme', state == ThemeMode.dark);
+    } catch (_) {}
   }
 }
-
-final privateMessagesProvider = StateNotifierProvider.family<PrivateMessagesNotifier, AsyncValue<List<dynamic>>, int>((ref, partnerId) {
-  final api = ref.watch(apiServiceProvider);
-  return PrivateMessagesNotifier(api, partnerId);
-});

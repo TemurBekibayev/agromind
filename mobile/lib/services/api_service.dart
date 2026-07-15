@@ -116,34 +116,6 @@ class ApiService {
     }
   }
 
-  /// Ro'yxatdan o'tish (Register)
-  Future<Response> register({
-    required String name,
-    required String phone,
-    required int regionId,
-    String? district,
-    required String password,
-  }) async {
-    try {
-      final response = await _dio.post('/auth/register', data: {
-        'name': name,
-        'phone': phone,
-        'region_id': regionId,
-        'district': district ?? 'Amudaryo tumani',
-        'password': password,
-        'device_name': 'flutter_mobile_app',
-      });
-      
-      if (response.statusCode == 201 && response.data['status'] == 'success') {
-        final token = response.data['token'];
-        await saveToken(token);
-      }
-      return response;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   /// Tizimdan chiqish (Logout)
   Future<Response?> logout() async {
     try {
@@ -281,23 +253,35 @@ class ApiService {
 
   // --- Dehqonlar Suhbat (Chat) API ---
 
-  /// Oxirgi chat xabarlarini olish
-  Future<Response> getChatMessages() async {
-    return await _dio.get('/chat/messages');
+  /// Oxirgi chat xabarlarini olish (tuman bo'yicha filtrlangan)
+  Future<Response> getChatMessages({String? district}) async {
+    return await _dio.get(
+      '/chat/messages',
+      queryParameters: district != null ? {'district': district} : null,
+    );
   }
 
   /// Yangi chat xabarini yuborish
-  Future<Response> sendChatMessage(String message) async {
+  Future<Response> sendChatMessage(String message, {String? district}) async {
     return await _dio.post('/chat/messages', data: {
+      'message': message,
+      if (district != null) 'district': district,
+    });
+  }
+
+  /// Chat xabarini tahrirlash
+  Future<Response> editChatMessage(int id, String message) async {
+    return await _dio.put('/chat/messages/$id', data: {
       'message': message,
     });
   }
 
-  /// Adminga murojaat yuborish
-  Future<Response> sendSupportMessage(String message) async {
-    return await _dio.post('/support-messages', data: {
-      'message': message,
-    });
+  /// Chat xabarini o'chirish
+  Future<Response> deleteChatMessage(int id, bool forEveryone) async {
+    return await _dio.delete(
+      '/chat/messages/$id',
+      queryParameters: {'for_everyone': forEveryone},
+    );
   }
 
   // --- Texnika va Uskunalar Ijarasi (Listings) API ---
@@ -340,37 +324,82 @@ class ApiService {
     return await _dio.delete('/listings/$listingId');
   }
 
-  // --- Shaxsiy Chatlar (Private Chats) API ---
+  // --- Suv Limitlari (Water Records) API ---
 
-  /// Tuman kesimidagi suhbatdoshlar ro'yxatini olish
+  /// Suv limitlari ro'yxatini olish
+  Future<Response> getWaterRecords() async {
+    return await _dio.get('/water-records');
+  }
+
+  // --- Yoqilg'i (Fuel) API ---
+
+  /// Yoqilg'i quyish miqdorini kiritish (POST)
+  Future<Response> addFuelEntry(int vehicleId, double fuelAmount, {String? notes, String? refilledAt}) async {
+    return await _dio.post('/vehicles/$vehicleId/fuel-entries', data: {
+      'fuel_amount': fuelAmount,
+      if (refilledAt != null) 'refilled_at': refilledAt,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  /// Yoqilg'i hisoboti va statistikasini olish (GET)
+  Future<Response> getFuelReport(int vehicleId) async {
+    return await _dio.get('/vehicles/$vehicleId/fuel-report');
+  }
+
+  /// Shubhali holatni hal qilish (POST)
+  Future<Response> resolveFuelAlert(int vehicleId, int alertId, String status) async {
+    return await _dio.post('/vehicles/$vehicleId/fuel-alerts/$alertId/resolve', data: {
+      'status': status,
+    });
+  }
+
+  // --- Shaxsiy Chat (Private Chat) API ---
+
+  /// Shaxsiy yozishmalar ro'yxati va unread badge larini olish (GET)
   Future<Response> getPrivateChatUsers() async {
     return await _dio.get('/private-chats');
   }
 
-  /// Tanlangan suhbatdosh bilan yozishmalar tarixini olish
+  /// Tanlangan foydalanuvchi bilan yozishmalar tarixini olish (GET)
   Future<Response> getPrivateMessages(int partnerId) async {
     return await _dio.get('/private-chats/$partnerId');
   }
 
-  /// Yangi shaxsiy matnli yoki ovozli xabar yuborish
-  Future<Response> sendPrivateMessage({
-    required int receiverId,
-    String? message,
-    String? audioPath,
+  /// Shaxsiy chatga xabar yoki ovozli xabar yuborish (POST)
+  Future<Response> sendPrivateMessage(
+    int receiverId,
+    String message, {
+    bool isVoice = false,
+    int? voiceDuration,
   }) async {
-    final Map<String, dynamic> dataMap = {
+    return await _dio.post('/private-chats', data: {
       'receiver_id': receiverId,
+      'message': message,
+      'is_voice': isVoice,
+      if (voiceDuration != null) 'voice_duration': voiceDuration,
+    });
+  }
+
+  /// Admin ma'lumotlarini olish (GET)
+  Future<Response> getAdminUser() async {
+    return await _dio.get('/admin-user');
+  }
+
+  /// Ro'yxatdan o'tish arizasini yuborish (POST)
+  Future<Response> sendAppeal({
+    required String name,
+    required String phone,
+    required String farmName,
+    String? inn,
+    String? message,
+  }) async {
+    return await _dio.post('/appeals', data: {
+      'name': name,
+      'phone': phone,
+      'farm_name': farmName,
+      if (inn != null && inn.isNotEmpty) 'inn': inn,
       if (message != null && message.isNotEmpty) 'message': message,
-    };
-
-    if (audioPath != null && audioPath.isNotEmpty) {
-      dataMap['audio'] = await MultipartFile.fromFile(
-        audioPath,
-        filename: audioPath.split('/').last,
-      );
-    }
-
-    final formData = FormData.fromMap(dataMap);
-    return await _dio.post('/private-chats', data: formData);
+    });
   }
 }

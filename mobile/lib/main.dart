@@ -29,16 +29,20 @@ class AgroMindApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
       title: 'AgroMind',
       debugShowCheckedModeBanner: false,
+      themeMode: themeMode,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1A3C2A), // Forest Green
           primary: const Color(0xFF1A3C2A),
           secondary: const Color(0xFFE65C00), // Orange Accent
+          brightness: Brightness.light,
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -61,6 +65,39 @@ class AgroMindApp extends ConsumerWidget {
           color: Colors.white,
           elevation: 1,
           surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1A3C2A),
+          primary: const Color(0xFF76C893), // Lighter green for dark mode readability
+          secondary: const Color(0xFFE65C00),
+          brightness: Brightness.dark,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF1E2D24),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF76C893), width: 1.5),
+          ),
+        ),
+        cardTheme: CardTheme(
+          color: const Color(0xFF1E2D24),
+          elevation: 1,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),

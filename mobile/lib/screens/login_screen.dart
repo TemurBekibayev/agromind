@@ -30,12 +30,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _rememberMe = remember;
       if (remember) {
-        _phoneController.text = prefs.getString('saved_phone') ?? '';
+        String savedPhone = prefs.getString('saved_phone') ?? '';
+        if (savedPhone.startsWith('998') && savedPhone.length == 12) {
+          savedPhone = savedPhone.substring(3);
+        }
+        _phoneController.text = savedPhone;
         _passwordController.text = prefs.getString('saved_password') ?? '';
       } else {
-        // Fallback to demo credentials
-        _phoneController.text = '998901111111';
-        _passwordController.text = 'secret123';
+        _phoneController.text = '';
+        _passwordController.text = '';
       }
     });
   }
@@ -50,7 +53,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final phone = _phoneController.text.trim();
+    String rawPhone = _phoneController.text.trim();
+    if (rawPhone.length == 9) {
+      rawPhone = '998$rawPhone';
+    }
+    final phone = rawPhone;
     final password = _passwordController.text;
 
     final success = await ref.read(authProvider.notifier).login(phone, password);
@@ -87,7 +94,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: null,
       body: Center(
         child: SingleChildScrollView(
@@ -181,7 +187,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
                       labelText: 'Telefon raqam',
-                      hintText: '998XXXXXXXXX',
+                      hintText: '901234567',
+                      prefixText: '+998 ',
+                      prefixStyle: const TextStyle(color: Colors.black87, fontSize: 16),
                       prefixIcon: const Icon(Icons.phone_iphone_rounded, color: Color(0xFF1A3C2A)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -195,8 +203,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       if (value == null || value.isEmpty) {
                         return 'Telefon raqamingizni kiriting';
                       }
-                      if (!RegExp(r'^\d{9,12}$').hasMatch(value)) {
-                        return 'Noto\'g\'ri format. Masalan: 998901234567';
+                      if (!RegExp(r'^\d{9}$').hasMatch(value)) {
+                        return 'Noto\'g\'ri format. 9 ta raqam kiriting (Masalan: 901234567)';
                       }
                       return null;
                     },
@@ -311,7 +319,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           );
                           if (result != null && result is Map<String, String>) {
                             setState(() {
-                              _phoneController.text = result['phone'] ?? '';
+                              String returnedPhone = result['phone'] ?? '';
+                              if (returnedPhone.startsWith('998') && returnedPhone.length == 12) {
+                                returnedPhone = returnedPhone.substring(3);
+                              }
+                              _phoneController.text = returnedPhone;
                               _passwordController.text = result['password'] ?? '';
                             });
                           }

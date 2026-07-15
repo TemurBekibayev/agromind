@@ -730,10 +730,11 @@ class _SoilAnalysisScreenState extends ConsumerState<SoilAnalysisScreen> {
     });
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: _isSelectionMode ? Colors.red[900] : const Color(0xFF1A3C2A),
-        foregroundColor: Colors.white,
+        backgroundColor: _isSelectionMode 
+            ? Colors.red[900] 
+            : Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         title: Text(_isSelectionMode 
             ? 'Tanlandi: ${_selectedAnalysisIds.length} ta' 
             : 'Tuproq AI Tahlili'),

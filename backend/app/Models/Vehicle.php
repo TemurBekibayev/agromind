@@ -70,6 +70,16 @@ class Vehicle extends Model
         return $this->hasMany(Alert::class);
     }
 
+    public function fuelEntries(): HasMany
+    {
+        return $this->hasMany(FuelEntry::class);
+    }
+
+    public function fuelAlerts(): HasMany
+    {
+        return $this->hasMany(FuelAlert::class);
+    }
+
     /**
      * Texnika uchun yoqilg'i kiritish tarixi.
      */
