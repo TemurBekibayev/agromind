@@ -54,6 +54,7 @@ class AuthController extends Controller
                 'phone' => $user->phone,
                 'role' => $user->role,
                 'region_id' => $user->region_id,
+                'district' => $user->district,
             ]
         ]);
     }

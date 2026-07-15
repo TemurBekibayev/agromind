@@ -31,6 +31,22 @@ class PrivateChatController extends Controller
             ->where('id', '!=', $user->id)
             ->get();
 
+        // Fallback 1: If no users in district, check same region
+        if ($partners->isEmpty() && $user->region_id) {
+            $partners = User::with('region')
+                ->where('region_id', $user->region_id)
+                ->where('id', '!=', $user->id)
+                ->get();
+        }
+
+        // Fallback 2: If still empty, get any other farmers in the system
+        if ($partners->isEmpty()) {
+            $partners = User::with('region')
+                ->where('role', 'farmer')
+                ->where('id', '!=', $user->id)
+                ->get();
+        }
+
         $chats = $partners->map(function ($partner) use ($user) {
             $lastMessage = PrivateMessage::where(function ($q) use ($user, $partner) {
                 $q->where('sender_id', $user->id)->where('receiver_id', $partner->id);
