@@ -437,7 +437,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
                 title: Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
@@ -556,7 +556,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.support_agent_rounded, tooltip: 'Adminga murojaat'),
+              icon: const Icon(Icons.support_agent_rounded),
+              tooltip: 'Adminga murojaat',
               onPressed: () => _showSupportDialog(context),
             ),
             IconButton(
