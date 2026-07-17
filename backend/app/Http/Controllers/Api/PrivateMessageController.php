@@ -172,12 +172,14 @@ class PrivateMessageController extends Controller
     {
         $admin = User::where('role', 'admin')->first();
         if (!$admin) {
-            $admin = User::create([
-                'name' => 'Admin AgroMind',
-                'phone' => '998901234567',
-                'role' => 'admin',
-                'password' => \Illuminate\Support\Facades\Hash::make('secret123'),
-            ]);
+            $admin = User::updateOrCreate(
+                ['phone' => '998901234567'],
+                [
+                    'name' => 'Admin AgroMind',
+                    'role' => 'admin',
+                    'password' => \Illuminate\Support\Facades\Hash::make('secret123'),
+                ]
+            );
         }
         return response()->json([
             'status' => 'success',
