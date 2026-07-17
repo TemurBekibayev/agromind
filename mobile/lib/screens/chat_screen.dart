@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import 'dart:io';
 import '../providers/providers.dart';
 import 'private_chat_screen.dart';
 
@@ -22,7 +23,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
   bool _isEditing = false;
   int? _editingMessageId;
 
-  // Admin Direct Chat Simulation State
+  // Real Admin Support Chat state
+  Map<String, dynamic>? _adminUser;
+  bool _isLoadingAdminUser = true;
+  String? _adminLoadError;
+
+  // Admin Direct Chat Simulation State (keep as fallback)
   final List<Map<String, dynamic>> _adminMessages = [
     {
       'id': 1001,
@@ -53,6 +59,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
   List<Map<String, dynamic>> _privateChats = [];
   bool _isLoadingPrivateChats = true;
 
+  Future<void> _loadAdminUser() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingAdminUser = true;
+      _adminLoadError = null;
+    });
+    try {
+      final api = ref.read(apiServiceProvider);
+      final res = await api.getAdminUser();
+      if (res.data['status'] == 'success' && mounted) {
+        setState(() {
+          _adminUser = res.data['admin'];
+          _isLoadingAdminUser = false;
+        });
+      } else {
+        setState(() {
+          _adminLoadError = 'Admin ma\'lumotlarini yuklab bo\'lmadi.';
+          _isLoadingAdminUser = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _adminLoadError = 'Tarmoq xatosi: Admin ma\'lumotlarini yuklab bo\'lmadi.';
+          _isLoadingAdminUser = false;
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +115,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
       final userDistrict = authState.user?['district']?.toString() ?? 'Amudaryo tumani';
       ref.read(chatMessagesProvider.notifier).fetchMessages(district: userDistrict);
       _fetchPrivateChats();
+      _loadAdminUser();
     });
   }
 
@@ -198,32 +235,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
     });
 
     if (isAdmin) {
-      setState(() {
-        _adminMessages.add({
-          'id': DateTime.now().millisecondsSinceEpoch,
-          'message': '',
-          'is_voice': true,
-          'voice_duration': duration,
-          'created_at': DateTime.now().toIso8601String(),
-          'is_me': true,
-        });
-      });
-      Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(_adminScrollController));
-      
-      // Admin simulated response
-      Future.delayed(const Duration(seconds: 3), () {
-        if (!mounted) return;
+      if (_adminUser != null) {
+        final adminId = _adminUser!['id'] as int;
+        try {
+          final tempDir = Directory.systemTemp;
+          final file = File('${tempDir.path}/voice_message_${DateTime.now().millisecondsSinceEpoch}.mp3');
+          file.writeAsBytesSync(List.generate(100, (index) => index % 256));
+          ref.read(privateMessagesProvider(adminId).notifier).sendMessage(audioPath: file.path);
+          Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(_adminScrollController));
+        } catch (_) {}
+      } else {
         setState(() {
           _adminMessages.add({
-            'id': DateTime.now().millisecondsSinceEpoch + 1,
-            'message': 'Ovozli xabaringizni eshitdim. Mutaxassislarimiz tez fursatda siz bilan bog\'lanishadi.',
+            'id': DateTime.now().millisecondsSinceEpoch,
+            'message': '',
+            'is_voice': true,
+            'voice_duration': duration,
             'created_at': DateTime.now().toIso8601String(),
-            'is_me': false,
-            'is_voice': false,
+            'is_me': true,
           });
         });
-        _scrollToBottom(_adminScrollController);
-      });
+        Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(_adminScrollController));
+        
+        // Admin simulated response
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!mounted) return;
+          setState(() {
+            _adminMessages.add({
+              'id': DateTime.now().millisecondsSinceEpoch + 1,
+              'message': 'Ovozli xabaringizni eshitdim. Mutaxassislarimiz tez fursatda siz bilan bog\'lanishadi.',
+              'created_at': DateTime.now().toIso8601String(),
+              'is_me': false,
+              'is_voice': false,
+            });
+          });
+          _scrollToBottom(_adminScrollController);
+        });
+      }
     } else {
       // Group voice simulation
       ref.read(chatMessagesProvider.notifier).state.whenData((currentList) {
@@ -368,35 +416,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
 
   // --- Admin Chat Logic ---
 
-  void _sendAdminMessage() {
+  Future<void> _sendAdminMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _adminMessages.add({
-        'id': DateTime.now().millisecondsSinceEpoch,
-        'message': text,
-        'created_at': DateTime.now().toIso8601String(),
-        'is_me': true,
-      });
+    if (_adminUser != null) {
+      final adminId = _adminUser!['id'] as int;
       _messageController.clear();
-    });
+      final success = await ref
+          .read(privateMessagesProvider(adminId).notifier)
+          .sendMessage(message: text);
 
-    Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(_adminScrollController));
-
-    // Admin response simulation
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
+      if (success) {
+        Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(_adminScrollController));
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Xabarni yuborishda xatolik yuz berdi.'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } else {
       setState(() {
         _adminMessages.add({
-          'id': DateTime.now().millisecondsSinceEpoch + 1,
-          'message': 'Akbar sizning xabaringizni qabul qildi. Tez orada javob qaytaradi.',
+          'id': DateTime.now().millisecondsSinceEpoch,
+          'message': text,
           'created_at': DateTime.now().toIso8601String(),
-          'is_me': false,
+          'is_me': true,
         });
+        _messageController.clear();
       });
-      _scrollToBottom(_adminScrollController);
-    });
+
+      Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(_adminScrollController));
+
+      // Admin response simulation
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        setState(() {
+          _adminMessages.add({
+            'id': DateTime.now().millisecondsSinceEpoch + 1,
+            'message': 'Akbar sizning xabaringizni qabul qildi. Tez orada javob qaytaradi.',
+            'created_at': DateTime.now().toIso8601String(),
+            'is_me': false,
+          });
+        });
+        _scrollToBottom(_adminScrollController);
+      });
+    }
   }
 
   @override
@@ -405,6 +471,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
     final userDistrict = currentAuth.user?['district']?.toString() ?? 'Amudaryo tumani';
     final chatState = ref.watch(chatMessagesProvider);
     final currentUserId = currentAuth.user?['id'];
+    
+    final adminMessagesState = _adminUser != null
+        ? ref.watch(privateMessagesProvider(_adminUser!['id'] as int))
+        : null;
 
     // Auto-scroll logic for group
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -617,40 +687,209 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
                 ),
 
           // 3. Admin Support Page
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.support_agent_rounded, size: 72, color: Color(0xFF1A3C2A)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'AgroMind Qo‘llab-quvvatlash',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A)),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Admin bilan to‘g‘ridan-to‘g‘ri shaxsiy muloqot qilish, savollar berish yoki texnik yordam olish uchun quyidagi tugmani bosing.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: _openAdminChat,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A3C2A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          _isLoadingAdminUser
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A3C2A)))
+              : _adminUser == null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(_adminLoadError ?? 'Admin bilan bog‘lanib bo‘lmadi.'),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: _loadAdminUser,
+                              child: const Text('Qayta urinish'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        // Header with 24/7 online status
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+                          ),
+                          child: Row(
+                            children: [
+                              Stack(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: const Color(0xFF1A3C2A).withOpacity(0.1),
+                                    child: const Icon(Icons.support_agent_rounded, color: Color(0xFF1A3C2A)),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _adminUser!['name'] ?? 'AgroMind Qo‘llab-quvvatlash',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A3C2A), fontSize: 15),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Text(
+                                          'Qo‘llab-quvvatlash 24/7 onlayn',
+                                          style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Messages List
+                        Expanded(
+                          child: adminMessagesState!.when(
+                            data: (messages) {
+                              if (messages.isEmpty) {
+                                return _buildEmptyState(
+                                  'Savolingiz bormi?',
+                                  'Muammo yoki takliflaringizni yozib qoldiring. Biz sizga tez orada javob beramiz!',
+                                );
+                              }
+                              // Auto-scroll logic for admin chat
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (_adminScrollController.hasClients) {
+                                  _adminScrollController.jumpTo(_adminScrollController.position.maxScrollExtent);
+                                }
+                              });
+                              return RefreshIndicator(
+                                onRefresh: () => ref.read(privateMessagesProvider(_adminUser!['id'] as int).notifier).fetchMessages(showLoading: true),
+                                child: ListView.builder(
+                                  controller: _adminScrollController,
+                                  padding: const EdgeInsets.all(16.0),
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  itemCount: messages.length,
+                                  itemBuilder: (context, index) {
+                                    final msg = messages[index];
+                                    final isMe = msg['sender_id'] == currentUserId;
+                                    final isRead = msg['is_read'] == true;
+                                    final isVoice = msg['is_voice'] == true || msg['audio_path'] != null;
+
+                                    return Align(
+                                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                                      child: Container(
+                                        margin: const EdgeInsets.only(bottom: 12.0),
+                                        constraints: BoxConstraints(
+                                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                        ),
+                                        padding: const EdgeInsets.all(12.0),
+                                        decoration: BoxDecoration(
+                                          color: isMe ? const Color(0xFF1A3C2A) : Colors.white,
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: const Radius.circular(16),
+                                            topRight: const Radius.circular(16),
+                                            bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
+                                            bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.04),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ],
+                                        ),
+                                        child: isVoice
+                                            ? _buildVoiceBubbleContent(msg, isMe)
+                                            : Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    msg['message'] ?? '',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: isMe ? Colors.white : Colors.black87,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.end,
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        _formatTime(msg['created_at']),
+                                                        style: TextStyle(
+                                                          fontSize: 9,
+                                                          color: isMe ? Colors.white70 : Colors.black38,
+                                                        ),
+                                                      ),
+                                                      if (isMe) ...[
+                                                        const SizedBox(width: 4),
+                                                        Icon(
+                                                          isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                                                          size: 13,
+                                                          color: isRead ? Colors.lightBlueAccent : Colors.white60,
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                            error: (e, __) => Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text('Suhbatni yuklashda xatolik yuz berdi.', style: TextStyle(color: Colors.red)),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed: () => ref.read(privateMessagesProvider(_adminUser!['id'] as int).notifier).fetchMessages(showLoading: true),
+                                    child: const Text('Qayta urinish'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(color: Color(0xFF1A3C2A)),
+                            ),
+                          ),
+                        ),
+                        
+                        // Input Area
+                        _buildInputArea(onSend: _sendAdminMessage),
+                      ],
                     ),
-                    icon: const Icon(Icons.chat_rounded),
-                    label: const Text('Admin bilan bog‘lanish', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );

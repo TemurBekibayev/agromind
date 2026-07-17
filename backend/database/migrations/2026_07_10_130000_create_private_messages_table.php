@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('message')->nullable();
             $table->boolean('is_voice')->default(false);
             $table->integer('voice_duration')->nullable();
+            $table->string('audio_path')->nullable();
             $table->boolean('is_read')->default(false);
             $table->timestamps();
         });

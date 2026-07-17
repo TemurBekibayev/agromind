@@ -98,6 +98,7 @@ class PrivateMessageController extends Controller
                     'message' => $msg->message,
                     'is_voice' => (bool)$msg->is_voice,
                     'voice_duration' => $msg->voice_duration,
+                    'audio_path' => $msg->audio_path,
                     'is_read' => (bool)$msg->is_read,
                     'is_me' => $msg->sender_id === $user->id,
                     'created_at' => $msg->created_at->toIso8601String(),
@@ -118,18 +119,34 @@ class PrivateMessageController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'message' => 'nullable|string',
+            'audio' => 'nullable|file|mimes:mp3,wav,aac,m4a,ogg,amr,mp4,3gp|max:10240',
             'is_voice' => 'nullable|boolean',
             'voice_duration' => 'nullable|integer',
         ]);
+
+        $audioPath = null;
+        $isVoice = $request->is_voice ?? false;
+        if ($request->hasFile('audio')) {
+            $path = $request->file('audio')->store('private_audio', 'public');
+            $audioPath = asset('storage/' . $path);
+            $isVoice = true;
+        }
 
         $message = PrivateMessage::create([
             'sender_id' => $request->user()->id,
             'receiver_id' => $request->receiver_id,
             'message' => $request->message,
-            'is_voice' => $request->is_voice ?? false,
+            'audio_path' => $audioPath,
+            'is_voice' => $isVoice,
             'voice_duration' => $request->voice_duration,
             'is_read' => false,
         ]);
+
+        // If the receiver is admin, forward the message to Telegram
+        $receiver = User::find($request->receiver_id);
+        if ($receiver && $receiver->role === 'admin') {
+            $this->sendToTelegram($request->user(), $message);
+        }
 
         return response()->json([
             'status' => 'success',
@@ -140,6 +157,7 @@ class PrivateMessageController extends Controller
                 'message' => $message->message,
                 'is_voice' => (bool)$message->is_voice,
                 'voice_duration' => $message->voice_duration,
+                'audio_path' => $message->audio_path,
                 'is_read' => (bool)$message->is_read,
                 'is_me' => true,
                 'created_at' => $message->created_at->toIso8601String(),
@@ -169,5 +187,46 @@ class PrivateMessageController extends Controller
                 'phone' => $admin->phone,
             ]
         ]);
+    }
+
+    /**
+     * Send message to Telegram bot.
+     */
+    private function sendToTelegram($sender, $message)
+    {
+        $token = config('telegram.bot_token');
+        $chatId = config('telegram.admin_chat_id');
+
+        if (!$token || !$chatId) {
+            return;
+        }
+
+        $text = "🌱 *Yangi Murojaat!*\n"
+              . "👤 *Fermer:* {$sender->name}\n"
+              . "📞 *Telefon:* {$sender->phone}\n"
+              . "📝 *Xabar:* " . ($message->message ?? '🎙️ Ovozli xabar') . "\n\n"
+              . "[Fermer ID: {$sender->id}]";
+
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+        
+        $data = [
+            'chat_id' => $chatId,
+            'text' => $text,
+            'parse_mode' => 'Markdown',
+        ];
+
+        if ($message->audio_path) {
+            $text .= "\n\n🎙️ Ovozli xabar manzili: " . $message->audio_path;
+            $data['text'] = $text;
+        }
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_exec($ch);
+        curl_close($ch);
     }
 }
