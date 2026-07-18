@@ -15,6 +15,8 @@ class PrivateMessage extends Model
         'receiver_id',
         'message',
         'audio_path',
+        'is_voice',
+        'voice_duration',
         'is_read',
     ];
 
