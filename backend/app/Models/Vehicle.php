@@ -184,13 +184,6 @@ class Vehicle extends Model
         return round($totalFuel / $distance, 2);
     }
 
-    /**
-     * Texnika uchun shubhali yoqilg'i ogohlantirishlari.
-     */
-    public function fuelAlerts(): HasMany
-    {
-        return $this->hasMany(FuelAlert::class);
-    }
 
     public static $TRACTOR_MODELS_CATALOG = [
         'belarus 82' => [
