@@ -81,14 +81,6 @@ class Vehicle extends Model
     }
 
     /**
-     * Texnika uchun yoqilg'i kiritish tarixi.
-     */
-    public function fuelEntries(): HasMany
-    {
-        return $this->hasMany(FuelEntry::class);
-    }
-
-    /**
      * Haversine formula yordamida ikkita koordinata orasidagi masofani hisoblash (km)
      */
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)
