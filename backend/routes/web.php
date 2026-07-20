@@ -380,66 +380,23 @@ Route::get('/admin/regions', function () {
 
 // Murojaatlar bo'limi (Ro'yxatdan o'tish arizalari va adminga shaxsiy xabarlar)
 Route::get('/admin/messages', function () {
-    $appeals = \App\Models\Appeal::latest()->get();
-    
-    $admin = User::where('role', 'admin')->first();
-    $messages = [];
-    if ($admin) {
-        $messages = \App\Models\PrivateMessage::where('receiver_id', $admin->id)
-            ->with('sender')
-            ->latest()
-            ->get();
-    }
-    
-    // Dehqon yaratish uchun hududlar kerak
+    $messages = \App\Models\SupportMessage::latest()->get();
     $regions = Region::all();
-    
-    return view('admin.messages', compact('appeals', 'messages', 'regions'));
+    return view('admin.messages', compact('messages', 'regions'));
 });
 
-// Arizani tasdiqlash va fermerni yaratish
-Route::post('/admin/messages/{id}/approve', function (Request $request, $id) {
-    $appeal = \App\Models\Appeal::findOrFail($id);
-    
-    $request->validate([
-        'region_id' => 'required|exists:regions,id',
-        'district' => 'nullable|string|max:255',
-    ]);
-    
-    // Foydalanuvchi allaqachon mavjudligini tekshirish
-    $exists = User::where('phone', $appeal->phone)->exists();
-    if ($exists) {
-        $appeal->update(['status' => 'approved']);
-        return back()->with('error', 'Bu telefon raqamli foydalanuvchi tizimda allaqachon mavjud!');
-    }
-    
-    // Yangi foydalanuvchi (fermer) yaratish
-    User::create([
-        'name' => $appeal->name,
-        'phone' => $appeal->phone,
-        'region_id' => $request->region_id,
-        'district' => $request->district ?? 'Amudaryo tumani',
-        'role' => 'farmer',
-        'password' => Hash::make('secret123'), // Default password
-    ]);
-    
-    $appeal->update(['status' => 'approved']);
-    
-    return back()->with('success', 'Ariza tasdiqlandi va dehqon hisobi yaratildi! Boshlang\'ich parol: secret123');
+// Murojaatni hal etilgan deb belgilash
+Route::post('/admin/messages/resolve/{id}', function ($id) {
+    $msg = \App\Models\SupportMessage::findOrFail($id);
+    $msg->update(['is_resolved' => true]);
+    return back()->with('success', 'Murojaat hal etilgan deb belgilandi!');
 });
 
-// Arizani rad etish
-Route::post('/admin/messages/{id}/reject', function ($id) {
-    $appeal = \App\Models\Appeal::findOrFail($id);
-    $appeal->update(['status' => 'rejected']);
-    return back()->with('success', 'Ariza rad etildi!');
-});
-
-// Arizani o'chirish
+// Murojaatni o'chirish
 Route::post('/admin/messages/destroy/{id}', function ($id) {
-    $appeal = \App\Models\Appeal::findOrFail($id);
-    $appeal->delete();
-    return back()->with('success', 'Ariza o\'chirildi!');
+    $msg = \App\Models\SupportMessage::findOrFail($id);
+    $msg->delete();
+    return back()->with('success', 'Murojaat o\'chirildi!');
 });
 
 // Hukumat monitoring paneli (Token bilan himoyalangan, Login shart emas)
