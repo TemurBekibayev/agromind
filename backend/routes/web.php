@@ -380,22 +380,74 @@ Route::get('/admin/regions', function () {
 
 // Murojaatlar bo'limi (Ro'yxatdan o'tish arizalari va adminga shaxsiy xabarlar)
 Route::get('/admin/messages', function () {
-    $messages = \App\Models\SupportMessage::latest()->get();
+    $admin = User::where('role', 'admin')->first();
+    $adminId = $admin ? $admin->id : null;
+
+    // Load SupportMessage (registration and public appeals)
+    $supportMsgs = \App\Models\SupportMessage::latest()->get()->map(function ($msg) {
+        return (object)[
+            'id' => $msg->id,
+            'source' => 'support_message',
+            'type' => $msg->type, // 'registration' or 'support'
+            'sender_name' => $msg->sender_name,
+            'sender_phone' => $msg->sender_phone,
+            'message' => $msg->message,
+            'is_resolved' => $msg->is_resolved,
+            'created_at' => $msg->created_at,
+        ];
+    });
+
+    // Load PrivateMessage (private chats sent to the admin)
+    $privateMsgs = collect();
+    if ($adminId) {
+        $privateMsgs = \App\Models\PrivateMessage::where('receiver_id', $adminId)
+            ->with('sender')
+            ->latest()
+            ->get()
+            ->map(function ($msg) {
+                return (object)[
+                    'id' => $msg->id,
+                    'source' => 'private_message',
+                    'type' => 'support', // treat direct private chat as support request
+                    'sender_name' => $msg->sender->name ?? 'Noma\'lum',
+                    'sender_phone' => $msg->sender->phone ?? 'Noma\'lum',
+                    'message' => $msg->message ?? ($msg->is_voice ? '🎙️ Ovozli xabar' : ''),
+                    'is_resolved' => (bool)$msg->is_read, // use is_read as resolved status
+                    'created_at' => $msg->created_at,
+                ];
+            });
+    }
+
+    // Combine and sort by created_at desc
+    $messages = $supportMsgs->concat($privateMsgs)->sortByDesc('created_at');
     $regions = Region::all();
+
     return view('admin.messages', compact('messages', 'regions'));
 });
 
 // Murojaatni hal etilgan deb belgilash
 Route::post('/admin/messages/resolve/{id}', function ($id) {
-    $msg = \App\Models\SupportMessage::findOrFail($id);
-    $msg->update(['is_resolved' => true]);
+    // Try SupportMessage first
+    $msg = \App\Models\SupportMessage::find($id);
+    if ($msg) {
+        $msg->update(['is_resolved' => true]);
+    } else {
+        $privateMsg = \App\Models\PrivateMessage::findOrFail($id);
+        $privateMsg->update(['is_read' => true]);
+    }
     return back()->with('success', 'Murojaat hal etilgan deb belgilandi!');
 });
 
 // Murojaatni o'chirish
 Route::post('/admin/messages/destroy/{id}', function ($id) {
-    $msg = \App\Models\SupportMessage::findOrFail($id);
-    $msg->delete();
+    // Try SupportMessage first
+    $msg = \App\Models\SupportMessage::find($id);
+    if ($msg) {
+        $msg->delete();
+    } else {
+        $privateMsg = \App\Models\PrivateMessage::findOrFail($id);
+        $privateMsg->delete();
+    }
     return back()->with('success', 'Murojaat o\'chirildi!');
 });
 
