@@ -203,26 +203,34 @@ class PrivateMessageController extends Controller
             return;
         }
 
-        $text = "🌱 *Yangi Murojaat!*\n"
-              . "👤 *Fermer:* {$sender->name}\n"
-              . "📞 *Telefon:* {$sender->phone}\n"
-              . "📝 *Xabar:* " . ($message->message ?? '🎙️ Ovozli xabar') . "\n\n"
-              . "[Fermer ID: {$sender->id}]";
-
-        $url = "https://api.telegram.org/bot{$token}/sendMessage";
-        
-        $data = [
-            'chat_id' => $chatId,
-            'text' => $text,
-            'parse_mode' => 'Markdown',
-        ];
-
-        if ($message->audio_path) {
-            $text .= "\n\n🎙️ Ovozli xabar manzili: " . $message->audio_path;
-            $data['text'] = $text;
-        }
+        // Format message using HTML to avoid character parsing errors
+        $text = "🌱 <b>Yangi Murojaat!</b>\n"
+              . "👤 <b>Fermer:</b> " . htmlspecialchars($sender->name) . "\n"
+              . "📞 <b>Telefon:</b> " . htmlspecialchars($sender->phone) . "\n"
+              . "📝 <b>Xabar:</b> " . htmlspecialchars($message->message ?? '🎙️ Ovozli xabar') . "\n\n"
+              . "⚙️ <b>Tizim ID:</b> [Fermer ID: {$sender->id}]";
 
         $ch = curl_init();
+
+        if ($message->audio_path) {
+            // Send as native voice message if audio path exists
+            $url = "https://api.telegram.org/bot{$token}/sendVoice";
+            $data = [
+                'chat_id' => $chatId,
+                'voice' => $message->audio_path,
+                'caption' => $text,
+                'parse_mode' => 'HTML',
+            ];
+        } else {
+            // Send as HTML text message
+            $url = "https://api.telegram.org/bot{$token}/sendMessage";
+            $data = [
+                'chat_id' => $chatId,
+                'text' => $text,
+                'parse_mode' => 'HTML',
+            ];
+        }
+
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
