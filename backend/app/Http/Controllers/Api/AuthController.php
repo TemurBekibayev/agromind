@@ -124,6 +124,14 @@ class AuthController extends Controller
             'message' => "Yangi dehqon (fermer) mobil ilovadan ro'yxatdan o'tdi. Hudud: {$regionName}, Tuman: {$districtName}.",
         ]);
 
+        // Telegram xabarnoma yuborish
+        $telegramText = "<b>📝 Yangi Ro'yxatdan O'tish</b>\n\n"
+            . "👤 <b>Fermer:</b> {$user->name}\n"
+            . "📞 <b>Telefon:</b> {$user->phone}\n"
+            . "📍 <b>Hudud:</b> {$regionName}, {$districtName}\n"
+            . "⚙️ <b>Tizim ID:</b> [Fermer ID: {$user->id}]";
+        \App\Services\TelegramService::sendMessage($telegramText);
+
         $deviceName = $request->device_name ?? 'mobile_app';
         $token = $user->createToken($deviceName)->plainTextToken;
 

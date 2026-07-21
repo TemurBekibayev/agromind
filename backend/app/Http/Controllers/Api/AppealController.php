@@ -30,6 +30,24 @@ class AppealController extends Controller
             'status' => 'pending',
         ]);
 
+        // Admin panelda ko'rinishi uchun SupportMessage yaratamiz
+        \App\Models\SupportMessage::create([
+            'type' => 'registration',
+            'sender_name' => $appeal->name,
+            'sender_phone' => $appeal->phone,
+            'message' => "Yangi ro'yxatdan o'tish arizasi. Ferma: {$appeal->farm_name}, INN: " . ($appeal->inn ?? '-') . ". Xabar: " . ($appeal->message ?? '-'),
+        ]);
+
+        // Telegram orqali adminga xabar yuborish
+        $telegramText = "<b>📩 Yangi Murojaat (Ariza)</b>\n\n"
+            . "👤 <b>Fermer:</b> {$appeal->name}\n"
+            . "📞 <b>Telefon:</b> {$appeal->phone}\n"
+            . "🚜 <b>Ferma nomi:</b> {$appeal->farm_name}\n"
+            . "📝 <b>INN:</b> " . ($appeal->inn ?? '-') . "\n"
+            . "💬 <b>Xabar:</b> " . ($appeal->message ?? '-') . "\n"
+            . "⚙️ <b>Tizim ID:</b> [Ariza ID: {$appeal->id}]";
+        \App\Services\TelegramService::sendMessage($telegramText);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Ariza muvaffaqiyatli qabul qilindi.',
