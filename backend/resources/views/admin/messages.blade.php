@@ -75,6 +75,25 @@
                                 <p class="text-sm text-gray-800 whitespace-normal break-words leading-relaxed">
                                     {{ $msg->message }}
                                 </p>
+                                @if($msg->is_voice && $msg->audio_path)
+                                    <div class="mt-2">
+                                        <audio src="{{ $msg->audio_path }}" controls class="h-8 w-full max-w-[240px]"></audio>
+                                    </div>
+                                @endif
+
+                                <!-- Reply Form -->
+                                <div class="mt-3 hidden bg-gray-50 p-2.5 rounded-lg border border-gray-200" id="reply-form-{{ $msg->id }}-{{ $msg->source }}">
+                                    <form action="/admin/messages/reply" method="POST" class="flex gap-2">
+                                        @csrf
+                                        <input type="hidden" name="source" value="{{ $msg->source }}">
+                                        <input type="hidden" name="id" value="{{ $msg->id }}">
+                                        <input type="text" name="reply_message" placeholder="Javobingizni yozing..." required 
+                                               class="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs focus:border-forest-500 focus:outline-none focus:ring-1 focus:ring-forest-500 bg-white">
+                                        <button type="submit" class="bg-forest-600 hover:bg-forest-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0">
+                                            Yuborish
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
 
                             <!-- Time -->
@@ -102,14 +121,18 @@
                             <!-- Actions -->
                             <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium space-x-2 shrink-0">
                                 @if(!$msg->is_resolved)
-                                    <form action="/admin/messages/resolve/{{ $msg->id }}" method="POST" class="inline-block">
+                                    <button type="button" onclick="document.getElementById('reply-form-{{ $msg->id }}-{{ $msg->source }}').classList.toggle('hidden')" 
+                                            class="text-blue-700 hover:text-blue-950 bg-blue-50 hover:bg-blue-100 p-1 px-2.5 rounded-lg transition inline-block border border-blue-200">
+                                        💬 Javob yozish
+                                    </button>
+                                    <form action="/admin/messages/resolve/{{ $msg->source }}/{{ $msg->id }}" method="POST" class="inline-block">
                                         @csrf
                                         <button type="submit" class="text-emerald-700 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 p-1 px-2.5 rounded-lg transition inline-block border border-emerald-200">
                                             ✓ Hal etildi
                                         </button>
                                     </form>
                                 @endif
-                                <form action="/admin/messages/destroy/{{ $msg->id }}" method="POST" class="inline-block" onsubmit="return confirm('Haqiqatan ham ushbu murojaatni o\'chirmoqchimisiz?')">
+                                <form action="/admin/messages/destroy/{{ $msg->source }}/{{ $msg->id }}" method="POST" class="inline-block" onsubmit="return confirm('Haqiqatan ham ushbu murojaatni o\'chirmoqchimisiz?')">
                                     @csrf
                                     <button type="submit" class="text-red-650 hover:text-red-950 bg-red-50 hover:bg-red-100 p-1 px-2.5 rounded-lg transition inline-block border border-red-200">
                                         O'chirish

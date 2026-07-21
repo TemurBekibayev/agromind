@@ -392,6 +392,8 @@ Route::get('/admin/messages', function () {
             'sender_name' => $msg->sender_name,
             'sender_phone' => $msg->sender_phone,
             'message' => $msg->message,
+            'is_voice' => false,
+            'audio_path' => null,
             'is_resolved' => $msg->is_resolved,
             'created_at' => $msg->created_at,
         ];
@@ -411,7 +413,9 @@ Route::get('/admin/messages', function () {
                     'type' => 'support', // treat direct private chat as support request
                     'sender_name' => $msg->sender->name ?? 'Noma\'lum',
                     'sender_phone' => $msg->sender->phone ?? 'Noma\'lum',
-                    'message' => $msg->message ?? ($msg->is_voice ? '🎙️ Ovozli xabar' : ''),
+                    'message' => $msg->message,
+                    'is_voice' => (bool)$msg->is_voice,
+                    'audio_path' => $msg->audio_path,
                     'is_resolved' => (bool)$msg->is_read, // use is_read as resolved status
                     'created_at' => $msg->created_at,
                 ];
@@ -425,28 +429,73 @@ Route::get('/admin/messages', function () {
     return view('admin.messages', compact('messages', 'regions'));
 });
 
-// Murojaatni hal etilgan deb belgilash
-Route::post('/admin/messages/resolve/{id}', function ($id) {
-    // Try SupportMessage first
-    $msg = \App\Models\SupportMessage::find($id);
-    if ($msg) {
+// Murojaatga javob yozish
+Route::post('/admin/messages/reply', function (Request $request) {
+    $request->validate([
+        'source' => 'required|in:support_message,private_message',
+        'id' => 'required|integer',
+        'reply_message' => 'required|string',
+    ]);
+
+    $admin = User::where('role', 'admin')->first();
+    if (!$admin) {
+        return back()->with('error', 'Admin foydalanuvchi topilmadi!');
+    }
+
+    $farmerId = null;
+
+    if ($request->source === 'support_message') {
+        $msg = \App\Models\SupportMessage::findOrFail($request->id);
+        if ($msg->user_id) {
+            $farmerId = $msg->user_id;
+        } else {
+            $user = User::where('phone', $msg->sender_phone)->first();
+            if ($user) {
+                $farmerId = $user->id;
+            }
+        }
         $msg->update(['is_resolved' => true]);
     } else {
-        $privateMsg = \App\Models\PrivateMessage::findOrFail($id);
-        $privateMsg->update(['is_read' => true]);
+        $msg = \App\Models\PrivateMessage::findOrFail($request->id);
+        $farmerId = $msg->sender_id;
+        $msg->update(['is_read' => true]);
+    }
+
+    if (!$farmerId) {
+        return back()->with('error', 'Fermer hisobi aniqlanmadi (fermer tizimda ro\'yxatdan o\'tmagan bo\'lishi mumkin)!');
+    }
+
+    // Create private message from Admin to Farmer
+    \App\Models\PrivateMessage::create([
+        'sender_id' => $admin->id,
+        'receiver_id' => $farmerId,
+        'message' => $request->reply_message,
+        'is_read' => false,
+    ]);
+
+    return back()->with('success', 'Javob dehqonga muvaffaqiyatli yuborildi!');
+});
+
+// Murojaatni hal etilgan deb belgilash
+Route::post('/admin/messages/resolve/{source}/{id}', function ($source, $id) {
+    if ($source === 'support_message') {
+        $msg = \App\Models\SupportMessage::findOrFail($id);
+        $msg->update(['is_resolved' => true]);
+    } else {
+        $msg = \App\Models\PrivateMessage::findOrFail($id);
+        $msg->update(['is_read' => true]);
     }
     return back()->with('success', 'Murojaat hal etilgan deb belgilandi!');
 });
 
 // Murojaatni o'chirish
-Route::post('/admin/messages/destroy/{id}', function ($id) {
-    // Try SupportMessage first
-    $msg = \App\Models\SupportMessage::find($id);
-    if ($msg) {
+Route::post('/admin/messages/destroy/{source}/{id}', function ($source, $id) {
+    if ($source === 'support_message') {
+        $msg = \App\Models\SupportMessage::findOrFail($id);
         $msg->delete();
     } else {
-        $privateMsg = \App\Models\PrivateMessage::findOrFail($id);
-        $privateMsg->delete();
+        $msg = \App\Models\PrivateMessage::findOrFail($id);
+        $msg->delete();
     }
     return back()->with('success', 'Murojaat o\'chirildi!');
 });
