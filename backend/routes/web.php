@@ -517,7 +517,15 @@ Route::middleware('monitor.auth')->group(function () {
 
 // Real-vaqt rejimida texnika telemetriyasini beruvchi ochiq JSON API
 Route::get('/api/live-vehicles', function () {
-    $vehicles = Vehicle::with(['farm', 'latestGpsTrack'])->get();
+    $user = Auth::user();
+    $query = Vehicle::with(['farm', 'latestGpsTrack']);
+    if ($user && $user->role === 'monitor') {
+        $query->whereHas('farm', function($q) use ($user) {
+            $q->where('district', $user->district)
+              ->where('region_id', $user->region_id);
+        });
+    }
+    $vehicles = $query->get();
     $vehicles->each(function ($v) {
         $v->append('status');
     });
@@ -526,7 +534,13 @@ Route::get('/api/live-vehicles', function () {
 
 // Real-vaqt rejimida fermer xo'jaliklari, geofencelar va tegishli texnikalarni beruvchi ochiq JSON API
 Route::get('/api/live-farms', function () {
-    $farms = \App\Models\Farm::with(['owner', 'geofences.latestSoilAnalysis.recommendation', 'vehicles.latestGpsTrack'])->get();
+    $user = Auth::user();
+    $query = \App\Models\Farm::with(['owner', 'geofences.latestSoilAnalysis.recommendation', 'vehicles.latestGpsTrack']);
+    if ($user && $user->role === 'monitor') {
+        $query->where('district', $user->district)
+              ->where('region_id', $user->region_id);
+    }
+    $farms = $query->get();
     $farms->each(function ($f) {
         $f->vehicles->each(function ($v) {
             $v->append('status');
@@ -605,6 +619,10 @@ Route::middleware('admin.auth')->group(function () {
     Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request) {
         try {
             \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                '--class' => 'Database\\Seeders\\DemoDataSeeder',
+                '--force' => true
+            ]);
             \Illuminate\Support\Facades\Artisan::call('db:seed', [
                 '--class' => 'Database\\Seeders\\PredefinedFarmSeeder',
                 '--force' => true

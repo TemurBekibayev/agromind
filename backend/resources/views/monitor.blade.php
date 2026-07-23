@@ -4,9 +4,17 @@
     $lng = 60.07327;
     $zoom = 12; // Default for Amudaryo tumani
 
-    if ($user && $user->role === 'monitor' && $user->district === 'Shumanay tumani') {
-        $lat = 42.63000;
-        $lng = 59.13000;
+    if ($user && $user->role === 'monitor') {
+        $firstFarm = \App\Models\Farm::where('district', $user->district)
+            ->where('region_id', $user->region_id)
+            ->first();
+        if ($firstFarm) {
+            $lat = $firstFarm->latitude;
+            $lng = $firstFarm->longitude;
+        } elseif ($user->district === 'Shumanay tumani') {
+            $lat = 42.63000;
+            $lng = 59.13000;
+        }
     }
 @endphp
 <!DOCTYPE html>
