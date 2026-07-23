@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class AdminAuth
+class MonitorAuth
 {
     /**
      * Handle an incoming request.
@@ -15,12 +15,19 @@ class AdminAuth
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthorized.'], 401);
+            }
             return redirect()->route('login')->with('error', 'Iltimos, avval tizimga kiring.');
         }
 
         $user = Auth::user();
-        if ($user->role !== 'admin') {
-            return redirect()->route('login')->with('error', 'Admin panelga kirish ruxsatingiz yo\'q.');
+        if ($user->role !== 'monitor' && $user->role !== 'admin') {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+            Auth::logout();
+            return redirect()->route('login')->with('error', 'Monitoring paneliga kirish ruxsatingiz yo\'q.');
         }
 
         return $next($request);

@@ -111,6 +111,20 @@
 
         <!-- Clock and Connection Status -->
         <div class="flex items-center gap-3">
+            @if(Auth::check())
+                <span class="text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    👤 {{ Auth::user()->name }} ({{ Auth::user()->role === 'admin' ? 'Admin' : 'Nazoratchi' }})
+                </span>
+                <form action="/logout" method="POST" id="logout-form-monitor" class="inline">
+                    @csrf
+                    <button type="submit" class="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition flex items-center gap-1">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                        </svg>
+                        Chiqish
+                    </button>
+                </form>
+            @endif
             <span class="hidden md:inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
                 <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> PORT: ULANISH FAOL
             </span>

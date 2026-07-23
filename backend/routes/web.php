@@ -9,11 +9,18 @@ use App\Models\Alert;
 use App\Models\Region;
 
 Route::get('/', function () {
-    return redirect('/admin/dashboard');
+    return redirect('/login');
 });
 
-// Admin Dashboard marshruti
-Route::get('/admin/dashboard', function () {
+// Web Authentication Routes
+Route::get('/login', [\App\Http\Controllers\WebAuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [\App\Http\Controllers\WebAuthController::class, 'login']);
+Route::post('/logout', [\App\Http\Controllers\WebAuthController::class, 'logout'])->name('logout');
+
+// Admin panel routes guarded by admin.auth
+Route::middleware('admin.auth')->group(function () {
+    // Admin Dashboard marshruti
+    Route::get('/admin/dashboard', function () {
     // Haqiqiy ma'lumotlarni bazadan o'qiymiz
     $farmersCount = User::where('role', 'farmer')->count();
     $vehiclesCount = Vehicle::count();
@@ -500,16 +507,13 @@ Route::post('/admin/messages/destroy/{source}/{id}', function ($source, $id) {
     return back()->with('success', 'Murojaat o\'chirildi!');
 });
 
-// Hukumat monitoring paneli (Token bilan himoyalangan, Login shart emas)
-Route::get('/monitor', function (Request $request) {
-    $validToken = 'agromind_monitoring_token_2026';
-    
-    if ($request->query('token') !== $validToken) {
-        abort(403, 'Ruxsat etilmagan kirish. Monitoring tokeni xato yoki mavjud emas.');
-    }
-    
-    return view('monitor');
-});
+}); // Close admin.auth group
+
+// Hukumat monitoring paneli (Login orqali himoyalangan)
+Route::middleware('monitor.auth')->group(function () {
+    Route::get('/monitor', function (Request $request) {
+        return view('monitor');
+    });
 
 // Real-vaqt rejimida texnika telemetriyasini beruvchi ochiq JSON API
 Route::get('/api/live-vehicles', function () {
@@ -594,22 +598,22 @@ Route::post('/api/monitor-analysis/{id}/recommend', function (Request $request, 
     ]);
 });
 
-// Helper to run migrations & seeders on production (cPanel)
-Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request) {
-    if ($request->query('token') !== 'agromind_monitoring_token_2026') {
-        abort(403, 'Unauthorized.');
-    }
+}); // Close monitor.auth group
 
-    try {
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        \Illuminate\Support\Facades\Artisan::call('db:seed', [
-            '--class' => 'Database\\Seeders\\PredefinedFarmSeeder',
-            '--force' => true
-        ]);
-        return 'Migrations and Seeding completed successfully!';
-    } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
-    }
+// Helper to run migrations & seeders on production (cPanel) guarded by admin.auth
+Route::middleware('admin.auth')->group(function () {
+    Route::get('/admin/deploy-migrate', function (\Illuminate\Http\Request $request) {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                '--class' => 'Database\\Seeders\\PredefinedFarmSeeder',
+                '--force' => true
+            ]);
+            return 'Migrations and Seeding completed successfully!';
+        } catch (\Exception $e) {
+            return 'Error: ' . $e->getMessage();
+        }
+    });
 });
 
 // Maxfiylik Siyosati (Privacy Policy) Google Play Market uchun
