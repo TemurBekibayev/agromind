@@ -34,9 +34,10 @@ Route::middleware('admin.auth')->group(function () {
 // Dehqonlar ro'yxati (Xo'jalik chizish uchun viloyatlar bilan birga)
 Route::get('/admin/farmers', function () {
     $farmers = User::where('role', 'farmer')->with(['region', 'farms.geofences'])->get();
+    $monitors = User::where('role', 'monitor')->with('region')->get();
     $regions = Region::all();
     $predefinedFarms = \App\Models\PredefinedFarm::orderBy('name')->get();
-    return view('admin.farmers', compact('farmers', 'regions', 'predefinedFarms'));
+    return view('admin.farmers', compact('farmers', 'monitors', 'regions', 'predefinedFarms'));
 });
 
 // Yangi Dehqon (Fermer) saqlash
