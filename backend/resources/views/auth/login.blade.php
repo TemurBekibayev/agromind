@@ -92,7 +92,7 @@
                         👤
                     </span>
                     <input type="text" id="phone" name="phone" value="{{ old('phone') }}" 
-                           placeholder="admin@uzagromind.uz yoki 998901234567" 
+                           placeholder="Email yoki telefon raqamingiz" 
                            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-200 transition placeholder-slate-650"
                            required autofocus>
                 </div>
