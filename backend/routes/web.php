@@ -40,54 +40,72 @@ Route::get('/admin/farmers', function () {
     return view('admin.farmers', compact('farmers', 'monitors', 'regions', 'predefinedFarms'));
 });
 
-// Yangi Dehqon (Fermer) saqlash
+// Yangi Dehqon (Fermer) yoki Monitor saqlash
 Route::post('/admin/farmers/store', function (Request $request) {
     $request->validate([
         'name' => 'required|string|max:255',
-        'phone' => 'required|string|max:20|unique:users,phone',
+        'phone' => 'required|string|max:50|unique:users,phone',
         'region_id' => 'required|exists:regions,id',
         'district' => 'nullable|string|max:255',
+        'role' => 'required|string|in:farmer,monitor',
+        'password' => 'nullable|string|max:255',
     ]);
+
+    $defaultPassword = $request->role === 'monitor' ? 'secretpassword' : 'secret123';
+    $password = $request->password ?: $defaultPassword;
 
     User::create([
         'name' => $request->name,
         'phone' => $request->phone,
         'region_id' => $request->region_id,
         'district' => $request->district ?? 'Amudaryo tumani',
-        'role' => 'farmer',
-        'password' => Hash::make('secret123'), // Default password
+        'role' => $request->role,
+        'password' => Hash::make($password),
+        'plain_password' => $password,
     ]);
 
-    return back()->with('success', 'Yangi dehqon (fermer) muvaffaqiyatli ro\'yxatga olindi!');
+    $roleName = $request->role === 'monitor' ? 'Tuman nazoratchisi' : 'Dehqon (fermer)';
+    return back()->with('success', "Yangi {$roleName} muvaffaqiyatli ro'yxatga olindi!");
 });
 
-// Dehqon (Fermer) tahrirlash (update)
+// Dehqon (Fermer) yoki Monitor tahrirlash (update)
 Route::post('/admin/farmers/update/{id}', function (Request $request, $id) {
-    $farmer = User::where('role', 'farmer')->findOrFail($id);
+    $user = User::whereIn('role', ['farmer', 'monitor'])->findOrFail($id);
 
     $request->validate([
         'name' => 'required|string|max:255',
-        'phone' => 'required|string|max:20|unique:users,phone,' . $id,
+        'phone' => 'required|string|max:50|unique:users,phone,' . $id,
         'region_id' => 'required|exists:regions,id',
         'district' => 'nullable|string|max:255',
+        'role' => 'required|string|in:farmer,monitor',
+        'password' => 'nullable|string|max:255',
     ]);
 
-    $farmer->update([
+    $updateData = [
         'name' => $request->name,
         'phone' => $request->phone,
         'region_id' => $request->region_id,
         'district' => $request->district ?? 'Amudaryo tumani',
-    ]);
+        'role' => $request->role,
+    ];
 
-    return back()->with('success', 'Dehqon (fermer) ma\'lumotlari muvaffaqiyatli yangilandi!');
+    if ($request->filled('password')) {
+        $updateData['password'] = Hash::make($request->password);
+        $updateData['plain_password'] = $request->password;
+    }
+
+    $user->update($updateData);
+
+    $roleName = $request->role === 'monitor' ? 'Tuman nazoratchisi' : 'Dehqon (fermer)';
+    return back()->with('success', "{$roleName} ma'lumotlari muvaffaqiyatli yangilandi!");
 });
 
-// Dehqon (Fermer) o'chirish (delete)
+// Dehqon (Fermer) yoki Monitor o'chirish (delete)
 Route::post('/admin/farmers/destroy/{id}', function ($id) {
-    $farmer = User::where('role', 'farmer')->with('farms.vehicles', 'farms.soilAnalyses', 'farms.geofences', 'farms.alerts')->findOrFail($id);
+    $user = User::whereIn('role', ['farmer', 'monitor'])->with('farms.vehicles', 'farms.soilAnalyses', 'farms.geofences', 'farms.alerts')->findOrFail($id);
 
     // Cascade delete related farms and their data
-    foreach ($farmer->farms as $farm) {
+    foreach ($user->farms as $farm) {
         // Delete vehicles & their data
         foreach ($farm->vehicles as $vehicle) {
             $vehicle->gpsTracks()->delete();
@@ -111,9 +129,9 @@ Route::post('/admin/farmers/destroy/{id}', function ($id) {
         $farm->delete();
     }
 
-    $farmer->delete();
+    $user->delete();
 
-    return back()->with('success', 'Dehqon (fermer) va uning barcha yer maydonlari muvaffaqiyatli o\'chirildi!');
+    return back()->with('success', 'Foydalanuvchi va uning barcha tegishli ma\'lumotlari muvaffaqiyatli o\'chirildi!');
 });
 
 // Yangi Farm va uning xarita geofence chegarasini saqlash
@@ -302,6 +320,7 @@ Route::post('/admin/vehicles/store', function (Request $request) {
         'plate_number' => 'required|string|max:20',
         'farm_id' => 'required|exists:farms,id',
         'gps_device_id' => 'required|string|max:50|unique:vehicles,gps_device_id',
+        'sim_number' => 'nullable|string|max:30',
         'fuel_capacity' => 'required|numeric|min:10',
     ]);
 
@@ -311,6 +330,7 @@ Route::post('/admin/vehicles/store', function (Request $request) {
         'plate_number' => $request->plate_number,
         'farm_id' => $request->farm_id,
         'gps_device_id' => $request->gps_device_id,
+        'sim_number' => $request->sim_number,
         'fuel_capacity' => $request->fuel_capacity,
     ]);
 
@@ -341,6 +361,7 @@ Route::post('/admin/vehicles/update/{id}', function (Request $request, $id) {
         'plate_number' => 'required|string|max:20',
         'farm_id' => 'required|exists:farms,id',
         'gps_device_id' => 'required|string|max:50|unique:vehicles,gps_device_id,' . $id,
+        'sim_number' => 'nullable|string|max:30',
         'fuel_capacity' => 'required|numeric|min:10',
     ]);
 
@@ -350,6 +371,7 @@ Route::post('/admin/vehicles/update/{id}', function (Request $request, $id) {
         'plate_number' => $request->plate_number,
         'farm_id' => $request->farm_id,
         'gps_device_id' => $request->gps_device_id,
+        'sim_number' => $request->sim_number,
         'fuel_capacity' => $request->fuel_capacity,
     ]);
 
