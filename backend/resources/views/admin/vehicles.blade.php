@@ -14,6 +14,15 @@
             <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 border border-blue-200 shrink-0">
                 Jami: {{ $vehicles->count() }} ta texnika
             </span>
+            <form action="/admin/vehicles/clear-all-commands" method="POST" class="inline-block" onsubmit="return confirm('Haqiqatan ham barcha kutilayotgan GPS buyruqlarini tozalashni xohlaysizmi?')">
+                @csrf
+                <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 transition shrink-0">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Buyruqlarni Tozalash
+                </button>
+            </form>
             <button onclick="openAddVehicleModal()" class="inline-flex items-center gap-2 rounded-lg bg-forest-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-forest-600 transition shrink-0">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -108,6 +117,7 @@
                         @php
                             $status = $vehicle->status;
                             $latestTrack = $vehicle->latestGpsTrack;
+                            $pendingCmd = $vehicle->gps_device_id ? \Illuminate\Support\Facades\Cache::get("gps_command_{$vehicle->gps_device_id}") : null;
                         @endphp
                         <tr class="hover:bg-gray-50/75 transition">
                             <!-- Name & Plate -->
@@ -128,7 +138,7 @@
                             </td>
                             
                             <!-- Type -->
-                            <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-805">
+                            <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-850">
                                 {{ $vehicle->type === 'tractor' ? 'Traktor' : ($vehicle->type === 'combine' ? 'Kombayn' : 'Boshqa') }}
                             </td>
 
@@ -151,6 +161,14 @@
                                     <div class="text-[11px] text-gray-500 font-normal mt-0.5">{{ $vehicle->sim_number }}</div>
                                 @else
                                     <div class="text-[11px] text-gray-400 italic font-normal mt-0.5">Sim raqami yo'q</div>
+                                @endif
+                                
+                                @if($pendingCmd)
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border text-amber-700 bg-amber-50 border-amber-200 animate-pulse font-mono">
+                                            Navbatda: {{ $pendingCmd }}
+                                        </span>
+                                    </div>
                                 @endif
                             </td>
 
@@ -238,6 +256,14 @@
                             
                             <!-- Actions -->
                             <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium space-x-2 shrink-0">
+                                @if($pendingCmd)
+                                    <form action="/admin/vehicles/clear-command/{{ $vehicle->id }}" method="POST" class="inline-block">
+                                        @csrf
+                                        <button type="submit" class="text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 p-1 px-2.5 rounded transition inline-block">
+                                            Buyruqni Tozalash
+                                        </button>
+                                    </form>
+                                @endif
                                 <button onclick="openEditVehicleModal({{ json_encode($vehicle->only(['id', 'name', 'type', 'plate_number', 'farm_id', 'gps_device_id', 'sim_number', 'fuel_capacity', 'nominal_rate_road', 'nominal_rate_work_light', 'nominal_rate_work_heavy'])) }})" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1 px-2.5 rounded transition inline-block">
                                     Tahrirlash
                                 </button>

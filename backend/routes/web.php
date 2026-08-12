@@ -390,6 +390,24 @@ Route::post('/admin/vehicles/destroy/{id}', function ($id) {
     return back()->with('success', 'Texnika muvaffaqiyatli o\'chirildi!');
 });
 
+// Texnikaga tegishli kutilayotgan GPS buyruqlarini tozalash
+Route::post('/admin/vehicles/clear-command/{id}', function ($id) {
+    $vehicle = Vehicle::findOrFail($id);
+    if ($vehicle->gps_device_id) {
+        \Illuminate\Support\Facades\Cache::forget("gps_command_{$vehicle->gps_device_id}");
+    }
+    return back()->with('success', "{$vehicle->name} texnikasining navbatdagi GPS buyrug'i muvaffaqiyatli tozalandi!");
+});
+
+// Barcha texnikalarning kutilayotgan GPS buyruqlarini tozalash
+Route::post('/admin/vehicles/clear-all-commands', function () {
+    $vehicles = Vehicle::whereNotNull('gps_device_id')->get();
+    foreach ($vehicles as $vehicle) {
+        \Illuminate\Support\Facades\Cache::forget("gps_command_{$vehicle->gps_device_id}");
+    }
+    return back()->with('success', 'Barcha texnikalarning navbatdagi GPS buyruqlari muvaffaqiyatli tozalandi!');
+});
+
 // Tuproq Tahlillari ro'yxati
 Route::get('/admin/soil', function () {
     $soilAnalyses = SoilAnalysis::with(['farm', 'recommendation'])->get();
