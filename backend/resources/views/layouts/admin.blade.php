@@ -96,11 +96,18 @@
                     Dehqonlar
                 </a>
 
-                <a href="/admin/vehicles" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('admin/vehicles*') ? 'bg-forest-700 text-white' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                <a href="/admin/vehicles" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('admin/vehicles') || request()->is('admin/vehicles/store') || request()->is('admin/vehicles/update*') ? 'bg-forest-700 text-white' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V9.75M3.75 14.25h16.5M3.75 14.25V7.5a1.5 1.5 0 011.5-1.5h13.5a1.5 1.5 0 011.5 1.5v6.75m-16.5 0H18M13.5 6V4.5a1.5 1.5 0 00-3 0V6" />
                     </svg>
                     Texnikalar
+                </a>
+
+                <a href="/admin/vehicles/commands" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('admin/vehicles/commands*') ? 'bg-forest-700 text-white' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">
+                    <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Buyruqlar Navbati
                 </a>
 
                 <a href="/admin/soil" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('admin/soil*') ? 'bg-forest-700 text-white' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900' }}">

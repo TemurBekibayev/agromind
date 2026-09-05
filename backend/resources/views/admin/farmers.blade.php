@@ -641,7 +641,40 @@
     let editCompletedPolygonLayers = [];
     let editCompletedPolygonMarkers = [];
 
+    // Geodezik maydonni hisoblash (kvadrat metrda)
+    function calculatePolygonArea(latLngs) {
+        var radius = 6378137; // Yer radiusi (metrda)
+        var len = latLngs.length;
+        if (len < 3) return 0;
+        
+        var totalArea = 0;
+        for (var i = 0; i < len; i++) {
+            var p1 = latLngs[i];
+            var p2 = latLngs[(i + 1) % len];
+            
+            var lat1 = p1[0] * Math.PI / 180;
+            var lat2 = p2[0] * Math.PI / 180;
+            var lon1 = p1[1] * Math.PI / 180;
+            var lon2 = p2[1] * Math.PI / 180;
+            
+            totalArea += (lon2 - lon1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+        }
+        
+        var area = Math.abs(totalArea * radius * radius / 2);
+        return area; // m2
+    }
 
+    // Maydonni gektarga o'tkazish
+    function calculateTotalAreaHectares(polygons, activePoints) {
+        let totalSqMeters = 0;
+        polygons.forEach(function(poly) {
+            totalSqMeters += calculatePolygonArea(poly);
+        });
+        if (activePoints && activePoints.length >= 3) {
+            totalSqMeters += calculatePolygonArea(activePoints);
+        }
+        return totalSqMeters / 10000; // 1 gektar = 10 000 m2
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('farmStoreForm');
@@ -792,6 +825,12 @@
         const totalCompleted = polygonsList.length;
         const activeCount = polyPoints.length;
 
+        // Gektarni hisoblash
+        const totalHectares = calculateTotalAreaHectares(polygonsList, polyPoints);
+        if (totalHectares > 0) {
+            document.getElementById('add_farm_size').value = totalHectares.toFixed(2);
+        }
+
         const warn = document.getElementById('drawWarning');
         if (totalCompleted > 0 || activeCount >= 3) {
             warn.className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
@@ -800,10 +839,11 @@
                 msg += `${totalCompleted} ta alohida maydon yakunlandi. `;
             }
             if (activeCount > 0) {
-                msg += `Hozirgi chizilayotgan maydonda ${activeCount} ta nuqta bor.`;
+                msg += `Hozirgi chizilayotgan maydonda ${activeCount} ta nuqta bor. `;
             } else {
-                msg += `Yangi mustaqil maydon chizishni boshlashingiz mumkin.`;
+                msg += `Yangi mustaqil maydon chizishni boshlashingiz mumkin. `;
             }
+            msg += `<br><span class="font-bold text-emerald-800">Umumiy maydon: ${totalHectares.toFixed(2)} gektar (ha)</span>`;
             warn.innerHTML = msg;
         } else {
             warn.className = "p-3 bg-amber-50 border border-amber-250 rounded-xl text-xs text-amber-700";
@@ -1135,10 +1175,15 @@
                     const newLatlng = evt.target.getLatLng();
                     points[vIdx] = [parseFloat(newLatlng.lat), parseFloat(newLatlng.lng)];
                     poly.setLatLngs(points);
+                    
+                    // Live area recalculation during drag
+                    const liveHectares = calculateTotalAreaHectares(editPolygonsList, editPolyPoints);
+                    document.getElementById('edit_farm_size').value = liveHectares.toFixed(2);
+                    document.getElementById('editDrawWarning').innerHTML = `✅ <strong>Chegara yuklangan:</strong> Xaritada joriy yer chegarasi ko'rsatilgan. Burchaklardagi nuqtalarni surib tahrirlashingiz, chiziq ustiga click qilib yangi nuqta qo'shishingiz yoki nuqtani 2 marta click qilib o'chirishingiz mumkin.<br><span class="font-bold text-emerald-800">Umumiy maydon: ${liveHectares.toFixed(2)} gektar (ha)</span>`;
                 });
 
                 marker.on('dragend', function() {
-                    poly.setLatLngs(points);
+                    redrawCompletedPolygons();
                 });
 
                 // Double click marker to remove vertex
@@ -1154,6 +1199,14 @@
                 editCompletedPolygonMarkers.push(marker);
             });
         });
+
+        // Maydonni gektarda hisoblash va ko'rsatish
+        const totalHectares = calculateTotalAreaHectares(editPolygonsList, editPolyPoints);
+        if (totalHectares > 0) {
+            document.getElementById('edit_farm_size').value = totalHectares.toFixed(2);
+            document.getElementById('editDrawWarning').className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
+            document.getElementById('editDrawWarning').innerHTML = `✅ <strong>Chegara yuklangan:</strong> Xaritada joriy yer chegarasi ko'rsatilgan. Burchaklardagi nuqtalarni surib tahrirlashingiz, chiziq ustiga click qilib yangi nuqta qo'shishingiz yoki nuqtani 2 marta click qilib o'chirishingiz mumkin.<br><span class="font-bold text-emerald-800">Umumiy maydon: ${totalHectares.toFixed(2)} gektar (ha)</span>`;
+        }
     }
 
     function getSqSegDist(p, p1, p2) {
@@ -1192,6 +1245,12 @@
         const totalCompleted = editPolygonsList.length;
         const activeCount = editPolyPoints.length;
 
+        // Gektarni hisoblash
+        const totalHectares = calculateTotalAreaHectares(editPolygonsList, editPolyPoints);
+        if (totalHectares > 0) {
+            document.getElementById('edit_farm_size').value = totalHectares.toFixed(2);
+        }
+
         const warn = document.getElementById('editDrawWarning');
         if (totalCompleted > 0 || activeCount >= 3) {
             warn.className = "p-3 bg-emerald-50 border border-emerald-250 rounded-xl text-xs text-emerald-700";
@@ -1200,10 +1259,11 @@
                 msg += `${totalCompleted} ta alohida maydon chizildi. `;
             }
             if (activeCount > 0) {
-                msg += `Hozirgi chizilayotgan maydonda ${activeCount} ta nuqta bor.`;
+                msg += `Hozirgi chizilayotgan maydonda ${activeCount} ta nuqta bor. `;
             } else {
-                msg += `Yangi maydon chizishni boshlashingiz mumkin.`;
+                msg += `Yangi maydon chizishni boshlashingiz mumkin. `;
             }
+            msg += `<br><span class="font-bold text-emerald-800">Umumiy maydon: ${totalHectares.toFixed(2)} gektar (ha)</span>`;
             warn.innerHTML = msg;
         } else {
             warn.className = "p-3 bg-amber-50 border border-amber-250 rounded-xl text-xs text-amber-700";

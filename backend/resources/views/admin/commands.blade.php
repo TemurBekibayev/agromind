@@ -1,152 +1,155 @@
 @extends('layouts.admin')
 
-@section('title', 'Kutilayotgan GPS Buyruqlar Navbati')
+@section('title', 'Kutilayotgan GPS Buyruqlari')
 
 @section('content')
 <div class="space-y-8">
     <!-- Page Header -->
-    <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-            <h2 class="text-2xl font-bold tracking-tight text-gray-900">Kutilayotgan GPS Buyruqlar Navbati</h2>
-            <p class="text-sm text-gray-500">Mobil ilovadan yuborilgan, biroq trekkerlar tarmoqdan uzilganligi (offline) yoki GPS aloqasi yo'qligi sababli kutish rejimida turgan bloklash va blokdan ochish buyruqlari jurnali.</p>
+            <h2 class="text-2xl font-bold tracking-tight text-gray-900">GPS Buyruqlar Navbati (Queue)</h2>
+            <p class="text-sm text-gray-500">Trekkerlar tarmoqdan uzilganda yoki signal yomon bo'lganda yuborilgan buyruqlar shu yerda navbatda turadi.</p>
         </div>
-        <div class="flex items-center gap-3">
-            <span class="inline-flex items-center rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 border border-amber-200">
-                Navbatda: {{ count($pendingCommands) }} ta buyruq
-            </span>
-        </div>
+        
+        @if(count($pendingCommands) > 0)
+            <div class="flex items-center gap-3">
+                <form action="/admin/vehicles/clear-all-commands" method="POST" onsubmit="return confirm('Haqiqatan ham barcha kutilayotgan buyruqlarni tozalashni xohlaysizmi?')">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 transition">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Barcha Buyruqlarni Tozalash
+                    </button>
+                </form>
+            </div>
+        @endif
     </div>
 
-    <!-- Alert Message -->
+    <!-- Success Notification -->
     @if(session('success'))
-        <div class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 border border-green-200" role="alert">
-            <span class="font-medium">🎉 Muvaffaqiyatli:</span> {{ session('success') }}
+        <div class="p-4 text-sm text-emerald-800 rounded-xl bg-emerald-50 border border-emerald-250 shadow-sm flex items-center justify-between">
+            <span class="font-medium">🎉 Muvaffaqiyatli: {{ session('success') }}</span>
         </div>
     @endif
 
-    <!-- Commands Table -->
+    <!-- Info Banner -->
+    <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 flex items-start gap-3 shadow-sm">
+        <svg class="h-5 w-5 shrink-0 text-blue-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+            <h4 class="font-bold mb-1">Buyruqlar navbati qanday ishlaydi?</h4>
+            <p class="leading-relaxed">
+                Mobil ilova orqali dvigatelni o'chirish (block) yoki yoqish (restore) buyrug'i berilganda, tizim ushbu buyruqni bir zumda GPS trekkerga uzatadi. Agar trekker internetdan uzilgan bo'lsa, buyruq yo'qolib ketmasligi uchun <strong>1 soat muddatga navbatga (Cache)</strong> joylashtiriladi. Trekker qayta aloqaga chiqib, birinchi telemetriya signalini yuborgan zahoti ushbu buyruqni qabul qilib oladi va navbatdan o'chadi. Agar buyruq keraksiz bo'lib qolgan bo'lsa yoki xatolik yuz bergan bo'lsa, uni qo'lda tozalashingiz mumkin.
+            </p>
+        </div>
+    </div>
+
+    <!-- Queue List -->
     <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <h3 class="font-bold text-gray-800 text-sm uppercase tracking-wider">Navbatdagi faol buyruqlar ro'yxati</h3>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    <tr>
-                        <th scope="col" class="px-6 py-4">Texnika Nomi</th>
-                        <th scope="col" class="px-6 py-4">GPS IMEI</th>
-                        <th scope="col" class="px-6 py-4">Fermer Xo'jaligi</th>
-                        <th scope="col" class="px-6 py-4 text-center">Buyruq turi</th>
-                        <th scope="col" class="px-6 py-4 text-center">Tarmoq holati</th>
-                        <th scope="col" class="px-6 py-4">Kutish sababi va yechimi</th>
-                        <th scope="col" class="px-6 py-4 text-right">Amallar</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 bg-white text-gray-700">
-                    @forelse($pendingCommands as $item)
-                        <tr class="hover:bg-gray-50/75 transition">
-                            <!-- Vehicle details -->
-                            <td class="whitespace-nowrap px-6 py-4 font-semibold text-gray-900">
-                                <div class="flex items-center gap-3">
-                                    <div class="h-8 w-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 font-semibold text-xs">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V9.75M3.75 14.25h16.5M3.75 14.25V7.5a1.5 1.5 0 011.5-1.5h13.5a1.5 1.5 0 011.5 1.5v6.75m-16.5 0H18M13.5 6V4.5a1.5 1.5 0 00-3 0V6" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p class="font-semibold">{{ $item['name'] }}</p>
-                                        <p class="text-xs text-gray-400">Plita: {{ $item['plate_number'] }}</p>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <!-- IMEI -->
-                            <td class="whitespace-nowrap px-6 py-4 font-mono text-gray-600">
-                                {{ $item['gps_device_id'] }}
-                            </td>
-
-                            <!-- Farm Name -->
-                            <td class="whitespace-nowrap px-6 py-4 text-gray-500 font-medium">
-                                {{ $item['farm_name'] }}
-                            </td>
-
-                            <!-- Command Type -->
-                            <td class="whitespace-nowrap px-6 py-4 text-center">
-                                @if($item['command'] === 'RELAY,1#')
-                                    <span class="inline-flex items-center gap-1 rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 border border-red-200">
-                                        🔴 Dvigatelni Bloklash
-                                    </span>
-                                @elseif($item['command'] === 'RELAY,0#')
-                                    <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                                        🟢 Blokdan Chiqarish
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
-                                        {{ $item['command'] }}
-                                    </span>
-                                @endif
-                            </td>
-
-                            <!-- Connection Status -->
-                            <td class="whitespace-nowrap px-6 py-4 text-center">
-                                @if($item['status'] === 'online')
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        Online
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-500 border border-gray-200">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
-                                        Offline
-                                    </span>
-                                @endif
-                            </td>
-
-                            <!-- Reason & Solution -->
-                            <td class="px-6 py-4 max-w-md">
-                                <div class="space-y-1">
-                                    <p class="text-xs font-bold text-red-600 flex items-center gap-1">
-                                        ⚠️ Sabab: {{ $item['reason'] }}
-                                    </p>
-                                    <p class="text-xs text-gray-500">
-                                        💡 Yechim: {{ $item['solution'] }}
-                                    </p>
-                                </div>
-                            </td>
-
-                            <!-- Actions -->
-                            <td class="whitespace-nowrap px-6 py-4 text-right">
-                                <form action="/admin/commands/clear/{{ $item['id'] }}" method="POST" onsubmit="return confirm('Haqiqatan ham ushbu kutayotgan buyruqni o\'chirib yubormoqchimisiz?');">
-                                    @csrf
-                                    <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition shadow-sm">
-                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                        </svg>
-                                        Tozalash
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
+        @if(count($pendingCommands) > 0)
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
+                    <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
                         <tr>
-                            <td colspan="7" class="px-6 py-16 text-center">
-                                <div class="flex flex-col items-center justify-center space-y-3">
-                                    <div class="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="font-bold text-gray-800 text-sm">Kutilayotgan buyruqlar navbati bo'sh</p>
-                                        <p class="text-xs text-gray-400">Barcha yuborilgan bloklash va ochish buyruqlari muvaffaqiyatli bajarilgan!</p>
-                                    </div>
-                                </div>
-                            </td>
+                            <th scope="col" class="px-6 py-4">Texnika</th>
+                            <th scope="col" class="px-6 py-4">Fermer Xo'jaligi</th>
+                            <th scope="col" class="px-6 py-4">GPS IMEI</th>
+                            <th scope="col" class="px-6 py-4">Kutilayotgan Buyruq</th>
+                            <th scope="col" class="px-6 py-4">Holati</th>
+                            <th scope="col" class="px-6 py-4 text-right">Amallar</th>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white text-gray-700">
+                        @foreach($pendingCommands as $item)
+                            @php
+                                $vehicle = $item['vehicle'];
+                                $cmd = $item['command'];
+                            @endphp
+                            <tr class="hover:bg-gray-50/75 transition">
+                                <!-- Vehicle -->
+                                <td class="whitespace-nowrap px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                                            <span class="font-bold text-lg">T</span>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-900">{{ $vehicle->name }}</p>
+                                            <p class="text-xs font-mono text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 inline-block mt-0.5">{{ $vehicle->plate_number }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Farm -->
+                                <td class="whitespace-nowrap px-6 py-4">
+                                    @if($vehicle->farm)
+                                        <div>
+                                            <p class="font-medium text-gray-900 text-xs">{{ $vehicle->farm->name }}</p>
+                                            <p class="text-[10px] text-gray-400 mt-0.5">{{ $vehicle->farm->district }}</p>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-gray-400 italic">Biriktirilmagan</span>
+                                    @endif
+                                </td>
+
+                                <!-- IMEI -->
+                                <td class="whitespace-nowrap px-6 py-4 font-mono text-xs text-gray-600">
+                                    {{ $vehicle->gps_device_id }}
+                                </td>
+
+                                <!-- Command -->
+                                <td class="whitespace-nowrap px-6 py-4">
+                                    @if($cmd === 'RELAY,1#')
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
+                                            Dvigatelni O'chirish (RELAY,1#)
+                                        </span>
+                                    @elseif($cmd === 'RELAY,0#')
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
+                                            Dvigatelni Yoqish (RELAY,0#)
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 font-mono">
+                                            {{ $cmd }}
+                                        </span>
+                                    @endif
+                                </td>
+
+                                <!-- Status -->
+                                <td class="whitespace-nowrap px-6 py-4">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
+                                        Trekker ulanishi kutilmoqda...
+                                    </span>
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium shrink-0">
+                                    <form action="/admin/vehicles/clear-command/{{ $vehicle->id }}" method="POST" class="inline-block">
+                                        @csrf
+                                        <button type="submit" class="text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 p-1.5 px-3 rounded transition font-semibold">
+                                            Tozalash
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <!-- Empty State -->
+            <div class="p-16 text-center">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">
+                    <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 class="mt-4 text-sm font-bold text-gray-900">Buyruqlar navbati bo'sh!</h3>
+                <p class="mx-auto mt-2 max-w-sm text-xs text-gray-500">Hozirda hech qanday kutilayotgan GPS buyruqlari mavjud emas. Barcha jo'natilgan buyruqlar trekkerlar tomonidan qabul qilingan yoki navbat bo'sh.</p>
+            </div>
+        @endif
     </div>
 </div>
 @endsection

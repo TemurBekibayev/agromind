@@ -408,6 +408,24 @@ Route::post('/admin/vehicles/clear-all-commands', function () {
     return back()->with('success', 'Barcha texnikalarning navbatdagi GPS buyruqlari muvaffaqiyatli tozalandi!');
 });
 
+// GPS kutilayotgan buyruqlar navbati ro'yxati (Buyruqlar Navbati)
+Route::get('/admin/vehicles/commands', function () {
+    $vehicles = Vehicle::whereNotNull('gps_device_id')->with('farm')->get();
+    
+    $pendingCommands = [];
+    foreach ($vehicles as $vehicle) {
+        $cmd = \Illuminate\Support\Facades\Cache::get("gps_command_{$vehicle->gps_device_id}");
+        if ($cmd) {
+            $pendingCommands[] = [
+                'vehicle' => $vehicle,
+                'command' => $cmd
+            ];
+        }
+    }
+    
+    return view('admin.commands', compact('pendingCommands'));
+});
+
 // Tuproq Tahlillari ro'yxati
 Route::get('/admin/soil', function () {
     $soilAnalyses = SoilAnalysis::with(['farm', 'recommendation'])->get();
